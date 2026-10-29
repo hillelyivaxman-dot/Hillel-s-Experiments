@@ -1,0 +1,19 @@
+{
+  "name": "FlowFactory.Editor",
+  "rootNamespace": "FlowFactory.EditorTools",
+  "references": [
+    "FlowFactory.Core",
+    "FlowFactory.Runtime"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}
