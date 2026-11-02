@@ -1,0 +1,86 @@
+import { useGSAP } from '@gsap/react';
+import gsap from 'gsap';
+import { useMemo, useRef, useState } from 'react';
+import { CATALOG, CATEGORY_NAMES, type Category } from '../../../shared/catalog';
+import { PLAYER_COLORS } from '../../../shared/protocol';
+import { useT } from '../i18n';
+import { prefs } from '../prefs';
+import { sfx } from '../sound';
+import { CritterCanvas, GameCard, Logo, SettingsBar } from '../ui/common';
+
+gsap.registerPlugin(useGSAP);
+
+export function Home() {
+  const { t, l } = useT();
+  const root = useRef<HTMLDivElement>(null);
+  const [cat, setCat] = useState<Category | 'all'>('all');
+  const [code, setCode] = useState('');
+  const cats = useMemo(() => [...new Set(CATALOG.map((g) => g.category))], []);
+  const games = CATALOG.filter((g) => cat === 'all' || g.category === cat)
+    .sort((a, b) => (a.status === b.status ? 0 : a.status === 'playable' ? -1 : 1));
+
+  useGSAP(() => {
+    if (prefs.reducedMotion) return;
+    const tl = gsap.timeline({ defaults: { ease: 'back.out(1.8)' } });
+    tl.from('.logo__family', { y: -60, opacity: 0, duration: 0.5 })
+      .from('.logo__ch', { y: 80, scale: 0.2, rotate: () => gsap.utils.random(-40, 40), opacity: 0, stagger: 0.07, duration: 0.6 }, '-=0.2')
+      .from('.hero__tagline, .hero__sub', { y: 20, opacity: 0, stagger: 0.1, duration: 0.4, ease: 'power2.out' }, '-=0.2')
+      .from('.hero__cta > *', { scale: 0.6, opacity: 0, stagger: 0.1, duration: 0.5 }, '-=0.2')
+      .from('.hero__crowd > *', { y: 120, opacity: 0, stagger: 0.06, duration: 0.6 }, '-=0.5')
+      .add(() => {
+        gsap.to('.hero__crowd > *', { y: -10, duration: 0.9, ease: 'sine.inOut', yoyo: true, repeat: -1, stagger: { each: 0.15, from: 'random' } });
+      });
+    gsap.from('.library .game-card', { y: 40, opacity: 0, stagger: 0.04, duration: 0.5, ease: 'power3.out', delay: 0.6 });
+  }, { scope: root });
+
+  const go = (path: string) => { sfx.click(); location.assign(path); };
+
+  return (
+    <div className="home" ref={root}>
+      <header className="topbar"><SettingsBar /></header>
+      <section className="hero">
+        <Logo />
+        <p className="hero__tagline">{t('tagline')}</p>
+        <p className="hero__sub">{t('sub')}</p>
+        <div className="hero__cta">
+          <button className="btn btn--primary btn--xl" onClick={() => go('/host')} data-testid="host-btn">📺 {t('host')}</button>
+          <form className="join-inline" onSubmit={(e) => { e.preventDefault(); go(`/join/${code}`); }}>
+            <input
+              className="code-input" value={code} maxLength={4} placeholder="ABCD" dir="ltr" aria-label={t('code')}
+              onChange={(e) => setCode(e.target.value.toUpperCase().replace(/[^A-Z]/g, ''))}
+            />
+            <button className="btn btn--secondary" type="submit">📱 {t('joinPhone')}</button>
+          </form>
+        </div>
+        <div className="hero__crowd" aria-hidden="true">
+          {PLAYER_COLORS.slice(0, 8).map((c, i) => <CritterCanvas key={i} color={c} variant={(i * 5) % 12} size={88} />)}
+        </div>
+      </section>
+
+      <section className="how">
+        <h2>{t('howItWorks')}</h2>
+        <ol className="how__steps">
+          <li><span>1</span>{t('step1')}</li>
+          <li><span>2</span>{t('step2')}</li>
+          <li><span>3</span>{t('step3')}</li>
+        </ol>
+      </section>
+
+      <section className="library">
+        <h2>{t('library')}</h2>
+        <div className="tabs" role="tablist">
+          <button role="tab" aria-selected={cat === 'all'} className={`chip ${cat === 'all' ? 'is-on' : ''}`} onClick={() => setCat('all')}>{t('all')}</button>
+          {cats.map((c) => (
+            <button key={c} role="tab" aria-selected={cat === c} className={`chip ${cat === c ? 'is-on' : ''}`} onClick={() => setCat(c)}>
+              {l(CATEGORY_NAMES[c])}
+            </button>
+          ))}
+        </div>
+        <div className="library__grid">
+          {games.map((g) => <GameCard key={g.id} g={g} onClick={() => go('/host')} />)}
+        </div>
+      </section>
+      <footer className="footer">{t('privacy')} · FAMILY CHAOS</footer>
+    </div>
+  );
+}
