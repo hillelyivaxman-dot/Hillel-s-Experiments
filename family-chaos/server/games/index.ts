@@ -1,25 +1,18 @@
 import { boardGame } from './board';
 import { bumperGame } from './bumper';
+import { flagWarsGame } from './flagwars';
 import { hockeyGame } from './hockey';
-import { bikeGame, boatGame, kartGame } from './kart';
-import { kitchenGame } from './kitchen';
+import { kartGame } from './kart';
 import { potatoGame } from './potato';
-import { reactionGame } from './reaction';
-import { trapBuildersGame } from './trapbuilders';
-import { vanishGame } from './vanish';
 import { rushGame } from './rush';
 import { soccerGame } from './soccer';
-import { basketballGame } from './basketball';
-import { bowlingGame } from './bowling';
-import { defenseGame, tankGame } from './arena';
-import { survivalGame, tagGame, wizardGame } from './arena2';
-import { evacuationGame, huntGame, mazeGame, spaceRescueGame, towerGame } from './wave_c';
-import { balloonGame, drawGame, puzzleGame, spaceRaceGame, triviaGame } from './wave_d';
+import { trapBuildersGame } from './trapbuilders';
+import { vanishGame } from './vanish';
 import type { GameModule } from './types';
 
-// Register new game modules here (and mark them `status: 'playable'` in shared/catalog.ts).
+// FAMILY CHAOS 3.0 ships exactly ten games. Older games (kitchen, bowling, boats/bikes, tanks, ...) live on the branch
+// `backup/pre-3.0-422a138`. Register a new module here AND mark it playable in shared/catalog.ts.
 export const GAMES: Record<string, GameModule> = Object.fromEntries(
-  [bumperGame, kartGame, reactionGame, potatoGame, rushGame, soccerGame, hockeyGame, boardGame, kitchenGame, trapBuildersGame, vanishGame,
-    basketballGame, bowlingGame, boatGame, bikeGame, tankGame, wizardGame, survivalGame, defenseGame, tagGame,
-    mazeGame, spaceRescueGame, evacuationGame, huntGame, towerGame, spaceRaceGame, balloonGame, puzzleGame, drawGame, triviaGame].map((g) => [g.id, g]),
+  [kartGame, rushGame, soccerGame, hockeyGame, flagWarsGame, boardGame, trapBuildersGame, bumperGame, vanishGame, potatoGame].map((g) => [g.id, g]),
 );
+

@@ -58,10 +58,10 @@ test('library: search filters games (Hebrew and English), favourites are remembe
   await expect(cards).toHaveCount(0);
   await page.getByTestId('game-search').fill('');
   await expect(cards).toHaveCount(CATALOG.length);
-  await page.locator('[data-fav="kitchen"]').click();
-  await expect(page.locator('.game-wrap').first().locator('.game-card')).toHaveAttribute('data-game', 'kitchen'); // favourite goes first
+  await page.locator('[data-fav="rush"]').click();
+  await expect(page.locator('.game-wrap').first().locator('.game-card')).toHaveAttribute('data-game', 'rush'); // favourite goes first
   await page.reload();
-  await expect(page.locator('.game-wrap').first().locator('.game-card')).toHaveAttribute('data-game', 'kitchen'); // and is remembered
+  await expect(page.locator('.game-wrap').first().locator('.game-card')).toHaveAttribute('data-game', 'rush'); // and is remembered
   await page.getByTestId('favs-toggle').click();
   await expect(cards).toHaveCount(1);
 });
@@ -156,28 +156,6 @@ test('two phones control two different characters on one screen, then reconnect,
   await expect(b.getByTestId('hud')).toContainText('Lap');
 
   expect(errors).toEqual([]);
-});
-
-test('reaction duel: fastest tap wins over the network', async ({ browser }) => {
-  const { h, code } = await hostPage(browser);
-  const a = await phone(browser, code, 'Fast');
-  const b = await phone(browser, code, 'Slow');
-  await h.locator('.lobby__games [data-game="reaction"]').click();
-  await h.locator('.options .chip').click(); // rounds 5 -> 7
-  await h.locator('.options .chip').click(); // 7 -> 10
-  await h.locator('.options .chip').click(); // 10 -> 3
-  await expect(h.locator('.options .chip')).toContainText('3');
-  await h.getByTestId('start-btn').click();
-  await waitPlaying(h);
-  // 'Fast' taps when GO shows; 'Slow' never taps
-  for (let r = 0; r < 3; r++) {
-    await expect.poll(async () => (await frame(h))?.ph, { timeout: 15_000 }).toBe('go');
-    await a.locator('[data-btn="A"]').dispatchEvent('pointerdown', { pointerId: 1, bubbles: true });
-    await a.locator('[data-btn="A"]').dispatchEvent('pointerup', { pointerId: 1, bubbles: true });
-    await expect.poll(async () => (await frame(h))?.ph, { timeout: 8000 }).not.toBe('go');
-  }
-  await expect(h.locator('.podium__col--1 .podium__name')).toHaveText('Fast', { timeout: 15_000 });
-  void b;
 });
 
 test('wrong room code and offensive names are rejected', async ({ browser }) => {

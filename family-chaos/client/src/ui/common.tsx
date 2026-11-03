@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
 import type { GameMeta } from '../../../shared/catalog';
-import { GameArt } from './gameart';
 import { Icon } from './icons';
 import { CATEGORY_NAMES, PLAY_TIME } from '../../../shared/catalog';
 import { useContext } from 'react';
@@ -117,7 +116,7 @@ export function GameIcon({ id }: { id: string }) {
     case 'rush':
       return (<svg {...common}><path d="M0 74h38v10H0zM58 74h42v10H58z" fill="#5ee27a" stroke="#120a2a" strokeWidth="3" /><path d="M70 74l6-16 6 16zM82 74l6-16 6 16z" fill="#e9edf7" stroke="#120a2a" strokeWidth="2.5" /><circle cx="30" cy="52" r="15" fill="#f472b6" stroke="#120a2a" strokeWidth="3" /><circle cx="25" cy="49" r="3.5" fill="#fff" /><circle cx="35" cy="49" r="3.5" fill="#fff" /><path d="M46 38c8-14 22-14 28-4" stroke="#fff" strokeWidth="4" fill="none" strokeLinecap="round" strokeDasharray="2 8" /><path d="M76 24l8 4-8 6" fill="none" stroke="#ffd23f" strokeWidth="4" strokeLinecap="round" /></svg>);
     default:
-      return GameArt({ id }) ?? (<svg {...common}><circle cx="50" cy="50" r="34" fill="rgba(255,255,255,.15)" /><text x="50" y="62" fontSize="36" textAnchor="middle" fill="#fff" fontWeight="900">?</text></svg>);
+      return (<svg {...common}><circle cx="50" cy="50" r="34" fill="rgba(255,255,255,.15)" /><text x="50" y="62" fontSize="36" textAnchor="middle" fill="#fff" fontWeight="900">?</text></svg>);
   }
 }
 

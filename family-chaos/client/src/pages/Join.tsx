@@ -257,10 +257,6 @@ function hudView(game: string, h: Hud, t: ReturnType<typeof useT>['t'], he: bool
       if (game === 'bike') return { text: `${base}${Number(h.combo) > 0 ? ` · ×${h.combo}` : ''}`, tone: Number(h.combo) >= 3 ? 'hot' : 'normal', meter: Number(h.turbo ?? 0) / 100, meterLabel: L('בוסט', 'BOOST'), chips: [{ icon: 'jump', on: !!h.jump, label: L('קפיצה', 'HOP') }] };
       return { text: base, tone: 'normal', meter: Number(h.turbo ?? 0) / 100, meterLabel: L('טורבו', 'TURBO'), chips: [{ icon: 'item', on: !!h.item, label: { turbo: 'T', oil: 'O', shield: 'S' }[String(h.item)] ?? '—' }] };
     }
-    case 'reaction':
-      if (h.msg === 'early') return { text: t('early'), tone: 'bad' };
-      if (h.msg === 'tapped') return { text: `${h.ms} ms`, tone: 'good' };
-      return { text: `${t('round')} ${h.round ?? 1}/${h.rounds ?? '-'} · ${t('score')} ${h.score ?? 0}`, tone: 'normal' };
     case 'soccer':
       return {
         text: `${h.team === 0 ? ':dotred:' : ':dotblue:'} ${h.a ?? 0} : ${h.b ?? 0}${h.ot ? ' · GOLDEN' : ''}`, tone: 'normal',
@@ -279,11 +275,6 @@ function hudView(game: string, h: Hud, t: ReturnType<typeof useT>['t'], he: bool
       if (ph === 'buy') return { text: h.me ? (Number(h.can) ? L('לקנות כוכב ב־10? כן/לא', 'Buy a star for 10? Yes/No') : L('אין מספיק מטבעות', 'Not enough coins')) : L(`${h.who} שוקל/ת כוכב`, `${h.who} eyes a star`), tone: h.me ? 'good' : 'normal', chips };
       return { text: h.me ? L('זזים…', 'Moving…') : L(`תור של ${h.who}`, `${h.who}'s turn`), tone: 'normal', chips };
     }
-    case 'kitchen': {
-      const code = String(h.hold ?? '');
-      const name = code.startsWith('plate:') ? L('צלחת', 'plate') + (code.length > 6 ? ' +' + code.slice(6).split(',').length : '') : code ? code.split('.')[0] + (code.endsWith('.c') ? ' :shovel:' : code.endsWith('.k') ? ' :flame:' : code.endsWith('.b') ? ' :boom:' : '') : L('ידיים ריקות', 'empty hands');
-      return { text: `${h.score ?? 0} · ${name}`, tone: 'normal', chips: [{ icon: 'hand', on: !!code, label: `${h.orders ?? 0} ${L('הזמנות', 'orders')}` }] };
-    }
     case 'trapbuilders': {
       const ph = String(h.ph ?? '');
       const kind = { spikes: L('קוצים', 'SPIKES'), saw: L('מסור', 'SAW'), pit: L('בור', 'PIT') }[String(h.kind)] ?? '';
@@ -291,53 +282,16 @@ function hudView(game: string, h: Hud, t: ReturnType<typeof useT>['t'], he: bool
       if (ph === 'run') return h.done ? { text: L('סיימתם!', 'Finished!'), tone: 'good' } : { text: L('רוצו!', 'RUN!'), tone: 'normal', chips: [{ icon: 'dash', on: !!h.dash, label: L('הסתערות', 'DASH') }] };
       return { text: `${L('ניקוד', 'Score')} ${h.total ?? 0}`, tone: ph === 'done' ? 'good' : 'normal' };
     }
-    case 'basketball':
-      return { text: `${h.score ?? 0} ${L('נק׳', 'pts')} · ${h.left}s${Number(h.streak) > 1 ? ` · :flame:${h.streak}` : ''}`, tone: Number(h.streak) > 1 ? 'hot' : 'normal', chips: [{ icon: 'kick', on: Number(h.streak) >= 3, label: L('רצף', 'STREAK') + ' ' + (h.streak ?? 0) }] };
-    case 'bowling':
-      if (h.ph === 'done') return { text: L('המשחק נגמר!', 'Game over!'), tone: 'good' };
-      if (!h.me) return { text: L(`תור של ${h.who} · ${h.total} נק׳`, `${h.who}'s turn · ${h.total} pts`), tone: 'normal' };
-      return { text: h.ph === 'aim' ? L('כוונו עם הג׳ויסטיק ולחצו לנעילה', 'Aim with the stick, press to lock') : h.ph === 'power' ? L('לחצו כשהמד בירוק!', 'Press when the meter is green!') : L('מתגלגל…', 'Rolling…'), tone: 'good' };
-    case 'tank':
-      return { text: `${':heart:'.repeat(Math.max(0, Number(h.hp ?? 0)))} · ${L('נותרו', 'left')} ${h.left}`, tone: Number(h.hp) <= 1 ? 'bad' : 'normal', chips: [{ icon: 'fire', on: !!h.fire, label: L('ירי', 'FIRE') }, { icon: 'mine', on: !!h.mine, label: L('מוקש', 'MINE') }] };
-    case 'wizard':
-      if (h.down) return { text: L('הודפתם! חוזרים עוד רגע…', 'Knocked out! Back in a moment…'), tone: 'bad' };
-      return { text: `${h.on ? L('את/ה על הגבעה! ', 'On the hill! ') : ''}${h.pts ?? 0} ${L('נק׳', 'pts')} · ${':heart:'.repeat(Math.max(0, Number(h.hp ?? 0)))} · ${h.left}s`, tone: h.on ? 'good' : Number(h.hp) <= 1 ? 'bad' : 'normal', chips: [{ icon: 'fire', on: !!h.fire, label: L('אש', 'FIRE') }, { icon: 'shield', on: !!h.shield, label: L('מגן', 'SHIELD') }, { icon: 'blink', on: !!h.blink, label: L('קפיצה', 'BLINK') }] };
-    case 'survival': case 'defense':
-      if (h.down) return { text: L('נפלתם! חבר צריך לעמוד לידכם', 'Down! A teammate must stand next to you'), tone: 'bad' };
-      return { text: `${L('גל', 'Wave')} ${h.wave}/${h.waves} · ${':heart:'.repeat(Math.max(0, Number(h.hp ?? 0)))}${h.def ? ` · ${L('גביש', 'crystal')} ${h.core} · ${L('מטבעות', 'coins')} ${h.alt}` : ''}`, tone: Number(h.hp) <= 1 ? 'bad' : 'normal', chips: h.def ? [{ icon: 'fire', on: !!h.atk, label: L('ירי', 'SHOOT') }, { icon: 'star', on: Number(h.alt) >= 4, label: L('צריח', 'TURRET') }] : [{ icon: 'shove', on: !!h.atk, label: L('חיתוך', 'SLASH') }, { icon: 'dodge', on: !!h.alt, label: L('גלגול', 'ROLL') }] };
-    case 'tag':
-      if (h.fz) return { text: L('קפאתם! חבר צריך לעמוד לידכם', 'Frozen! A teammate must stand next to you'), tone: 'bad' };
-      return { text: h.role ? `${L('את/ה המקפיא!', "You're the FREEZER!")} ${h.pts} ${L('נק׳', 'pts')} · ${h.free} ${L('חופשיים', 'free')}` : `${L('ברחו!', 'Run!')} ${h.pts} ${L('נק׳', 'pts')} · ${h.left}s`, tone: h.role ? 'hot' : 'normal', meter: Number(h.stam ?? 0) / 100, meterLabel: L('ספרינט', 'SPRINT') };
-    case 'maze':
-      return { text: `${L('סבב', 'Round')} ${h.round}/${h.rounds} · ${h.pts} ${L('נק׳', 'pts')}${h.done ? ' :check:' : ''}`, tone: h.done ? 'good' : 'normal', chips: [{ icon: 'dash', on: !!h.dash, label: L('הסתערות', 'DASH') }] };
-    case 'rescue':
-      return { text: h.stun ? L('התרסקתם!', 'Crashed!') : `${L('חולצו', 'Saved')} ${h.saved}/${h.target} · ${L('אבדו', 'lost')} ${h.lost} · ${L('נושאים', 'carrying')} ${h.carry} · ${h.left}s`, tone: h.stun ? 'bad' : 'normal', chips: [{ icon: 'turbo', on: !!h.boost, label: L('קרן', 'BEAM') }] };
-    case 'evac':
-      return { text: h.stun ? L('נתפסתם!', 'Caught!') : `:coin: ${h.got}/${h.total} · ${Number(h.carry) ? L('נושאים תיבה!', 'carrying a chest!') : L('ידיים ריקות', 'empty hands')} · ${h.left}s`, tone: h.stun ? 'bad' : 'normal' };
-    case 'treasure':
-      return { text: `:coin: ${h.score ?? 0} · ${h.left}s`, tone: Number(h.warm) > 0.7 ? 'hot' : 'normal', meter: Number(h.warm ?? 0), meterLabel: Number(h.warm) > 0.7 ? L('חם מאוד!', 'HOT!') : Number(h.warm) > 0.35 ? L('חמים', 'warm') : L('קר', 'cold'), chips: [{ icon: 'star', on: !!h.ping, label: L('מכ״ם', 'RADAR') }] };
-    case 'tower':
-      return h.over ? { text: `${L('המגדל', 'Tower')}: ${h.h} :brick:`, tone: 'good' } : { text: `${h.h} :brick: · :spark:${h.perfect} · ${h.left}s`, tone: 'normal' };
-    case 'spacerace':
-      if (h.done) return { text: `${t('finished')} #${h.place}`, tone: 'good' };
-      return { text: `#${h.place}/${h.of} · ${h.pct}%`, tone: 'normal', meter: Number(h.en ?? 0) / 100, meterLabel: L('אנרגיה', 'ENERGY') };
-    case 'balloon':
-      return { text: `:balloon: ${h.pumps} · ${L('בכיס', 'banked')} ${h.bank} · ${h.left}s`, tone: Number(h.pumps) > 12 ? 'hot' : 'normal' };
-    case 'puzzle': {
-      const mine = String(h.mine ?? '').split(',').filter(Boolean).map((c) => ['▲', '●', '■', ':star:'][Number(c)]).join(' ');
-      const ph = String(h.ph);
-      return { text: `${L('הצבעים שלכם', 'Your colours')}: ${mine} · ${ph === 'show' ? L('זכרו!', 'Memorise!') : ph === 'enter' ? `${h.pos}/${h.len}` : ph === 'ok' ? ':check:' : ph === 'bad' ? ':cross:' : ''}`, tone: ph === 'bad' ? 'bad' : ph === 'ok' ? 'good' : 'normal' };
+    case 'flagwars': {
+      if (h.out) return { text: L('נתפסתם! חוזרים לבסיס…', 'Tagged! Back to base…'), tone: 'bad' };
+      const mine = Number(h.tm) === 0 ? h.a : h.b, theirs = Number(h.tm) === 0 ? h.b : h.a;
+      const roleName = [L('רץ', 'Runner'), L('שומר', 'Guard'), L('תומך', 'Support')][Number(h.role)] ?? '';
+      return {
+        text: `${h.tm === 0 ? ':dotred:' : ':dotblue:'} ${mine}–${theirs} · ${roleName} · ${Math.floor(Number(h.left) / 60)}:${String(Number(h.left) % 60).padStart(2, '0')}${h.ot ? ' · OT' : ''}`,
+        tone: h.carry ? 'hot' : 'normal',
+        chips: [{ icon: 'flag2', on: !!h.carry, label: h.carry ? L('נושאים דגל!', 'FLAG!') : L('דגל', 'flag') }, { icon: 'shove', on: !!h.tkl, label: L('התנגשות', 'TACKLE') }, { icon: 'star', on: !!h.pw, label: L('כוח', 'POWER') }],
+      };
     }
-    case 'draw': {
-      const hebrew = he; const pick = (s: string) => { const [he, en] = s.split('|'); return he && en ? (hebrew ? he : en) : s; };
-      if (h.ph === 'reveal') return { text: L('חושפים…', 'Revealing…'), tone: 'normal' };
-      if (h.drawer) return { text: `${L('ציירו', 'Draw')}: ${pick(String(h.word))}`, tone: 'good' };
-      const opts = String(h.opts ?? '').split(';').map(pick);
-      return { text: h.locked ? L('ננעל! מחכים…', 'Locked! Waiting…') : `↑${opts[0]} →${opts[1]} ↓${opts[2]} ←${opts[3]}`, tone: h.locked ? 'good' : 'normal' };
-    }
-    case 'trivia':
-      if (h.ph === 'reveal') return { text: Number(h.ok) ? `:check: ${L('נכון!', 'Correct!')} · ${h.pts}` : `:cross: · ${h.pts}`, tone: Number(h.ok) ? 'good' : 'bad' };
-      return { text: Number(h.ans) >= 0 ? L('נעול! מחכים…', 'Locked! Waiting…') : `${L('שאלה', 'Q')} ${h.q}/${h.qs} · ${h.pts}`, tone: 'normal' };
     case 'vanish':
       return h.alive ? { text: `${L('נותרו', 'LEFT')} ${h.left}`, tone: 'normal', chips: [{ icon: 'jump', on: !!h.jump, label: L('קפיצה', 'JUMP') }, { icon: 'shove', on: !!h.dash, label: L('חבטה', 'SHOVE') }] } : { text: L('נפלתם! צפו בסוף', 'You fell! Watch the end'), tone: 'bad' };
     case 'rush':

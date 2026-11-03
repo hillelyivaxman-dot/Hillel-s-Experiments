@@ -1,8 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { bumperGame } from '../../server/games/bumper';
-import { bikeGame, boatGame, kartGame } from '../../server/games/kart';
+import { kartGame } from '../../server/games/kart';
 import { potatoGame } from '../../server/games/potato';
-import { reactionGame } from '../../server/games/reaction';
 import { GAMES } from '../../server/games';
 import { CATALOG } from '../../shared/catalog';
 import { BTN } from '../../shared/protocol';
@@ -84,64 +83,6 @@ describe('kart chaos', () => {
   it('reversing over the line does not count as a lap', () => {
     const r = runGame(kartGame, 1, { laps: 1, track: 0 }, () => ({ x: 0, y: 0, b: BTN.B }), 30);
     expect(r.over).toBe(false);
-  });
-});
-
-describe.each([['boat', boatGame], ['bike', bikeGame]] as const)('%s racing', (_n, game) => {
-  for (let track = 0; track < TRACK_COUNT; track++) {
-    it(`an autopilot finishes 2 laps on track ${track}`, () => {
-      const tr = getTrack(track);
-      const progress = new Map<string, number>();
-      const r = runGame(game, 3, { laps: 2, track }, (id, snap) => {
-        const me = snap.c.find((c: any) => c.id === id);
-        // aim at the track point slightly ahead of the closest sample
-        // follow progress along the track (a global nearest-point search jumps branches at the figure-eight crossing)
-        const n = tr.pts.length;
-        const from = progress.get(id) ?? 0;
-        let best = from, bd = Infinity;
-        for (let k = -20; k <= 60; k++) {
-          const i = (((from + k) % n) + n) % n, p = tr.pts[i];
-          const d = (p.x - me.x) ** 2 + (p.y - me.y) ** 2;
-          if (d < bd) { bd = d; best = i; }
-        }
-        progress.set(id, best);
-        const ahead = pointAt(tr, (tr.cum[best] + 90) / tr.length);
-        const want = Math.atan2(ahead.y - me.y, ahead.x - me.x);
-        let diff = want - me.a;
-        while (diff > Math.PI) diff -= 2 * Math.PI;
-        while (diff < -Math.PI) diff += 2 * Math.PI;
-        const slow = id === 'p3';
-        return { x: Math.max(-1, Math.min(1, diff * 2.5)), y: 0, b: slow ? BTN.B : 0 }; // cars accelerate by themselves; p3 just holds the brake
-      });
-      expect(r.over).toBe(true);
-      const st = r.game.standings();
-      const finished = st.filter((s) => s.score > 0);
-      expect(finished.length).toBe(2); // p3 only brakes
-      expect(st[2].playerId).toBe('p3');
-      expect(r.fx).toContain('finish');
-      expect(r.fx).toContain('lap');
-      expect(r.t).toBeLessThan(120);
-    });
-  }
-
-  it('reversing over the line does not count as a lap', () => {
-    const r = runGame(game, 1, { laps: 1, track: 0 }, () => ({ x: 0, y: 0, b: BTN.B }), 30);
-    expect(r.over).toBe(false);
-  });
-});
-
-describe('reaction duel', () => {
-  it('fast tapper wins, early tapper is punished', () => {
-    const r = runGame(reactionGame, 3, { rounds: 3 }, (id, snap) => {
-      if (id === 'p1') return { x: 0, y: 0, b: snap.ph === 'go' ? BTN.A : 0 };
-      if (id === 'p2') return { x: 0, y: 0, b: snap.ph === 'wait' ? BTN.A : 0 }; // always early
-      return { x: 0, y: 0, b: 0 };
-    });
-    expect(r.over).toBe(true);
-    const st = r.game.standings();
-    expect(st[0].playerId).toBe('p1');
-    expect(st[0].score).toBe(9);
-    expect(st.find((s) => s.playerId === 'p2')!.score).toBeLessThan(0);
   });
 });
 

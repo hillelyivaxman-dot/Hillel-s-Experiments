@@ -42,15 +42,15 @@ describe('party tournament', () => {
 
   it('skip starts the next game now; cancel ends the series; the lobby clears it', () => {
     const { host, room, advance, state } = setup(['A', 'B', 'C']);
-    room.handle(host, { t: 'admin', act: { a: 'tournament', games: ['reaction', 'tag'] } });
+    room.handle(host, { t: 'admin', act: { a: 'tournament', games: ['bumper', 'potato'] } });
     advance(50);
-    expect(state().tour!.games).toEqual(['reaction', 'tag']);
+    expect(state().tour!.games).toEqual(['bumper', 'potato']);
     advance(TIMING.COUNTDOWN_MS + 300);
     room.handle(host, { t: 'admin', act: { a: 'end' } });
     advance(50);
     room.handle(host, { t: 'admin', act: { a: 'tour_skip' } });
     advance(50);
-    expect(state().gameId).toBe('tag');
+    expect(state().gameId).toBe('potato');
     advance(TIMING.COUNTDOWN_MS + 300);
     room.handle(host, { t: 'admin', act: { a: 'end' } });
     advance(50);
@@ -65,15 +65,15 @@ describe('party tournament', () => {
     room.handle(host, { t: 'admin', act: { a: 'tournament', count: 8 } });
     advance(50);
     const games = state().tour!.games;
-    expect(games).not.toContain('tag'); // needs 3+
-    expect(games).not.toContain('potato');
+    expect(games).not.toContain('potato'); // needs 3+
+    expect(games).not.toContain('flagwars'); // needs 2+
   });
 });
 
 describe('tournament hold / resume', () => {
   it('while held the next game does not start by itself; resuming starts it shortly after', () => {
     const { host, room, advance, state } = setup(['A', 'B']);
-    room.handle(host, { t: 'admin', act: { a: 'tournament', games: ['reaction', 'balloon'] } });
+    room.handle(host, { t: 'admin', act: { a: 'tournament', games: ['bumper', 'kart'] } });
     advance(TIMING.COUNTDOWN_MS + 300);
     room.handle(host, { t: 'admin', act: { a: 'end' } });
     advance(50);
@@ -83,45 +83,50 @@ describe('tournament hold / resume', () => {
     expect(state().tour!.held).toBe(true);
     room.handle(host, { t: 'admin', act: { a: 'tour_hold', hold: false } });
     advance(3300);
-    expect(state().gameId).toBe('balloon');
+    expect(state().gameId).toBe('kart');
   });
 });
 
 describe('knockout tournament', () => {
-  it('the last place of a game is out; with one winner left the tournament ends and crowns them', () => {
-    const { host, room, advance, phones, rooms, state } = setup(['A', 'B', 'C']);
-    room.handle(host, { t: 'admin', act: { a: 'tournament', mode: 'knockout', games: ['balloon'] } });
+  it('the last place of a game is out each round until one player remains, who is crowned; eliminated players do not play on', () => {
+    const { host, room, advance, state } = setup(['A', 'B', 'C']);
+    room.handle(host, { t: 'admin', act: { a: 'tournament', mode: 'knockout', games: ['kart'] } });
     advance(50);
     expect(state().tour).toMatchObject({ mode: 'knockout', done: false });
     expect(state().tour!.alive).toHaveLength(3);
-    advance(TIMING.COUNTDOWN_MS + 300);
-    // only the first phone pumps twice and banks: it scores, the other two stay at 0 and tie for last
-    let s = 1;
-    const send = (b: number) => { rooms.route(phones[0], { t: 'input', s: s++, x: 0, y: 0, b }); advance(60); };
-    send(1); send(0); send(1); send(0); send(2); send(0);
-    room.handle(host, { t: 'admin', act: { a: 'end' } });
-    advance(50);
+    for (let round = 0; round < 2; round++) {
+      advance(TIMING.COUNTDOWN_MS + 300);
+      room.handle(host, { t: 'admin', act: { a: 'end' } });
+      advance(50);
+      if (state().tour!.done) break;
+      const alive = state().tour!.alive;
+      expect(alive.length).toBe(3 - (round + 1));
+      room.handle(host, { t: 'admin', act: { a: 'tour_skip' } });
+      advance(50);
+      expect(state().inGame.every((id) => alive.includes(id))).toBe(true); // only survivors play
+    }
     const tour = state().tour!;
     expect(tour.done).toBe(true);
-    expect(tour.alive).toEqual([state().players[0].id]);
-    expect(tour.champion).toBe(state().players[0].id);
+    expect(tour.alive).toHaveLength(1);
+    expect(tour.champion).toBe(tour.alive[0]);
   });
 
-  it('a no-show forfeits, and only survivors are in the next game', () => {
+  it('a player who is not there for the next game forfeits', () => {
     const { host, room, advance, phones, rooms, state } = setup(['A', 'B', 'C', 'D']);
-    room.handle(host, { t: 'admin', act: { a: 'tournament', mode: 'knockout', games: ['balloon'] } });
-    advance(50);
-    rooms.disconnect(phones[3]); // D leaves before the first game starts
+    room.handle(host, { t: 'admin', act: { a: 'tournament', mode: 'knockout', games: ['kart'] } });
     advance(TIMING.COUNTDOWN_MS + 300);
-    let s = 1;
-    const send = (p: number, b: number) => { rooms.route(phones[p], { t: 'input', s: s++, x: 0, y: 0, b }); advance(60); };
-    // A banks 2 pumps, B banks 1 pump, C does nothing -> C is last
-    send(0, 1); send(0, 0); send(0, 1); send(0, 0); send(0, 2); send(0, 0);
-    send(1, 1); send(1, 0); send(1, 2); send(1, 0);
     room.handle(host, { t: 'admin', act: { a: 'end' } });
     advance(50);
-    const ids = state().players.map((p) => p.id);
-    expect(state().tour!.alive).toEqual([ids[0], ids[1]]); // C out (last), D out (no-show)
-    expect(state().tour!.done).toBe(false);
+    const alive1 = state().tour!.alive;
+    expect(alive1).toHaveLength(3);
+    const absent = state().players.find((p) => alive1.includes(p.id))!;
+    rooms.disconnect(phones[state().players.indexOf(absent)]); // leaves during the break
+    room.handle(host, { t: 'admin', act: { a: 'tour_skip' } });
+    advance(TIMING.COUNTDOWN_MS + 300);
+    expect(state().inGame).not.toContain(absent.id);
+    room.handle(host, { t: 'admin', act: { a: 'end' } });
+    advance(50);
+    expect(state().tour!.alive).not.toContain(absent.id); // forfeited
+    expect(state().tour!.alive.length).toBeLessThan(alive1.length);
   });
 });

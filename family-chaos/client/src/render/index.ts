@@ -1,38 +1,19 @@
 import { boardRenderer } from './board';
 import { bumperRenderer } from './bumper';
+import { flagWarsRenderer } from './flagwars';
 import { hockeyRenderer } from './hockey';
-import { bikeRenderer, boatRenderer, kartRenderer } from './kart';
-import { kitchenRenderer } from './kitchen';
+import { kartRenderer } from './kart';
 import { potatoRenderer } from './potato';
-import { reactionRenderer } from './reaction';
-import { trapBuildersRenderer } from './trapbuilders';
-import { vanishRenderer } from './vanish';
 import { rushRenderer } from './rush';
 import { soccerRenderer } from './soccer';
-import { basketballRenderer, bowlingRenderer } from './wave_a';
-import { defenseRenderer, tankRenderer } from './wave_b';
-import { survivalRenderer, tagRenderer, wizardRenderer } from './wave_b2';
-import { evacRenderer, huntRenderer, mazeRenderer, rescueRenderer, towerRenderer } from './wave_c';
-import { balloonRenderer, drawRenderer, puzzleRenderer, spaceRaceRenderer, triviaRenderer } from './wave_d';
+import { trapBuildersRenderer } from './trapbuilders';
+import { vanishRenderer } from './vanish';
 import type { Renderer } from './types';
 
 // Register client renderers here (one per playable game id).
 export const RENDERERS: Record<string, Renderer> = {
-  bumper: bumperRenderer,
-  kart: kartRenderer,
-  reaction: reactionRenderer,
-  potato: potatoRenderer,
-  rush: rushRenderer,
-  soccer: soccerRenderer,
-  hockey: hockeyRenderer,
-  board: boardRenderer,
-  kitchen: kitchenRenderer,
-  trapbuilders: trapBuildersRenderer,
-  vanish: vanishRenderer,
-  basketball: basketballRenderer, bowling: bowlingRenderer, boat: boatRenderer, bike: bikeRenderer,
-  tank: tankRenderer, wizard: wizardRenderer, survival: survivalRenderer, defense: defenseRenderer, tag: tagRenderer,
-  maze: mazeRenderer, rescue: rescueRenderer, evac: evacRenderer, treasure: huntRenderer, tower: towerRenderer,
-  spacerace: spaceRaceRenderer, balloon: balloonRenderer, puzzle: puzzleRenderer, draw: drawRenderer, trivia: triviaRenderer,
+  kart: kartRenderer, rush: rushRenderer, soccer: soccerRenderer, hockey: hockeyRenderer, flagwars: flagWarsRenderer, board: boardRenderer,
+  trapbuilders: trapBuildersRenderer, bumper: bumperRenderer, vanish: vanishRenderer, potato: potatoRenderer,
 };
 
 const LERP_KEYS = ['x', 'y', 'a'];

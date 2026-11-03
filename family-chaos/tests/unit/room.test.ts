@@ -139,10 +139,10 @@ describe('full match through the room', () => {
     advance(50);
     expect(state().phase).toBe('lobby');
     // switch game without a new room
-    room.handle(host, { t: 'admin', act: { a: 'select', game: 'reaction' } });
+    room.handle(host, { t: 'admin', act: { a: 'select', game: 'soccer' } });
     room.handle(host, { t: 'admin', act: { a: 'start' } });
     advance(50);
-    expect(state().gameId).toBe('reaction');
+    expect(state().gameId).toBe('soccer');
   });
 
   it('pause freezes the simulation and players who disconnect mid-game keep their slot', () => {

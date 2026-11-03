@@ -26,6 +26,6 @@ export const ACHIEVEMENTS: Achievement[] = [
   { id: 'all_rounder', icon: 'dice', name: { he: 'רב־תחומי', en: 'All-Rounder' }, desc: { he: 'שחקו ב־4 משחקים שונים', en: 'Play 4 different games' }, test: (s) => Object.keys(s.perGame).length >= 4 },
   { id: 'kart_win', icon: 'flag', name: { he: 'שד מהירות', en: 'Speed Demon' }, desc: { he: 'נצחו בכאוס קארטינג', en: 'Win Kart Chaos' }, test: (s) => won(s, 'kart') },
   { id: 'bumper_win', icon: 'boom', name: { he: 'אחרון בזירה', en: 'Last One Standing' }, desc: { he: 'נצחו בקרב מתנגשים', en: 'Win Bumper Battle' }, test: (s) => won(s, 'bumper') },
-  { id: 'reaction_win', icon: 'bolt', name: { he: 'ברק', en: 'Lightning' }, desc: { he: 'נצחו בדו־קרב תגובה', en: 'Win Reaction Duel' }, test: (s) => won(s, 'reaction') },
+  { id: 'flag_win', icon: 'flag2', name: { he: 'גנב דגלים', en: 'Flag Thief' }, desc: { he: 'נצחו במלחמת דגלים', en: 'Win Flag Wars' }, test: (s) => won(s, 'flagwars') },
   { id: 'potato_win', icon: 'bomb', name: { he: 'חסין פצצות', en: 'Bomb Dodger' }, desc: { he: 'נצחו בתפוח אדמה לוהט', en: 'Win Hot Potato' }, test: (s) => won(s, 'potato') },
 ];
