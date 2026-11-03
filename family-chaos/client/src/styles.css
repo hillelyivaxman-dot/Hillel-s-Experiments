@@ -323,3 +323,65 @@ input:focus, select:focus { border-color: var(--yellow); outline: none; }
 @media (min-width: 1800px) { html { font-size: 20px; } }
 
 [data-motion='reduced'] *, [data-motion='reduced'] *::before, [data-motion='reduced'] *::after { animation: none !important; transition: none !important; }
+
+/* ---------- accounts ---------- */
+.home .topbar { justify-content: space-between; }
+.account-chip { text-decoration: none; }
+.account-page { max-width: 1100px; margin: 0 auto; padding-bottom: 40px; }
+.account-page .topbar a { text-decoration: none; color: inherit; }
+.account-main { padding: 0 16px; }
+.account-form { max-width: 520px; margin: 0 auto; display: grid; gap: 0.9rem; }
+.avatar-fieldset { border: 0; padding: 0; margin: 0; }
+.avatar-fieldset legend { font-weight: 700; margin-bottom: 0.4rem; }
+.warn { color: var(--yellow); font-weight: 700; }
+.stack { display: grid; gap: 0.7rem; margin-bottom: 1.2rem; }
+.profile { display: grid; gap: 16px; }
+.profile__head { display: grid; grid-template-columns: auto 1fr auto; gap: 16px; align-items: center; }
+.profile__name { font-size: 2rem; font-weight: 900; margin: 0; }
+.profile__actions { display: grid; gap: 8px; justify-items: end; }
+.stat-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.stat { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px; text-align: center; display: grid; }
+.stat b { font-size: 2.4rem; font-weight: 900; color: var(--yellow); }
+.achievements { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+.ach { display: grid; gap: 2px; justify-items: center; text-align: center; padding: 12px 8px; border-radius: 16px; background: rgba(255,255,255,.04); border: 1px dashed var(--line); opacity: 0.55; filter: grayscale(1); }
+.ach.is-done { opacity: 1; filter: none; border: 1px solid var(--yellow); background: rgba(255,210,63,.1); }
+.ach__icon { font-size: 2rem; }
+.profile__cols { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+.plain-list { margin: 0 0 1rem; padding-inline-start: 1.2rem; display: grid; gap: 6px; }
+.history li { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; }
+.history small { grid-column: 1 / -1; }
+.danger-link { margin-top: 0.5rem; }
+@media (max-width: 760px) {
+  .profile__head { grid-template-columns: auto 1fr; }
+  .profile__actions { grid-column: 1 / -1; justify-items: stretch; grid-auto-flow: column; }
+  .profile__cols { grid-template-columns: 1fr; }
+}
+
+/* ---------- browser compatibility ---------- */
+/* Older Safari / iOS < 16.2 and older Chromium lack color-mix(): give every color-mix rule a plain fallback. */
+@supports not (color: color-mix(in srgb, red 50%, blue)) {
+  .player-tile { background: linear-gradient(180deg, rgba(255,255,255,.12), rgba(255,255,255,.04)); border-color: var(--pc); }
+  .selected-game { background: linear-gradient(140deg, var(--a1), var(--a2)); }
+  .podium__block { background: var(--pc); }
+  .phone-game { background: var(--bg-0); }
+  .pad-btn { background: radial-gradient(circle at 35% 30%, #fff, var(--bc) 55%); box-shadow: 0 8px 0 rgba(0,0,0,.45), 0 14px 26px rgba(0,0,0,.45); }
+  .pad-btn.is-down { box-shadow: 0 2px 0 rgba(0,0,0,.45), 0 4px 10px rgba(0,0,0,.45); }
+}
+/* Controllers: no iOS long-press callout, text selection, double-tap zoom or rubber-band scrolling. */
+.phone-game, .phone-game * { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+.phone--pad { overscroll-behavior: none; }
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+body { touch-action: manipulation; }
+.unsupported { max-width: 520px; margin: 15vh auto; padding: 24px; text-align: center; font-size: 1.2rem; }
+
+/* Controllers on short (landscape) phone screens: size buttons by height too, and put 3 buttons in one row. */
+.pad-btn { max-width: min(220px, 34vh); }
+.pad-btn--big { max-width: min(240px, 42vh); }
+.pad-btn--huge { max-width: min(80vw, 70vh); }
+@media (orientation: landscape) and (max-height: 520px) {
+  .pad__buttons { padding: 10px; gap: 10px; }
+  .pad__buttons--3 { grid-template-columns: repeat(3, 1fr); align-items: center; }
+  .pad__buttons--3 .pad-btn--big { grid-column: auto; order: 3; }
+  .pad__buttons--2 { align-items: center; }
+  .phone-game__hud { padding-top: 4px; padding-bottom: 4px; }
+}

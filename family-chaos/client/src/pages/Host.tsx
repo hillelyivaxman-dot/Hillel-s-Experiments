@@ -42,6 +42,8 @@ export function Host({ watchCode }: { watchCode?: string }) {
         if (watch && m.code === 'bad_password') { setNeedPw(true); return; }
         if (m.code === 'not_allowed' || m.code === 'in_game') return; // transient UI races
         setError(t(`errors_${m.code}` as Key));
+        // creating a room was refused because of the per-network limit: try again shortly by itself
+        if (!watch && m.code === 'rate_limited') setTimeout(() => c.send({ t: 'host_create' }), 10_000);
       }
     });
     setConn(c);

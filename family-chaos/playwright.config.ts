@@ -11,7 +11,8 @@ export default defineConfig({
   use: { baseURL: 'http://localhost:8790', trace: 'retain-on-failure', ignoreHTTPSErrors: true },
   webServer: [
     {
-      command: 'PORT=8790 node dist/server/index.js',
+      // tests open many rooms from one address; accounts use an in-memory database
+      command: 'PORT=8790 ROOMS_PER_MIN=600 DATA_DIR=memory node dist/server/index.js',
       url: 'http://localhost:8790/health',
       reuseExistingServer: false,
       timeout: 20_000,

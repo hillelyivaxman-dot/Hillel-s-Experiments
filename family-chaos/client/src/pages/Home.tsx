@@ -3,6 +3,7 @@ import gsap from 'gsap';
 import { useMemo, useRef, useState } from 'react';
 import { CATALOG, CATEGORY_NAMES, type Category } from '../../../shared/catalog';
 import { PLAYER_COLORS } from '../../../shared/protocol';
+import { useMe } from '../account';
 import { useT } from '../i18n';
 import { prefs } from '../prefs';
 import { sfx } from '../sound';
@@ -13,6 +14,7 @@ gsap.registerPlugin(useGSAP);
 export function Home() {
   const { t, l } = useT();
   const root = useRef<HTMLDivElement>(null);
+  const [me] = useMe();
   const [cat, setCat] = useState<Category | 'all'>('all');
   const [code, setCode] = useState('');
   const cats = useMemo(() => [...new Set(CATALOG.map((g) => g.category))], []);
@@ -37,7 +39,12 @@ export function Home() {
 
   return (
     <div className="home" ref={root}>
-      <header className="topbar"><SettingsBar /></header>
+      <header className="topbar">
+        <a className="chip account-chip" href="/account" data-testid="account-link">
+          👤 {me?.signedIn ? me.user!.nickname : t('signIn')}
+        </a>
+        <SettingsBar />
+      </header>
       <section className="hero">
         <Logo />
         <p className="hero__tagline">{t('tagline')}</p>

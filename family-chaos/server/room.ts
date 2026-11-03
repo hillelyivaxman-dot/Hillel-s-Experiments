@@ -15,6 +15,8 @@ export interface Client {
   room: Room | null;
   playerId: string | null;
   rtt: number;
+  /** Signed-in website account behind this socket (from the session cookie), if any. */
+  userId?: number | null;
 }
 
 interface PlayerRec {
@@ -27,6 +29,7 @@ interface PlayerRec {
   disconnectedAt: number;
   lastHud: string;
   reportedBy: Set<string>;
+  userId: number | null;
 }
 
 export const TIMING = {
@@ -61,6 +64,15 @@ export class Room {
   private frameNo = 0;
   private dirty = false;
   private seed = 1;
+
+  /** Called with saved-match rows for signed-in players (set by the server when accounts are enabled). */
+  onPlays: ((rows: { userId: number; game: string; place: number; players: number; stars: number }[]) => void) | null = null;
+
+  /** The session cookie was resolved after the socket joined: attach the account to that player. */
+  setUser(playerId: string, userId: number) {
+    const p = this.players.get(playerId);
+    if (p) p.userId = userId;
+  }
 
   constructor(readonly code: string, private clock: () => number = Date.now) {
     this.createdAt = this.lastActivity = clock();
@@ -109,6 +121,7 @@ export class Room {
       info: { id, name, avatar: clamp(Math.floor(num(m.avatar)), 0, AVATAR_COUNT - 1), color, connected: true, ready: false, stars: 0 },
       token: token(), client: null, input: { x: 0, y: 0, b: 0 }, seq: -1, tapIds: [], disconnectedAt: 0, lastHud: '',
       reportedBy: new Set(),
+      userId: c.userId ?? null,
     };
     this.players.set(id, rec);
     if (!this.leaderId) this.leaderId = id;
@@ -123,6 +136,7 @@ export class Room {
     c.room = this;
     c.playerId = p.info.id;
     p.client = c;
+    if (c.userId) p.userId = c.userId;
     p.info.connected = true;
     p.seq = -1;
     c.send({ t: 'joined', code: this.code, playerId: p.info.id, token: p.token });
@@ -379,6 +393,14 @@ export class Room {
     });
     this.sendFrame(); // final frame
     this.results = results;
+    if (this.onPlays && this.gameId) {
+      const game = this.gameId;
+      const saved = results.flatMap((r) => {
+        const uid = this.players.get(r.playerId)?.userId;
+        return uid ? [{ userId: uid, game, place: r.place, players: results.length, stars: r.stars }] : [];
+      });
+      if (saved.length) this.onPlays(saved);
+    }
     this.phase = 'results';
     this.game = null;
     this.countdownEndsAt = null;

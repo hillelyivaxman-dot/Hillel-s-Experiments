@@ -8,6 +8,8 @@ import { WebSocketServer, type WebSocket } from 'ws';
 import type { C2S } from '../shared/protocol';
 import type { Client } from './room';
 import { TIMING } from './room';
+import { Accounts, handleAccountApi, readCookie } from './accounts';
+import { openDb } from './db';
 import { Rooms } from './rooms';
 import { Bucket } from './util';
 
@@ -79,6 +81,8 @@ function serveStatic(req: IncomingMessage, res: ServerResponse) {
       lan: ON_RENDER ? [] : lanUrls(),
       publicUrl: PUBLIC_URL,
       rooms: rooms.rooms.size,
+      accounts: accounts ? accounts.db.kind : 'off',
+      accountsPersistent: accounts?.db.persistent ?? false,
       sockets: stats.wsOpen,
       mbOut: Math.round(stats.bytesOut / 1e5) / 10, // payload MB since start (before compression)
       uptimeMin: Math.round((Date.now() - stats.startedAt) / 60000),
@@ -113,7 +117,23 @@ function serveStatic(req: IncomingMessage, res: ServerResponse) {
 }
 
 const rooms = new Rooms();
-const server = createServer(serveStatic);
+let accounts: Accounts | null = null;
+openDb()
+  .then((db) => {
+    accounts = new Accounts(db);
+    rooms.onPlays = (rows) => { accounts?.recordPlays(rows).catch((e) => console.error('save results', e)); };
+    console.log(`Accounts database: ${db.kind}${db.persistent ? '' : ' (NOT persistent: set DATABASE_URL to keep accounts)'}`);
+  })
+  .catch((e) => console.error('Accounts disabled — database failed to open:', e));
+
+const isSecure = (req: IncomingMessage) => ON_RENDER || (TRUST_PROXY && req.headers['x-forwarded-proto'] === 'https');
+
+const server = createServer((req, res) => {
+  const path = new URL(req.url ?? '/', 'http://x').pathname;
+  handleAccountApi(accounts, req, res, path, clientIp(req), isSecure(req))
+    .then((handled) => { if (!handled) serveStatic(req, res); })
+    .catch(() => { res.statusCode = 500; res.end(); });
+});
 const wss = new WebSocketServer({
   server,
   path: '/ws',
@@ -144,6 +164,15 @@ wss.on('connection', (ws: WebSocket & { alive?: boolean }, req) => {
     },
     close: () => ws.close(4000, 'closed'),
   };
+  // signed-in website account? (same-origin WebSocket requests carry the session cookie)
+  const sessionTok = readCookie(req);
+  if (sessionTok && accounts) {
+    accounts.userFromToken(sessionTok).then((u) => {
+      if (!u) return;
+      client.userId = u.id;
+      if (client.room && client.playerId) client.room.setUser(client.playerId, u.id);
+    }).catch(() => {});
+  }
   ws.alive = true;
   stats.wsOpen++;
   stats.wsTotal++;

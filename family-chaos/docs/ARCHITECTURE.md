@@ -16,6 +16,17 @@
 * **Why not Next.js:** there is no SEO or SSR need, and Next.js on serverless hosting (Vercel) can't run a permanent WebSocket server. One Node process is simpler and runs identically on a LAN, on Render and on a home PC.
 * **Why not Cloudflare Durable Objects (yet):** it's a good fit for rooms, and its free tier now includes SQLite-backed Durable Objects. But it changes the runtime (Workers instead of Node) and local LAN play would need `wrangler`. The room logic (`server/room.ts`) is transport-independent (`Client` interface), so it can be moved into a Durable Object later if the free Render tier becomes the bottleneck.
 
+## Accounts (inside the website)
+
+* Our own `/api/auth/*` and `/api/me` endpoints on the same Node server, so players never meet a third-party login.
+* **Passwords:** scrypt (N=16384, r=8, p=1) with a per-user salt. Constant-ish timing for unknown emails.
+* **Brute-force protection:** per-IP rate limit, and an email is locked for 15 minutes after 8 failed attempts.
+* **Sessions:** a 256-bit random token in an `HttpOnly; SameSite=Lax; Secure` cookie. Only its SHA-256 is stored, it expires after 30 days, and every session is revoked when the password changes.
+* **CSRF:** POST requests need a JSON body and a same-origin `Origin` header.
+* **Results:** the WebSocket handshake carries the cookie, so the server knows which players are signed in. Only server-computed match results are written to `plays`. Stats, favourites and achievements are derived from those rows.
+* **Storage (`server/db.ts`):** `DATABASE_URL` uses PostgreSQL (free Neon in production). Otherwise it uses PGlite (Postgres in WASM), stored in `./data/db` on a home PC, or in memory on Render/tests (not persistent, and the UI says so).
+* **Not yet:** password-reset email (needs an email provider key) and Google sign-in (needs a Google OAuth client). Neither is shown in the UI until it works.
+
 ## Networking details
 
 | Concern | How it's handled |

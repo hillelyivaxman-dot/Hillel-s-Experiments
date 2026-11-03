@@ -4,6 +4,8 @@ import { Bucket, clamp, num, safeEqual } from './util';
 
 export const LIMITS = {
   MAX_ROOMS: 500,
+  /** New rooms per IP per minute (burst = same number). Raised only for automated tests. */
+  ROOMS_PER_MIN: Number(process.env.ROOMS_PER_MIN ?? 6),
   EMPTY_ROOM_TTL_MS: 10 * 60_000,
   MAX_ROOM_AGE_MS: 12 * 3600_000,
 };
@@ -13,6 +15,9 @@ export class Rooms {
   readonly rooms = new Map<string, Room>();
   private createBuckets = new Map<string, Bucket>();
   private joinBuckets = new Map<string, Bucket>();
+
+  /** Hook for saving signed-in players' results (wired to the accounts database by the server). */
+  onPlays: Room['onPlays'] = null;
 
   constructor(private clock: () => number = Date.now) {}
 
@@ -39,10 +44,11 @@ export class Rooms {
   route(c: Client, m: C2S, ip = 'local') {
     switch (m.t) {
       case 'host_create': {
-        if (!this.allow(this.createBuckets, ip, 0.1, 5)) return c.send({ t: 'error', code: 'rate_limited' });
+        if (!this.allow(this.createBuckets, ip, LIMITS.ROOMS_PER_MIN / 60, LIMITS.ROOMS_PER_MIN)) return c.send({ t: 'error', code: 'rate_limited' });
         if (this.rooms.size >= LIMITS.MAX_ROOMS) return c.send({ t: 'error', code: 'too_many_rooms' });
         if (c.room) c.room.detach(c);
         const room = new Room(this.newCode(), this.clock);
+        room.onPlays = this.onPlays;
         room.maxPlayers = clamp(Math.floor(num(m.maxPlayers, 8)), 2, 12);
         if (typeof m.password === 'string' && m.password.trim()) room.password = m.password.trim().slice(0, 32);
         this.rooms.set(room.code, room);

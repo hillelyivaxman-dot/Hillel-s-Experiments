@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { CATALOG, getMeta } from '../../../shared/catalog';
 import { AVATAR_COUNT, PLAYER_COLORS, type AdminAction, type RoomState } from '../../../shared/protocol';
 import { Pad } from '../controller/Pad';
+import { useMe } from '../account';
+import { keepScreenOn } from '../compat';
 import { useT, type Key } from '../i18n';
 import { Conn, store } from '../net';
 import { sfx } from '../sound';
@@ -26,6 +28,11 @@ export function Join({ initialCode }: { initialCode: string }) {
   const joined = useRef(false);
   const req = useRef<{ code: string; name: string; avatar: number; password?: string } | null>(null);
   const status = useConnStatus(conn);
+  const [account] = useMe();
+  // signed-in players: prefill the join form from the account profile
+  useEffect(() => {
+    if (account?.signedIn && account.user && !savedProfile.name()) { setName(account.user.nickname); setAvatar(account.user.avatar); }
+  }, [account]);
 
   const tokenKey = (c: string) => `fc.tok.${c}`;
 
@@ -47,7 +54,7 @@ export function Join({ initialCode }: { initialCode: string }) {
           setMe(m.playerId);
           setError(null);
           history.replaceState(null, '', `/join/${m.code}`);
-          (navigator as Navigator & { wakeLock?: { request(t: string): Promise<unknown> } }).wakeLock?.request('screen').catch(() => {});
+          keepScreenOn();
           break;
         case 'room': setRoom(m.room); break;
         case 'hud': setHud(m.h); break;
@@ -117,6 +124,9 @@ export function Join({ initialCode }: { initialCode: string }) {
           <button className="btn btn--primary btn--xl" type="submit" disabled={code.length !== 4 || !name.trim()} data-testid="join-btn">
             {t('enter')} 🎮
           </button>
+          <p className="muted small" data-testid="account-note">
+            {account?.signedIn ? t('memberNote', { name: account.user!.nickname }) : <>{t('guestJoin')} <a href="/account">{t('signIn')}</a></>}
+          </p>
           <p className="muted small">{t('privacy')}</p>
         </form>
         {conn && <ConnBanner status={status} />}

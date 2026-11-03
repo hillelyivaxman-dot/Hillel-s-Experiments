@@ -1,5 +1,7 @@
 # 🎮 FAMILY CHAOS
 
+**Website only:** the TV/PC and the phones just open the site in a browser. There is no app, PWA, plug-in, download or account required to play.
+
 Party games on the big screen, with phones as controllers. It runs in the browser: no app to install, and guests don't need to sign up. It's free and original (all characters, art and sounds are drawn or synthesized in code).
 
 ## Status (v0.1)
@@ -15,7 +17,8 @@ Party games on the big screen, with phones as controllers. It runs in the browse
 | Hebrew + English, RTL/LTR, reduced animations, sound toggle | ✅ |
 | **Games playable:** Bumper Battle, Kart Chaos (3 tracks, items, laps), Reaction Duel, Hot Potato | ✅ 4 / 12 |
 | Mini Soccer, Obstacle Rush, Treasure Hunt, Air Hockey, Draw & Guess, Maze Escape, Tower Stack, Party Trivia | 🔜 shown as "coming soon", cannot start |
-| Accounts (Supabase Auth), profiles, achievements | ❌ not started (phase 4) |
+| Accounts inside the site: register/sign in, profile, stats, achievements, history, nickname/avatar, change password, delete account | ✅ own server + Postgres (scrypt, HttpOnly session cookie, rate limits, CSRF checks). Password-reset email and Google sign-in not yet (need an email provider / Google OAuth app) |
+| Browsers | ✅ Chromium-based tested (incl. Edge/Samsung UA + 6 phone profiles); Safari/Firefox supported by build target + polyfills but **not tested on real WebKit/Gecko**, see `docs/BROWSERS.md` |
 | Public deployment (HTTPS/WSS) | ⏳ ready & tested locally behind a TLS proxy; needs a one-time Render connection by the owner (`docs/DEPLOY.md`) |
 | Network robustness | ✅ tested: remote phone with latency, Wi-Fi drop, silent dead socket, server restart message |
 
@@ -50,6 +53,8 @@ Short version: Render dashboard → New → Blueprint → this repo → branch `
 
 * `docs/ARCHITECTURE.md`: stack decisions, networking/security, hosting limits, Open Party Lab evaluation
 * `docs/ADDING_A_GAME.md`: the game module API + template (`server/games/_template.ts`)
-* `docs/DEPLOY.md`: publish on Render's free plan from a phone + first-game test
+* `docs/DEPLOY.md`: publish on Render's free plan from a phone, connect a free Neon Postgres for accounts, first-game test
+* `docs/BROWSERS.md`: website-only design, browser support, what is and isn't tested
+* `docs/PHONE_DEV.md`: develop with Claude from the phone browser
 * `docs/GAMES_PLAN.md`: plan from 4 to 12 quality games
 * `docs/ROADMAP.md`: what's next
