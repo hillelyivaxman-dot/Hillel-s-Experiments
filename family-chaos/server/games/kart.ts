@@ -1,5 +1,5 @@
 import { BTN } from '../../shared/protocol';
-import { getTrack, pointAt, TRACK_WIDTH, trackBoxes, trackPads, type Track } from '../../shared/tracks';
+import { getTrack, pointAt, TRACK_WIDTH, trackBoxes, trackFeatures, trackPads, type RaceMode, type Track } from '../../shared/tracks';
 import { r1 } from '../util';
 import type { GameContext, GameInstance, GameModule, StandingRow } from './types';
 
@@ -39,6 +39,8 @@ interface Car {
   drift: boolean;
   finished: number; // finish time, -1 if racing
   offTrack: boolean;
+  air: number; airMax: number; jumpCd: number; surgeCd: number; combo: number; comboT: number; stumble: number; // boat / bike mechanics
+  fcd: Record<string, number>; // per-feature cooldowns (rocks, hurdles, ramps...)
 }
 
 function nearest(tr: Track, x: number, y: number, hint: number) {
@@ -79,6 +81,8 @@ function makeRacer(id: string): GameModule {
     const laps = ctx.options.laps ?? 3;
     const trackId = ctx.options.track ?? 0;
     const tr = getTrack(trackId);
+    const mode = id as RaceMode;
+    const F = trackFeatures(trackId, mode);
     let time = 0;
     let endAt = Infinity;
     const finishOrder: string[] = [];
@@ -96,11 +100,12 @@ function makeRacer(id: string): GameModule {
         id: p.id, x, y, a: Math.atan2(pt.ty, pt.tx), v: 0, idx: nr.idx, s: tr.cum[nr.idx],
         sector: K.SECTORS - 1, mask: 1 << (K.SECTORS - 1), lap: 0, cross: -1,
         item: '', boostT: 0, spinT: 0, shieldT: 0, turbo: 50, steer: 0, lat: 0, drift: false, finished: -1, offTrack: false,
+        air: 0, airMax: 1, jumpCd: 0, surgeCd: 0, combo: 0, comboT: 0, stumble: 0, fcd: {},
       };
     });
     const byId = new Map(cars.map((c) => [c.id, c]));
 
-    const boxes = trackBoxes(tr).map((b) => ({ ...b, cd: 0 }));
+    const boxes = mode === 'kart' ? trackBoxes(tr).map((b) => ({ ...b, cd: 0 })) : []; // item boxes are a kart thing
     const pads = trackPads(tr);
     const oils: { x: number; y: number; owner: string; t: number; ttl: number }[] = [];
 
@@ -119,7 +124,7 @@ function makeRacer(id: string): GameModule {
       const o = order();
       o.forEach((c, i) => ctx.hud(c.id, {
         place: i + 1, of: cars.length, lap: Math.min(c.lap + 1, laps), laps, item: c.item, turbo: Math.floor(c.turbo),
-        done: c.finished >= 0 ? 1 : 0,
+        done: c.finished >= 0 ? 1 : 0, mode: mode === 'kart' ? 0 : mode === 'boat' ? 1 : 2, surge: c.surgeCd <= 0 ? 1 : 0, combo: c.combo, jump: c.jumpCd <= 0 && c.air <= 0 ? 1 : 0,
       }));
     }
     sendHud();
@@ -141,7 +146,9 @@ function makeRacer(id: string): GameModule {
       onPress(pid, btn) {
         const c = byId.get(pid);
         if (!c) return;
-        if (btn === BTN.C) useItem(c);
+        if (mode === 'kart' && btn === BTN.C) useItem(c);
+        if (mode === 'boat' && btn === BTN.A && c.surgeCd <= 0 && c.finished < 0) { c.surgeCd = 2.6; c.boostT = Math.max(c.boostT, 0.8); ctx.fx('surge', { id: c.id }); ctx.buzz(c.id, 40); sendHud(); }
+        if (mode === 'bike' && btn === BTN.A && c.air <= 0 && c.jumpCd <= 0 && c.finished < 0) { c.air = c.airMax = 0.5; c.jumpCd = 0.85; ctx.fx('jump', { id: c.id }); ctx.buzz(c.id, 25); }
         if (btn === BTN.D && c.turbo >= 50 && c.finished < 0) { // TURBO from the meter
           c.turbo -= 50;
           c.boostT = Math.max(c.boostT, 1.2);
@@ -156,10 +163,16 @@ function makeRacer(id: string): GameModule {
         for (const c of cars) {
           const inp = ctx.input(c.id);
           const racing = c.finished < 0;
-          const gas = racing && ((inp.b & BTN.A) !== 0 || inp.y < -0.55);
           const brake = racing && ((inp.b & BTN.B) !== 0 || inp.y > 0.65);
-          const steerIn = racing ? Math.max(-1, Math.min(1, inp.x)) : 0;
-          const max = (c.boostT > 0 ? K.BOOST_MAX : K.MAX) * (c.offTrack ? 0.55 : 1);
+          const gas = racing && c.stumble <= 0; // everybody accelerates by themselves: you steer, brake and use your special
+          const wasAir = c.air > 0;
+          c.air = Math.max(0, c.air - dt); if (wasAir && c.air <= 0 && Math.abs(c.steer) < 0.35 && mode === 'bike') { c.boostT = Math.max(c.boostT, 0.4); ctx.fx('land', { id: c.id }); } c.jumpCd = Math.max(0, c.jumpCd - dt); c.stumble = Math.max(0, c.stumble - dt);
+          const hadSurge = c.surgeCd <= 0; c.surgeCd = Math.max(0, c.surgeCd - dt);
+          if (!hadSurge && c.surgeCd <= 0) sendHud();
+          c.comboT = Math.max(0, c.comboT - dt); if (c.comboT <= 0 && c.combo) { c.combo = 0; sendHud(); }
+          for (const k in c.fcd) if (c.fcd[k] > 0) c.fcd[k] -= dt;
+          const steerIn = racing ? Math.max(-1, Math.min(1, inp.x)) * (c.air > 0 ? 0.3 : 1) : 0; // no real steering in the air
+          const max = (c.boostT > 0 ? K.BOOST_MAX : K.MAX) * (c.offTrack && c.air <= 0 ? 0.55 : 1) * (1 + 0.04 * c.combo);
 
           // --- steering input smoothing (wheel, arrows and tilt all feel the same) ---
           const rate = Math.abs(steerIn) > Math.abs(c.steer) ? K.STEER_IN : K.STEER_OUT;
@@ -169,7 +182,7 @@ function makeRacer(id: string): GameModule {
           // --- longitudinal ---
           const sp = Math.min(1.2, Math.abs(c.v) / K.MAX);
           if (c.boostT > 0) c.v += 1300 * dt;
-          else if (gas) c.v += K.ACC * (1 - 0.6 * Math.min(1, c.v / K.MAX) ** 2) * dt;
+          else if (gas) c.v += K.ACC * (1 - 0.6 * Math.min(1, c.v / K.MAX) ** 2) * (brake ? 0.35 : 1) * dt;
           if (brake) c.v -= (c.v > 15 ? 720 : 320) * dt;
           if (!gas && !brake && c.boostT <= 0) c.v *= Math.exp(-1.05 * dt);
           if (c.offTrack) c.v *= Math.exp(-0.9 * dt);
@@ -197,7 +210,7 @@ function makeRacer(id: string): GameModule {
           const v2 = c.v * cs + c.lat * sn, l2 = -c.v * sn + c.lat * cs;
           c.v = v2; c.lat = l2; c.a += dA;
           // lateral grip; part of the removed slide is converted to forward speed (keeps cornering fast and fun)
-          const grip = c.drift ? K.GRIP_DRIFT : c.offTrack ? 5 : K.GRIP;
+          const grip = c.air > 0 ? 0.6 : c.drift ? K.GRIP_DRIFT : c.offTrack ? 5 : K.GRIP;
           const removed = c.lat * (1 - Math.exp(-grip * dt));
           c.lat -= removed;
           c.v += Math.sign(c.v || 1) * Math.abs(removed) * 0.6;
@@ -216,6 +229,42 @@ function makeRacer(id: string): GameModule {
           c.idx = nr.idx;
           c.s = tr.cum[nr.idx];
           c.offTrack = nr.dist > TRACK_WIDTH / 2;
+          if (racing) {
+            const pA = tr.pts[nr.idx], pB = tr.pts[(nr.idx + 1) % tr.pts.length];
+            const tl = Math.hypot(pB.x - pA.x, pB.y - pA.y) || 1, tx = (pB.x - pA.x) / tl, ty = (pB.y - pA.y) / tl;
+            const lat = (c.x - pA.x) * -ty + (c.y - pA.y) * tx, frac = c.s / tr.length;
+            // BOAT: streams carry you (take the fast side!), eddies push you back, rocks bounce you, whirlpools spin you
+            for (const cu of F.currents) {
+              if (!((frac >= cu.f0 && frac < cu.f1) || (cu.f1 > 1 && frac < cu.f1 - 1))) continue;
+              if (Math.abs(lat - cu.off) < cu.w) { c.x += tx * cu.push * dt; c.y += ty * cu.push * dt; if (cu.push > 0 && c.boostT < 0.05) c.v += 90 * dt; }
+            }
+            F.rocks.forEach((r, i) => {
+              const d = Math.hypot(c.x - r.x, c.y - r.y);
+              if (d < r.r + K.CAR_R && !(c.fcd['r' + i] > 0)) {
+                c.fcd['r' + i] = 0.6; const nx = (c.x - r.x) / (d || 1), ny = (c.y - r.y) / (d || 1);
+                c.x = r.x + nx * (r.r + K.CAR_R); c.y = r.y + ny * (r.r + K.CAR_R);
+                if (c.shieldT <= 0) c.v *= 0.5; c.lat += (nx * -Math.sin(c.a) + ny * Math.cos(c.a)) * 160;
+                ctx.fx('rock', { x: r1(r.x), y: r1(r.y) }); ctx.buzz(c.id, 70);
+              }
+            });
+            F.whirls.forEach((w, i) => {
+              const d = Math.hypot(c.x - w.x, c.y - w.y);
+              if (d < w.r) {
+                c.x += (w.x - c.x) * 0.7 * dt; c.y += (w.y - c.y) * 0.7 * dt; c.v *= Math.exp(-0.7 * dt);
+                if (c.spinT <= 0 && !(c.fcd['w' + i] > 0)) { c.spinT = 0.7; c.fcd['w' + i] = 1.6; ctx.fx('whirl', { id: c.id }); ctx.buzz(c.id, 120); }
+              }
+            });
+            // BIKE: ramps launch you, hurdles must be hopped; a chain of clean hops builds a speed combo
+            F.ramps.forEach((r, i) => {
+              if (Math.hypot(c.x - r.x, c.y - r.y) < 46 && !(c.fcd['p' + i] > 0)) { c.fcd['p' + i] = 2; c.air = c.airMax = 0.95; c.boostT = Math.max(c.boostT, 0.7); ctx.fx('ramp', { id: c.id }); ctx.buzz(c.id, 60); }
+            });
+            F.hurdles.forEach((h, i) => {
+              if (Math.hypot(c.x - h.x, c.y - h.y) > 34 || c.fcd['h' + i] > 0) return;
+              c.fcd['h' + i] = 1.5;
+              if (c.air > 0) { c.combo = Math.min(5, c.combo + 1); c.comboT = 9; c.turbo = Math.min(100, c.turbo + 12); ctx.fx('clear', { id: c.id, n: c.combo }); sendHud(); }
+              else if (c.shieldT <= 0) { c.v *= 0.35; c.combo = 0; c.stumble = 0.45; ctx.fx('crash', { id: c.id }); ctx.buzz(c.id, 150); sendHud(); }
+            });
+          }
           const lim = TRACK_WIDTH / 2 + K.WALL;
           if (nr.dist > lim) {
             const p = tr.pts[nr.idx];
@@ -323,7 +372,7 @@ function makeRacer(id: string): GameModule {
           c: cars.map((c) => ({
             id: c.id, x: Math.round(c.x), y: Math.round(c.y), a: Math.round(c.a * 100) / 100,
             b: c.boostT > 0 ? 1 : 0, s: c.spinT > 0 ? 1 : 0, dr: c.drift ? 1 : 0, st: Math.round(c.steer * 10) / 10, h: c.shieldT > 0 ? 1 : 0,
-            lap: Math.min(c.lap + 1, laps), fin: c.finished >= 0 ? 1 : 0, it: c.item,
+            lap: Math.min(c.lap + 1, laps), fin: c.finished >= 0 ? 1 : 0, it: c.item, ...(c.air > 0 ? { ar: Math.round(Math.sin((1 - c.air / c.airMax) * Math.PI) * 10) / 10 } : {}), ...(c.combo ? { cb: c.combo } : {}),
           })),
           ord: o.map((c) => c.id),
           bo: boxes.map((b) => (b.cd <= 0 ? 1 : 0)).join(''), // box on/off flags; positions come from the track

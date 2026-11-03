@@ -80,16 +80,15 @@ const BASE_GAMES: GameMeta[] = [
     name: { he: 'כאוס קארטינג', en: 'Kart Chaos' },
     tagline: { he: 'מרוץ קטן, בלגן גדול', en: 'Tiny cars, huge mess' },
     howTo: {
-      he: 'ג׳ויסטיק להיגוי, גז ובלם בימין. מד הטורבו מתמלא — לחצו טורבו. קופסאות ? נותנות פריטים.',
-      en: 'Stick steers, GAS and BRAKE on the right. Fill the turbo meter and hit TURBO. ? boxes give items.',
+      he: 'האוטו מאיץ לבד! שני כפתורי חצים גדולים להיגוי. מד הטורבו מתמלא — לחצו טורבו. קופסאות ? נותנות פריטים (שמן, מגן, טורבו). בלם לפניות חדות.',
+      en: 'The kart accelerates by itself! Two big arrow buttons steer. Fill the turbo meter and hit TURBO. ? boxes give items (oil, shield, turbo). BRAKE for tight corners.',
     },
     category: 'racing', minPlayers: 1, maxPlayers: 8, status: 'playable',
     accent: ['#3ec1ff', '#5d5dff'],
     controller: wheelPad('racing', [
-      { key: 'A', label: { he: 'גז', en: 'GAS' }, color: '#5dfc8d', big: true, icon: 'gas' },
-      { key: 'B', label: { he: 'בלם', en: 'BRAKE' }, color: '#ff8c42', icon: 'brake' },
-      { key: 'D', label: { he: 'טורבו', en: 'TURBO' }, color: '#3ec1ff', icon: 'turbo' },
+      { key: 'D', label: { he: 'טורבו', en: 'TURBO' }, color: '#3ec1ff', big: true, icon: 'turbo' },
       { key: 'C', label: { he: 'פריט', en: 'ITEM' }, color: '#b26bff', icon: 'item' },
+      { key: 'B', label: { he: 'בלם', en: 'BRAKE' }, color: '#ff8c42', icon: 'brake' },
     ]),
     options: [
       { key: 'laps', label: { he: 'הקפות', en: 'Laps' }, values: [1, 2, 3, 4, 5], default: 3 },
@@ -240,7 +239,6 @@ const BASE_GAMES: GameMeta[] = [
 const btn = (key: ButtonKey, he: string, en: string, color: string, icon?: string, big?: boolean): ControllerButton => ({ key, label: { he, en }, color, icon, big });
 const opt = (key: string, he: string, en: string, values: number[], def: number, names?: [string, string][]): GameOption =>
   ({ key, label: { he, en }, values, default: def, names: names?.map(([h, e]) => ({ he: h, en: e })) });
-const racePad = (): ControllerLayout => wheelPad('racing', [btn('A', 'גז', 'GAS', '#5dfc8d', 'gas', true), btn('B', 'בלם', 'BRAKE', '#ff8c42', 'brake'), btn('D', 'טורבו', 'TURBO', '#3ec1ff', 'turbo'), btn('C', 'פריט', 'ITEM', '#b26bff', 'item')]);
 const raceOpts = (): GameOption[] => [
   opt('laps', 'הקפות', 'Laps', [1, 2, 3, 4, 5], 3),
   opt('track', 'מסלול', 'Track', [0, 1, 2], 0, [['סופגנייה', 'Donut Loop'], ['נחש', 'Snake Pass'], ['שמונה', 'Figure Eight']]),
@@ -264,14 +262,14 @@ const NEW_GAMES_LIST: GameMeta[] = [
     'On your turn: aim with the stick and press to lock, then press again when the power meter is in the green. Strikes and spares give bonuses. Most points wins.',
     'sports', 1, 8, ['#8b5cf6', '#4c1d95'], stickPad('party', [btn('A', 'נעל / גלגל', 'LOCK / ROLL', '#5dfc8d', 'throw', true)]),
     [opt('frames', 'סבבים', 'Frames', [2, 3, 4, 5], 4)]),
-  game('boat', 'מרוץ סירות', 'Boat Racing', 'גלים, החלקות וטורבו על המים', 'Waves, slides and turbo on the water',
-    'ההגה מסובב את הסירה — היא מחליקה ולא נעצרת מיד! גז ובלם בימין, טורבו מהמד, פריטים מקופסאות ה־?.',
-    'Steer the boat — it drifts and does not stop on a dime! GAS and BRAKE on the right, TURBO from the meter, items from ? boxes.',
-    'racing', 1, 8, ['#06b6d4', '#1d4ed8'], racePad(), raceOpts()),
-  game('bike', 'מרוץ אופניים', 'Bike Racing', 'קלים, מהירים וחדים בפניות', 'Light, fast and sharp in the corners',
-    'אופניים מהירים עם אחיזה חזקה ופניות חדות. גז ובלם בימין, טורבו מהמד, פריטים מקופסאות ה־?.',
-    'Fast bikes with strong grip and sharp turns. GAS and BRAKE on the right, TURBO from the meter, items from ? boxes.',
-    'racing', 1, 8, ['#f97316', '#92400e'], racePad(), raceOpts()),
+  game('boat', 'מרוץ סירות', 'Boat Racing', 'זרמים, מערבולות וסלעים — קוראים את הנהר', 'Streams, whirlpools and rocks — read the river',
+    'הסירה מפליגה לבד. שני חיצים גדולים מסובבים אותה, והיא מחליקה על המים! הישארו בצד המהיר של הזרם (חצים כחולים), התחמקו מסלעים וממערבולות, ולחצו "דחיפה" (A) לפרץ מהירות כל כמה שניות.',
+    'The boat sails by itself. Two big arrows steer it, and it glides on the water! Stay on the fast side of the streams (blue arrows), dodge rocks and whirlpools, and press SURGE (A) for a burst every few seconds.',
+    'racing', 1, 8, ['#06b6d4', '#1d4ed8'], wheelPad('racing', [btn('A', 'דחיפה', 'SURGE', '#3ec1ff', 'turbo', true), btn('B', 'בלם', 'BRAKE', '#ff8c42', 'brake')]), raceOpts()),
+  game('bike', 'מרוץ אופניים', 'Bike Racing', 'קפיצות, משוכות ורצף מושלם', 'Jumps, hurdles and a perfect chain',
+    'האופנוע דוהר לבד. חצים גדולים לפניות חדות. קפצו (A) מעל משוכות — כל קפיצה נקייה בונה קומבו מהירות; פגיעה במשוכה מאפסת אותו. רמפות משגרות אתכם לאוויר, ונחיתה ישרה נותנת בוסט.',
+    'The bike races by itself. Big arrows for sharp turns. HOP (A) over hurdles — every clean hop builds a speed combo; hitting one resets it. Ramps launch you, and a straight landing gives a boost.',
+    'racing', 1, 8, ['#f97316', '#92400e'], wheelPad('racing', [btn('A', 'קפיצה', 'HOP', '#5dfc8d', 'jump', true), btn('D', 'בוסט', 'BOOST', '#3ec1ff', 'turbo')]), raceOpts()),
   // ---- wave B ----
   game('tank', 'קרב טנקים', 'Tank Battle', 'ירו, הקפיצו פגזים והניחו מוקשים', 'Fire, bounce shells and lay mines',
     'הטנק פונה לכיוון הג׳ויסטיק. ירייה (A) קופצת פעם אחת מהקירות. מוקש (B) מתחמש אחרי שנייה. 3 פגיעות והטנק מתפוצץ. האחרון שנשאר מנצח.',

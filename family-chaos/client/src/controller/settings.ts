@@ -10,7 +10,7 @@ export interface PadSettings {
 }
 
 const KEY = 'fc.pad';
-const DEFAULTS: PadSettings = { size: 'm', mirrored: false, steer: 'wheel', tiltInvert: false };
+const DEFAULTS: PadSettings = { size: 'm', mirrored: false, steer: 'arrows', tiltInvert: false };
 
 function load(): PadSettings {
   try {
@@ -18,7 +18,7 @@ function load(): PadSettings {
     return {
       size: v.size === 's' || v.size === 'l' ? v.size : 'm',
       mirrored: v.mirrored === true,
-      steer: v.steer === 'arrows' || v.steer === 'tilt' ? v.steer : 'wheel',
+      steer: v.steer === 'wheel' || v.steer === 'tilt' ? v.steer : 'arrows',
       tiltInvert: v.tiltInvert === true,
     };
   } catch {

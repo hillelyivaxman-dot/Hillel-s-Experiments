@@ -1,6 +1,6 @@
 import { CATALOG } from '../../shared/catalog';
 import { expect, test, type Page } from '@playwright/test';
-import { delta, frame, HTTP, newHost, newPhone, playerIds, waitPlaying, wheelAt } from './util';
+import { delta, frame, HTTP, newHost, newPhone, playerIds, waitPlaying } from './util';
 
 // Controller tests with real (CDP-emulated) touch input, as a phone browser would deliver it.
 
@@ -59,35 +59,30 @@ test('joystick: dragging a finger moves the critter in that direction and releas
   }, { timeout: 10_000 }).toBeLessThan(8);
 });
 
-test('multi-touch: steering with one finger while holding GAS with another (Kart)', async ({ browser }) => {
+test('multi-touch: steering with one finger while pressing TURBO with another (Kart drives itself)', async ({ browser }) => {
   const { h, code } = await newHost(browser);
   const a = await newPhone(browser, `${HTTP}/join/${code}`, 'Driver');
-  await newPhone(browser, `${HTTP}/join/${code}`, 'Parked');
+  await newPhone(browser, `${HTTP}/join/${code}`, 'Idle');
   const ids = await playerIds(h);
   await h.locator('.lobby__games [data-game="kart"]').click();
   await h.getByTestId('start-btn').click();
   await waitPlaying(h);
   const t = await touch(a.p);
-  const w = await wheelAt(a.p);
-  const gas = await center(a.p, '[data-btn="A"]');
+  const R = await center(a.p, '[data-btn="R"]');
+  const turbo = await center(a.p, '[data-btn="D"]');
   const f0 = await frame(h);
-
-  // finger 1 on the wheel, finger 2 on GAS at the same time
-  await t('touchStart', [{ ...w.at(0), id: 1 }]);
-  await t('touchStart', [{ ...w.at(0), id: 1 }, { ...gas, id: 2 }]);
-  await expect(a.p.locator('[data-btn="A"]')).toHaveClass(/is-down/);
-  await h.waitForTimeout(700); // straight acceleration
+  await h.waitForTimeout(700); // both karts accelerate straight on their own
   const fMid = await frame(h);
-  for (const d of [30, 60, 90]) await t('touchMove', [{ ...w.at(d), id: 1 }, { ...gas, id: 2 }]); // turn the wheel right while still on the gas
+  await t('touchStart', [{ ...R, id: 1 }]);
+  await t('touchStart', [{ ...R, id: 1 }, { ...turbo, id: 2 }]);
+  await expect(a.p.locator('[data-btn="D"]')).toHaveClass(/is-down/);
   await h.waitForTimeout(900);
   const f1 = await frame(h);
   await t('touchEnd', []);
-  await expect(a.p.locator('[data-btn="A"]')).not.toHaveClass(/is-down/);
-
-  expect(delta(f0, fMid, 'c', ids.Driver).d).toBeGreaterThan(60); // gas works
-  const turned = delta(fMid, f1, 'c', ids.Driver).da;
-  expect(turned).toBeGreaterThan(0.4); // turned right (clockwise) while accelerating
-  expect(delta(f0, f1, 'c', ids.Parked).d).toBeLessThan(5);
+  await expect(a.p.locator('[data-btn="D"]')).not.toHaveClass(/is-down/);
+  expect(delta(f0, fMid, 'c', ids.Driver).d).toBeGreaterThan(40); // no gas button needed: it drives by itself
+  expect(delta(fMid, f1, 'c', ids.Driver).da).toBeGreaterThan(0.4); // steered right while using turbo
+  expect(Math.abs(delta(fMid, f1, 'c', ids.Idle).da)).toBeLessThan(0.3); // the idle kart keeps going straight
 });
 
 test('game switching: all playable games start, run and return to the lobby in one room', async ({ browser }) => {

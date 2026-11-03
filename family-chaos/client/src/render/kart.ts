@@ -1,4 +1,4 @@
-import { getTrack, TRACK_WIDTH, trackBoxes, trackPads, WORLD_H, WORLD_W } from '../../../shared/tracks';
+import { getTrack, pointAt, TRACK_WIDTH, trackBoxes, trackFeatures, trackPads, WORLD_H, WORLD_W } from '../../../shared/tracks';
 import { sfx } from '../sound';
 import { drawCritter } from './critter';
 import { hudText, type Renderer } from './types';
@@ -73,6 +73,20 @@ function make(kind: Kind): Renderer { const TH = THEME[kind]; return {
     }
     g.restore();
 
+    // vehicle-specific track features
+    if (kind !== 'kart') {
+      const F = trackFeatures(f.tr, kind);
+      for (const cu of F.currents) { // streams: flowing chevrons along one side of the lane (blue = fast, orange = eddy against you)
+        g.beginPath();
+        for (let k = 0; k <= 14; k++) { const fr = cu.f0 + ((cu.f1 - cu.f0) * k) / 14, pt = pointAt(tr, fr); const x = pt.x - pt.ty * cu.off, y = pt.y + pt.tx * cu.off; if (k) g.lineTo(x, y); else g.moveTo(x, y); }
+        g.lineCap = 'butt'; g.strokeStyle = cu.push > 0 ? 'rgba(255,255,255,.22)' : 'rgba(255,140,60,.28)'; g.lineWidth = cu.w * 2; g.stroke();
+        g.strokeStyle = cu.push > 0 ? 'rgba(210,245,255,.85)' : 'rgba(255,170,90,.85)'; g.lineWidth = 5; g.setLineDash([14, 26]); g.lineDashOffset = (cu.push > 0 ? -1 : 1) * t * 90; g.stroke(); g.setLineDash([]);
+      }
+      for (const r of F.rocks) { g.fillStyle = 'rgba(0,0,0,.25)'; g.beginPath(); g.ellipse(r.x + 4, r.y + 8, r.r, r.r * 0.7, 0, 0, 7); g.fill(); g.fillStyle = '#7b8794'; g.strokeStyle = '#1f2937'; g.lineWidth = 4; g.beginPath(); g.moveTo(r.x - r.r, r.y + 4); g.lineTo(r.x - r.r * 0.5, r.y - r.r * 0.8); g.lineTo(r.x + r.r * 0.4, r.y - r.r * 0.9); g.lineTo(r.x + r.r, r.y + 2); g.lineTo(r.x + r.r * 0.3, r.y + r.r * 0.7); g.closePath(); g.fill(); g.stroke(); g.fillStyle = 'rgba(255,255,255,.28)'; g.fillRect(r.x - r.r * 0.3, r.y - r.r * 0.6, r.r * 0.5, 5); }
+      for (const w of F.whirls) { for (let k = 0; k < 4; k++) { g.strokeStyle = `rgba(255,255,255,${0.7 - k * 0.14})`; g.lineWidth = 5; g.beginPath(); for (let a = 0; a < 5.5; a += 0.2) { const rr = w.r * (0.25 + k * 0.2) * (1 - a / 14); const th = a - t * (2 + k) + k * 1.5; if (a === 0) g.moveTo(w.x + Math.cos(th) * rr, w.y + Math.sin(th) * rr); else g.lineTo(w.x + Math.cos(th) * rr, w.y + Math.sin(th) * rr); } g.stroke(); } g.fillStyle = 'rgba(8,40,90,.55)'; g.beginPath(); g.arc(w.x, w.y, w.r * 0.2, 0, 7); g.fill(); }
+      for (const r of F.ramps) { g.save(); g.translate(r.x, r.y); g.rotate(r.a); g.fillStyle = '#c98a4b'; g.strokeStyle = '#4a2a0c'; g.lineWidth = 4; g.beginPath(); g.moveTo(-34, -52); g.lineTo(34, -34); g.lineTo(34, 34); g.lineTo(-34, 52); g.closePath(); g.fill(); g.stroke(); g.fillStyle = '#ffd23f'; for (let k = 0; k < 3; k++) { g.beginPath(); g.moveTo(-22 + k * 16, -22); g.lineTo(-8 + k * 16, 0); g.lineTo(-22 + k * 16, 22); g.lineTo(-14 + k * 16, 22); g.lineTo(0 + k * 16, 0); g.lineTo(-14 + k * 16, -22); g.fill(); } g.restore(); }
+      for (const h of F.hurdles) { g.save(); g.translate(h.x, h.y); g.rotate(h.a + Math.PI / 2); g.fillStyle = 'rgba(0,0,0,.28)'; g.fillRect(-36, 6, 72, 12); g.fillStyle = '#8b5a2b'; g.strokeStyle = '#2e1a08'; g.lineWidth = 3; g.beginPath(); g.roundRect(-38, -12, 76, 22, 10); g.fill(); g.stroke(); g.fillStyle = '#e9d8b4'; g.beginPath(); g.ellipse(-38, -1, 7, 11, 0, 0, 7); g.fill(); g.stroke(); g.fillStyle = '#ff4d6d'; g.fillRect(-14, -12, 8, 22); g.fillRect(8, -12, 8, 22); g.restore(); }
+    }
     // boost pads
     for (const p of trackPads(tr)) {
       g.save();
@@ -126,8 +140,11 @@ function make(kind: Kind): Renderer { const TH = THEME[kind]; return {
     for (const c of f.c) {
       const info = players.get(c.id);
       if (!info) continue;
+      const air = c.ar ?? 0;
+      if (air) { g.fillStyle = 'rgba(0,0,0,.3)'; g.beginPath(); g.ellipse(c.x + 6, c.y + 8, 24 - air * 6, 11 - air * 3, c.a, 0, 7); g.fill(); }
       g.save();
-      g.translate(c.x, c.y);
+      g.translate(c.x, c.y - air * 34);
+      if (air) g.scale(1 + air * 0.25, 1 + air * 0.25);
       g.rotate(c.a);
       if (c.b) {
         g.fillStyle = Math.floor(t * 20) % 2 ? '#ffd23f' : '#ff8c42';
@@ -205,6 +222,14 @@ function make(kind: Kind): Renderer { const TH = THEME[kind]; return {
       case 'spin': if (car) fx.text(car.x, car.y - 40, 'SPIN!', '#b26bff', 32); sfx.bad(); break;
       case 'wall': fx.kick(4); fx.burst(e.x, e.y, '#ddd', 6, 200, 4); sfx.bump(); break;
       case 'bump': fx.kick(3); sfx.bump(); break;
+      case 'surge': if (car) fx.burst(car.x, car.y, '#bfe9ff', 16, 260, 5); sfx.boost(); break;
+      case 'rock': fx.burst(e.x, e.y, '#9ca3af', 10, 240, 5); fx.kick(4); sfx.bump(); break;
+      case 'whirl': if (car) fx.text(car.x, car.y - 40, 'WHIRL!', '#9bd8ff', 30); sfx.bad(); break;
+      case 'ramp': if (car) fx.text(car.x, car.y - 50, 'AIR!', '#ffd23f', 36); sfx.boost(); break;
+      case 'jump': sfx.pass(); break;
+      case 'land': if (car) fx.burst(car.x, car.y, '#e5c9a0', 12, 220, 4); sfx.coin(); break;
+      case 'clear': if (car) fx.text(car.x, car.y - 46, `x${e.n}`, '#5dfc8d', 34); sfx.coin(); break;
+      case 'crash': if (car) { fx.burst(car.x, car.y, '#ff8c42', 14, 260, 5); fx.text(car.x, car.y - 40, 'OOPS', '#ff4d6d', 30); } sfx.bad(); break;
     }
   },
 }; }

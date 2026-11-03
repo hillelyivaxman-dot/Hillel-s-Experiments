@@ -68,12 +68,12 @@ describe('kart chaos', () => {
         while (diff > Math.PI) diff -= 2 * Math.PI;
         while (diff < -Math.PI) diff += 2 * Math.PI;
         const slow = id === 'p3';
-        return { x: Math.max(-1, Math.min(1, diff * 2.5)), y: 0, b: slow ? 0 : BTN.A };
+        return { x: Math.max(-1, Math.min(1, diff * 2.5)), y: 0, b: slow ? BTN.B : 0 }; // cars accelerate by themselves; p3 just holds the brake
       });
       expect(r.over).toBe(true);
       const st = r.game.standings();
       const finished = st.filter((s) => s.score > 0);
-      expect(finished.length).toBe(2); // p3 never presses gas
+      expect(finished.length).toBe(2); // p3 only brakes
       expect(st[2].playerId).toBe('p3');
       expect(r.fx).toContain('finish');
       expect(r.fx).toContain('lap');
@@ -111,12 +111,12 @@ describe.each([['boat', boatGame], ['bike', bikeGame]] as const)('%s racing', (_
         while (diff > Math.PI) diff -= 2 * Math.PI;
         while (diff < -Math.PI) diff += 2 * Math.PI;
         const slow = id === 'p3';
-        return { x: Math.max(-1, Math.min(1, diff * 2.5)), y: 0, b: slow ? 0 : BTN.A };
+        return { x: Math.max(-1, Math.min(1, diff * 2.5)), y: 0, b: slow ? BTN.B : 0 }; // cars accelerate by themselves; p3 just holds the brake
       });
       expect(r.over).toBe(true);
       const st = r.game.standings();
       const finished = st.filter((s) => s.score > 0);
-      expect(finished.length).toBe(2); // p3 never presses gas
+      expect(finished.length).toBe(2); // p3 only brakes
       expect(st[2].playerId).toBe('p3');
       expect(r.fx).toContain('finish');
       expect(r.fx).toContain('lap');

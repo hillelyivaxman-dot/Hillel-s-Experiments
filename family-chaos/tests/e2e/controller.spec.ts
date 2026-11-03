@@ -66,31 +66,27 @@ test('stick: finger slides off the stick area and the screen side — still stee
   await expect.poll(() => last(a.inputs)).toMatchObject({ x: 0, y: 0, b: 0 });
 });
 
-test('touch cancel (system gesture / incoming call) releases stick and buttons', async ({ browser }) => {
+test('touch cancel (system gesture / incoming call) releases steering and buttons', async ({ browser }) => {
   const { a } = await (await startGame('kart'))(browser);
   const t = await touch(a.p);
-  const w = await wheelAt(a.p);
-  const gas = await center(a.p, '[data-btn="A"]');
-  await t('touchStart', [{ ...w.at(0), id: 1 }]);
-  for (const d of [20, 40, 60]) await t('touchMove', [{ ...w.at(d), id: 1 }]);
-  await t('touchStart', [{ ...w.at(60), id: 1 }, { ...gas, id: 2 }]);
-  await expect.poll(() => last(a.inputs).b).toBe(BTN.A);
-  await expect.poll(() => last(a.inputs).x).toBeGreaterThan(0.3);
+  const R = await center(a.p, '[data-btn="R"]');
+  const brake = await center(a.p, '[data-btn="B"]');
+  await t('touchStart', [{ ...R, id: 1 }, { ...brake, id: 2 }]);
+  await expect.poll(() => last(a.inputs).b).toBe(BTN.B);
+  await expect.poll(() => last(a.inputs).x).toBe(1);
   await t('touchCancel', []);
   await expect.poll(() => last(a.inputs)).toMatchObject({ x: 0, y: 0, b: 0 });
-  await expect(a.p.locator('[data-btn="A"]')).not.toHaveClass(/is-down/);
+  await expect(a.p.locator('[data-btn="B"]')).not.toHaveClass(/is-down/);
 });
 
-test('screen lock / app switch while holding GAS and steering: everything is released (no runaway car)', async ({ browser }) => {
+test('screen lock / app switch while steering and braking: everything is released (no runaway car)', async ({ browser }) => {
   const { a } = await (await startGame('kart'))(browser);
   const t = await touch(a.p);
-  const w = await wheelAt(a.p);
-  const gas = await center(a.p, '[data-btn="A"]');
-  await t('touchStart', [{ ...w.at(0), id: 1 }]);
-  for (const d of [-30, -60, -90]) await t('touchMove', [{ ...w.at(d), id: 1 }]);
-  await t('touchStart', [{ ...w.at(-90), id: 1 }, { ...gas, id: 2 }]);
-  await expect.poll(() => last(a.inputs)).toMatchObject({ b: BTN.A });
-  await expect.poll(() => last(a.inputs).x).toBeLessThan(-0.5);
+  const L = await center(a.p, '[data-btn="L"]');
+  const brake = await center(a.p, '[data-btn="B"]');
+  await t('touchStart', [{ ...L, id: 1 }, { ...brake, id: 2 }]);
+  await expect.poll(() => last(a.inputs)).toMatchObject({ b: BTN.B });
+  await expect.poll(() => last(a.inputs).x).toBe(-1);
   // the phone goes to sleep: the browser fires visibilitychange, and no pointerup will ever arrive
   await a.p.evaluate(() => {
     Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'hidden' });
@@ -99,27 +95,26 @@ test('screen lock / app switch while holding GAS and steering: everything is rel
   await expect.poll(() => last(a.inputs)).toMatchObject({ x: 0, y: 0, b: 0 });
 });
 
-test('three fingers at once: steer + GAS + TURBO (Kart) all reach the server', async ({ browser }) => {
+test('three fingers at once: steer + TURBO + ITEM (Kart) all reach the server; the kart drives itself', async ({ browser }) => {
   const { h, a, ids } = await (await startGame('kart'))(browser);
   const t = await touch(a.p);
-  const w = await wheelAt(a.p);
-  const gas = await center(a.p, '[data-btn="A"]');
+  const R = await center(a.p, '[data-btn="R"]');
   const turbo = await center(a.p, '[data-btn="D"]');
+  const item = await center(a.p, '[data-btn="C"]');
   const f0 = await frame(h);
-  await t('touchStart', [{ ...w.at(0), id: 1 }]);
-  await t('touchStart', [{ ...w.at(0), id: 1 }, { ...gas, id: 2 }]);
-  await t('touchStart', [{ ...w.at(0), id: 1 }, { ...gas, id: 2 }, { ...turbo, id: 3 }]);
-  for (const d of [30, 60, 90]) await t('touchMove', [{ ...w.at(d), id: 1 }, { ...gas, id: 2 }, { ...turbo, id: 3 }]);
-  await expect.poll(() => last(a.inputs).b).toBe(BTN.A | BTN.D);
-  await expect.poll(() => last(a.inputs).x).toBeGreaterThan(0.4); // stick moves are coalesced (~16 ms)
+  await t('touchStart', [{ ...R, id: 1 }]);
+  await t('touchStart', [{ ...R, id: 1 }, { ...turbo, id: 2 }]);
+  await t('touchStart', [{ ...R, id: 1 }, { ...turbo, id: 2 }, { ...item, id: 3 }]);
+  await expect.poll(() => last(a.inputs).b).toBe(BTN.D | BTN.C);
+  await expect.poll(() => last(a.inputs).x).toBe(1);
   await expect(a.p.locator('.pad-btn.is-down')).toHaveCount(2);
   await h.waitForTimeout(900);
   const f1 = await frame(h);
-  expect(delta(f0, f1, 'c', ids.Pad).d).toBeGreaterThan(150); // turbo-boosted acceleration
-  // lift only the TURBO finger (CDP: touchEnd lists the finger(s) that lift): gas + steering keep working
-  await t('touchEnd', [{ ...turbo, id: 3 }]);
-  await expect.poll(() => last(a.inputs).b).toBe(BTN.A);
-  await expect.poll(() => last(a.inputs).x).toBeGreaterThan(0.4);
+  expect(delta(f0, f1, 'c', ids.Pad).d).toBeGreaterThan(100); // auto-accelerates without any gas button
+  // lift only the TURBO finger: the other two keep working
+  await t('touchEnd', [{ ...turbo, id: 2 }]);
+  await expect.poll(() => last(a.inputs).b).toBe(BTN.C);
+  await expect.poll(() => last(a.inputs).x).toBe(1);
   await t('touchEnd', []);
   await expect.poll(() => last(a.inputs)).toMatchObject({ x: 0, y: 0, b: 0 });
 });
@@ -130,7 +125,8 @@ test('controls stay visible and tappable when the browser bar shows/hides and wh
     await a.p.setViewportSize(vp);
     // the layout settles within a few frames of the resize; wait for it instead of sleeping a fixed time
     await expect.poll(() => padProblems(a.p), { message: `${vp.width}x${vp.height}`, timeout: 6000 }).toEqual([]);
-    await expect(a.p.locator('.pad-btn')).toHaveCount(4);
+    await expect(a.p.locator('.pad-btn')).toHaveCount(3);
+    await expect(a.p.locator('.arrow-btn')).toHaveCount(2);
   }
 });
 
@@ -220,8 +216,11 @@ test('Chaos Rush: run, jump with a real tap, dash and shove reach the server and
   await expect.poll(() => last(a.inputs)).toMatchObject({ x: 0, y: 0, b: 0 });
 });
 
-test('wheel: rotating a finger steers proportionally, fine near centre, full at the lock; release snaps back to straight', async ({ browser }) => {
+test('wheel (optional mode): rotating a finger steers proportionally, fine near centre, full at the lock; release snaps back to straight', async ({ browser }) => {
   const { a } = await (await startGame('kart'))(browser);
+  await a.p.getByTestId('pad-settings').click();
+  await a.p.locator('[data-steer-mode="wheel"]').click();
+  await a.p.locator('.pad-sheet .btn').click();
   const t = await touch(a.p);
   const w = await wheelAt(a.p);
   await t('touchStart', [{ ...w.at(0), id: 1 }]);

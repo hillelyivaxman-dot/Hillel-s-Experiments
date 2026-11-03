@@ -95,3 +95,45 @@ export function pointAt(tr: Track, frac: number) {
   const t = Math.min(1, (target - tr.cum[i]) / segLen);
   return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t, tx: (b.x - a.x) / segLen, ty: (b.y - a.y) / segLen };
 }
+
+// ---------- per-vehicle track features (what makes boats and bikes play differently from karts) ----------
+export type RaceMode = 'kart' | 'boat' | 'bike';
+export interface Current { f0: number; f1: number; off: number; w: number; push: number } // lane stream, fractions of the lap
+export interface Spot { x: number; y: number; r: number; a: number; off: number; f: number }
+export interface Features { currents: Current[]; rocks: Spot[]; whirls: Spot[]; ramps: Spot[]; hurdles: Spot[] }
+
+const fcache = new Map<string, Features>();
+function hash(n: number) { const s = Math.sin(n * 127.1 + 311.7) * 43758.5453; return s - Math.floor(s); }
+
+/**
+ * BOAT: fast streams along one side of the river (take them!), slow eddies, floating rocks and whirlpools.
+ * BIKE: ramps that launch you and hurdles you must hop (a clean chain builds a speed combo).
+ * KART: none (items and boost pads instead).
+ */
+export function trackFeatures(trackId: number, mode: RaceMode): Features {
+  const key = `${trackId}:${mode}`;
+  const hit = fcache.get(key);
+  if (hit) return hit;
+  const tr = getTrack(trackId);
+  const at = (f: number, off: number, r: number): Spot => {
+    const p = pointAt(tr, f);
+    return { x: p.x - p.ty * off, y: p.y + p.tx * off, r, a: Math.atan2(p.ty, p.tx), off, f: ((f % 1) + 1) % 1 };
+  };
+  const out: Features = { currents: [], rocks: [], whirls: [], ramps: [], hurdles: [] };
+  const seed = trackId * 17 + (mode === 'boat' ? 1 : 2);
+  if (mode === 'boat') {
+    for (let i = 0; i < 4; i++) {
+      const f0 = 0.04 + i * 0.25 + hash(seed + i) * 0.05;
+      const side = i % 2 ? 1 : -1;
+      out.currents.push({ f0, f1: f0 + 0.11, off: side * 34, w: 34, push: 230 });
+      if (i % 2 === 0) out.currents.push({ f0: f0 + 0.12, f1: f0 + 0.2, off: -side * 34, w: 34, push: -170 }); // an eddy that pushes back
+    }
+    for (let i = 0; i < 9; i++) out.rocks.push(at(0.07 + i * 0.105 + hash(seed + 20 + i) * 0.04, (hash(seed + 40 + i) - 0.5) * 70, 20));
+    for (const f of [0.31, 0.74]) out.whirls.push(at(f + hash(seed + f) * 0.02, 0, 60));
+  } else if (mode === 'bike') {
+    for (const f of [0.17, 0.49, 0.83]) out.ramps.push(at(f, 0, 44));
+    for (let i = 0; i < 12; i++) { const f = 0.05 + i * 0.078 + hash(seed + i) * 0.03; if (out.ramps.some((r) => Math.abs(r.f - f) < 0.03)) continue; out.hurdles.push(at(f, (hash(seed + 60 + i) - 0.5) * 60, 26)); }
+  }
+  fcache.set(key, out);
+  return out;
+}

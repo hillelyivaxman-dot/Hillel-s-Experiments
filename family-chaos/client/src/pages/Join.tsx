@@ -249,15 +249,13 @@ function hudView(game: string, h: Hud, t: ReturnType<typeof useT>['t'], he: bool
           { icon: 'star', on: !!h.held, label: h.held ? POW[String(h.held)] ?? '★' : '—' },
         ],
       };
-    case 'kart': case 'boat': case 'bike':
+    case 'kart': case 'boat': case 'bike': {
       if (h.done) return { text: `${t('finished')} #${h.place}`, tone: 'good' };
-      return {
-        text: `#${h.place ?? '-'}/${h.of ?? '-'} · ${t('lap')} ${h.lap ?? 1}/${h.laps ?? '-'}`,
-        tone: 'normal',
-        meter: Number(h.turbo ?? 0) / 100,
-        meterLabel: L('טורבו', 'TURBO'),
-        chips: [{ icon: 'item', on: !!h.item, label: { turbo: '🚀', oil: '🛢', shield: '🛡' }[String(h.item)] ?? '—' }],
-      };
+      const base = `#${h.place ?? '-'}/${h.of ?? '-'} · ${t('lap')} ${h.lap ?? 1}/${h.laps ?? '-'}`;
+      if (game === 'boat') return { text: base, tone: 'normal', chips: [{ icon: 'turbo', on: !!h.surge, label: L('דחיפה', 'SURGE') }] };
+      if (game === 'bike') return { text: `${base}${Number(h.combo) > 0 ? ` · ×${h.combo}` : ''}`, tone: Number(h.combo) >= 3 ? 'hot' : 'normal', meter: Number(h.turbo ?? 0) / 100, meterLabel: L('בוסט', 'BOOST'), chips: [{ icon: 'jump', on: !!h.jump, label: L('קפיצה', 'HOP') }] };
+      return { text: base, tone: 'normal', meter: Number(h.turbo ?? 0) / 100, meterLabel: L('טורבו', 'TURBO'), chips: [{ icon: 'item', on: !!h.item, label: { turbo: 'T', oil: 'O', shield: 'S' }[String(h.item)] ?? '—' }] };
+    }
     case 'reaction':
       if (h.msg === 'early') return { text: t('early'), tone: 'bad' };
       if (h.msg === 'tapped') return { text: `${h.ms} ms`, tone: 'good' };
