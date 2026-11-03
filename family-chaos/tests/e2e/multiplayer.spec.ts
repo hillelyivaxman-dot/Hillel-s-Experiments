@@ -144,14 +144,14 @@ test('two phones control two different characters on one screen, then reconnect,
   // karts drive themselves; Yoni holds the right arrow with a real pointer (synthetic events lose pointer capture immediately)
   await b.locator('[data-btn="R"]').hover();
   await b.mouse.down();
-  await h.waitForTimeout(1500);
+  await h.waitForTimeout(600); // full lock turns a kart ~3 rad/s: stay well under a half turn so the signed angle does not wrap
   const k1 = await frame(h);
   await b.mouse.up();
   expect(k1.tr).toBe(0);
   const turned = (name: string) => { const id = ids[name]; let d = k1.c.find((c: any) => c.id === id).a - k0.c.find((c: any) => c.id === id).a; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI; return d; }; // signed heading change (the road itself bends, so compare the two karts)
   const moved = (name: string) => { const id = ids[name]; const c = k1.c.find((q: any) => q.id === id), o = k0.c.find((q: any) => q.id === id); return Math.hypot(c.x - o.x, c.y - o.y); };
-  expect(moved('Dana')).toBeGreaterThan(60); // both karts accelerate by themselves
-  expect(moved('Yoni')).toBeGreaterThan(60);
+  expect(moved('Dana')).toBeGreaterThan(30); // both karts accelerate by themselves
+  expect(moved('Yoni')).toBeGreaterThan(30);
   expect(turned('Yoni') - turned('Dana')).toBeGreaterThan(0.4); // Yoni steered right on top of whatever the road did to both karts
   await expect(b.getByTestId('hud')).toContainText('Lap');
 

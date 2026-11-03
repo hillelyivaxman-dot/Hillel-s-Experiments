@@ -76,7 +76,7 @@ test('multi-touch: steering with one finger while pressing TURBO with another (K
   await t('touchStart', [{ ...R, id: 1 }]);
   await t('touchStart', [{ ...R, id: 1 }, { ...turbo, id: 2 }]);
   await expect(a.p.locator('[data-btn="D"]')).toHaveClass(/is-down/);
-  await h.waitForTimeout(900);
+  await h.waitForTimeout(600); // short: a full-lock turn is ~3 rad/s, keep the signed angle below a half turn
   const f1 = await frame(h);
   await t('touchEnd', []);
   await expect(a.p.locator('[data-btn="D"]')).not.toHaveClass(/is-down/);
