@@ -1,4 +1,5 @@
 import { useGSAP } from '@gsap/react';
+import { Icon, Rich } from '../ui/icons';
 import gsap from 'gsap';
 import { useEffect, useRef, useState } from 'react';
 import { getMeta } from '../../../shared/catalog';
@@ -85,10 +86,10 @@ export function Results({ room, act, watch }: { room: RoomState; act: (a: AdminA
             if (!p) return null;
             return (
               <div key={r.playerId} className={`podium__col podium__col--${r.place}`} style={{ ['--pc' as string]: p.color }}>
-                <div className="podium__critter">{r.place === 1 && <span className="podium__crown">👑</span>}<CritterCanvas color={p.color} variant={p.avatar} size={r.place === 1 ? 170 : 130} /></div>
+                <div className="podium__critter">{r.place === 1 && <span className="podium__crown"><Icon name="crown" /></span>}<CritterCanvas color={p.color} variant={p.avatar} size={r.place === 1 ? 170 : 130} /></div>
                 <div className="podium__name">{p.name}</div>
-                <div className="podium__detail">{r.detail}</div>
-                <div className="podium__block"><span>{r.place}</span><small>{'⭐'.repeat(r.stars)}</small></div>
+                <div className="podium__detail"><Rich text={r.detail ?? ''} /></div>
+                <div className="podium__block"><span>{r.place}</span><small>{Array.from({ length: r.stars }, (_, i) => <Icon key={i} name="star" />)}</small></div>
               </div>
             );
           })}
@@ -98,35 +99,35 @@ export function Results({ room, act, watch }: { room: RoomState; act: (a: AdminA
             <ol className="results__rest">
               {res.slice(3).map((r) => {
                 const p = byId.get(r.playerId);
-                return p ? <li key={r.playerId} style={{ color: p.color }}>#{r.place} {p.name} <span className="muted">{r.detail}</span></li> : null;
+                return p ? <li key={r.playerId} style={{ color: p.color }}>#{r.place} {p.name} <span className="muted"><Rich text={r.detail ?? ''} /></span></li> : null;
               })}
             </ol>
           )}
           {tour && (
             <div className="tour-panel" data-testid="tour-panel">
-              <h3>{tour.mode === 'knockout' ? '⚔' : '🏆'} {tour.mode === 'knockout' ? l({ he: 'נוק־אאוט', en: 'Knockout' }) : l({ he: 'טורניר', en: 'Tournament' })} {Math.min(tour.idx + 1, tour.total)}/{tour.total}</h3>
-              {champ && <p className="tour-champ" data-testid="tour-champion">👑 {l({ he: 'האלוף/ה', en: 'Champion' })}: <b style={{ color: champ.color }}>{champ.name}</b></p>}
+              <h3><Icon name={tour.mode === 'knockout' ? 'fire' : 'trophy'} /> {tour.mode === 'knockout' ? l({ he: 'נוק־אאוט', en: 'Knockout' }) : l({ he: 'טורניר', en: 'Tournament' })} {Math.min(tour.idx + 1, tour.total)}/{tour.total}</h3>
+              {champ && <p className="tour-champ" data-testid="tour-champion"><Icon name="crown" /> {l({ he: 'האלוף/ה', en: 'Champion' })}: <b style={{ color: champ.color }}>{champ.name}</b></p>}
               <ol className="leaderboard">
-                {tourRank.map((p) => { const out = tour.mode === 'knockout' && !tour.alive.includes(p.id); return <li key={p.id} style={{ color: p.color, opacity: out ? 0.4 : 1 }}><span>{out ? '✖ ' : ''}{p.name}</span><b>{tour.points[p.id] ?? 0}</b></li>; })}
+                {tourRank.map((p) => { const out = tour.mode === 'knockout' && !tour.alive.includes(p.id); return <li key={p.id} style={{ color: p.color, opacity: out ? 0.4 : 1 }}><span>{out ? <Icon name="cross" /> : null}{p.name}</span><b>{tour.points[p.id] ?? 0}</b></li>; })}
               </ol>
-              {nextMeta && <p className="muted">{l({ he: 'הבא', en: 'Next' })}: <b>{l(nextMeta.name)}</b>{tour.held ? ` · ⏸` : left > 0 ? ` · ${left}` : ''}</p>}
+              {nextMeta && <p className="muted">{l({ he: 'הבא', en: 'Next' })}: <b>{l(nextMeta.name)}</b>{tour.held ? <> · <Icon name="pause" /></> : left > 0 ? ` · ${left}` : ''}</p>}
               {!watch && !tour.done && (
                 <div className="results__actions">
-                  <button className="btn btn--secondary" onClick={() => act({ a: 'tour_skip' })} data-testid="tour-skip">⏭ {l({ he: 'המשחק הבא עכשיו', en: 'Next game now' })}</button>
-                  <button className="chip" data-testid="tour-hold" onClick={() => act({ a: 'tour_hold', hold: !tour.held })}>{tour.held ? '▶' : '⏸'} {tour.held ? l({ he: 'המשך', en: 'Resume' }) : l({ he: 'עצור כאן', en: 'Hold here' })}</button>
-                  <button className="chip" onClick={() => act({ a: 'tour_cancel' })}>✖ {l({ he: 'בטל טורניר', en: 'Cancel' })}</button>
+                  <button className="btn btn--secondary" onClick={() => act({ a: 'tour_skip' })} data-testid="tour-skip"><Icon name="play" /> {l({ he: 'המשחק הבא עכשיו', en: 'Next game now' })}</button>
+                  <button className="chip" data-testid="tour-hold" onClick={() => act({ a: 'tour_hold', hold: !tour.held })}><Icon name={tour.held ? 'play' : 'pause'} /> {tour.held ? l({ he: 'המשך', en: 'Resume' }) : l({ he: 'עצור כאן', en: 'Hold here' })}</button>
+                  <button className="chip" onClick={() => act({ a: 'tour_cancel' })}><Icon name="cross" /> {l({ he: 'בטל טורניר', en: 'Cancel' })}</button>
                 </div>
               )}
             </div>
           )}
-          <h3>⭐ {t('sessionStars')}</h3>
+          <h3><Icon name="star" /> {t('sessionStars')}</h3>
           <ol className="leaderboard">
             {leaderboard.map((p) => <li key={p.id} style={{ color: p.color }}><span>{p.name}</span><b>{p.stars}</b></li>)}
           </ol>
           {!watch && (
             <div className="results__actions">
-              <button className="btn btn--primary btn--xl" onClick={() => act({ a: 'again' })} data-testid="again-btn">🔁 {t('playAgain')}</button>
-              <button className="btn btn--secondary" onClick={() => act({ a: 'lobby' })} data-testid="lobby-btn">🏠 {t('backToLobby')}</button>
+              <button className="btn btn--primary btn--xl" onClick={() => act({ a: 'again' })} data-testid="again-btn"><Icon name="repeat" /> {t('playAgain')}</button>
+              <button className="btn btn--secondary" onClick={() => act({ a: 'lobby' })} data-testid="lobby-btn"><Icon name="home" /> {t('backToLobby')}</button>
             </div>
           )}
         </aside>

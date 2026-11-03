@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Icon } from '../ui/icons';
 import { ACHIEVEMENTS } from '../../../shared/achievements';
 import { getMeta } from '../../../shared/catalog';
 import { AVATAR_COUNT, PLAYER_COLORS } from '../../../shared/protocol';
@@ -101,7 +102,7 @@ function SignedIn({ me, reload }: { me: Me; reload: () => void }) {
           {!me.persistent && <p className="warn small">{t('tempAccounts')}</p>}
         </div>
         <div className="profile__actions">
-          <a className="btn btn--primary" href="/host">📺 {t('playNow')}</a>
+          <a className="btn btn--primary" href="/host"><Icon name="tv" /> {t('playNow')}</a>
           <button className="chip" data-testid="sign-out" onClick={async () => { await api('/api/auth/logout', {}); reload(); }}>{t('signOut')}</button>
         </div>
       </section>
@@ -109,7 +110,7 @@ function SignedIn({ me, reload }: { me: Me; reload: () => void }) {
       <section className="stat-cards">
         <div className="stat"><b data-testid="stat-games">{s.games}</b><span>{t('games')}</span></div>
         <div className="stat"><b data-testid="stat-wins">{s.wins}</b><span>{t('wins')}</span></div>
-        <div className="stat"><b data-testid="stat-stars">{s.stars}</b><span>⭐ {t('stars')}</span></div>
+        <div className="stat"><b data-testid="stat-stars">{s.stars}</b><span><Icon name="star" /> {t('stars')}</span></div>
       </section>
 
       <section className="card">
@@ -119,7 +120,7 @@ function SignedIn({ me, reload }: { me: Me; reload: () => void }) {
             const done = me.achievements?.find((x) => x.id === a.id)?.done;
             return (
               <div key={a.id} className={`ach ${done ? 'is-done' : ''}`} data-ach={a.id} data-done={done ? 1 : 0}>
-                <span className="ach__icon">{a.icon}</span><b>{l(a.name)}</b><small>{l(a.desc)}</small>
+                <span className="ach__icon"><Icon name={a.icon} size="1.6em" /></span><b>{l(a.name)}</b><small>{l(a.desc)}</small>
               </div>
             );
           })}
@@ -136,7 +137,7 @@ function SignedIn({ me, reload }: { me: Me; reload: () => void }) {
           {me.history?.length ? (
             <ol className="plain-list history" data-testid="history">
               {me.history.map((h, i) => (
-                <li key={i}><span>{getMeta(h.game) ? l(getMeta(h.game)!.name) : h.game}</span><span>#{h.place}/{h.players} {'⭐'.repeat(h.stars)}</span><small className="muted">{fmt.format(new Date(h.at))}</small></li>
+                <li key={i}><span>{getMeta(h.game) ? l(getMeta(h.game)!.name) : h.game}</span><span>#{h.place}/{h.players} {Array.from({ length: h.stars }, (_, i) => <Icon key={i} name="star" />)}</span><small className="muted">{fmt.format(new Date(h.at))}</small></li>
               ))}
             </ol>
           ) : <p className="muted">{t('noHistory')}</p>}
@@ -151,10 +152,10 @@ function SignedIn({ me, reload }: { me: Me; reload: () => void }) {
             {msg && <p className="muted" role="status">{msg}</p>}
           </form>
           {u.role === 'OWNER'
-            ? <p className="muted" data-testid="owner-badge">👑 {l({ he: 'את/ה בעלי האתר: כפתור הכתר מופיע במסך המארח.', en: 'You are the site owner: the crown button shows on the host screen.' })}</p>
+            ? <p className="muted" data-testid="owner-badge"><Icon name="crown" /> {l({ he: 'את/ה בעלי האתר: כפתור הכתר מופיע במסך המארח.', en: 'You are the site owner: the crown button shows on the host screen.' })}</p>
             : (
               <details className="owner-setup">
-                <summary>👑 {l({ he: 'הגדרת בעלים (פעם אחת)', en: 'Owner setup (one time)' })}</summary>
+                <summary><Icon name="crown" /> {l({ he: 'הגדרת בעלים (פעם אחת)', en: 'Owner setup (one time)' })}</summary>
                 <form className="stack" onSubmit={async (e) => {
                   e.preventDefault();
                   const r = await api('/api/me/owner', { code: ownerCode });

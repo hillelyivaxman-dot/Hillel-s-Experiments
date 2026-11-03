@@ -51,7 +51,7 @@ function station(g: CanvasRenderingContext2D, d: StationDef, x: number, y: numbe
   else if (d.kind === 'board') { g.strokeStyle = '#7a4a1a'; g.lineWidth = 3; g.strokeRect(x + 12, y + 18, w - 24, h - 28); g.fillStyle = '#9aa4b5'; g.fillRect(x + w - 34, y + h - 26, 20, 6); }
   else if (d.kind === 'stove') { for (const dx of [-26, 26]) { g.strokeStyle = cooking ? '#ff7a2f' : '#8892a8'; g.lineWidth = 5; g.beginPath(); g.arc(cx + dx, cy, 17, 0, Math.PI * 2); g.stroke(); } if (cooking) { g.fillStyle = `rgba(255,${120 + Math.sin(t * 20) * 40},40,.8)`; g.beginPath(); g.arc(cx, cy - 4, 6, 0, Math.PI * 2); g.fill(); } }
   else if (d.kind === 'plates') { for (let i = 0; i < 3; i++) { g.fillStyle = '#fff'; g.strokeStyle = '#1d2540'; g.lineWidth = 3; g.beginPath(); g.ellipse(cx, cy + 8 - i * 7, 30, 15, 0, 0, Math.PI * 2); g.fill(); g.stroke(); } }
-  else if (d.kind === 'serve') { hudText(g, '✓', cx, cy - 18, 44, '#fff'); g.fillStyle = '#ffd23f'; g.beginPath(); g.arc(cx, cy + 34, 12, Math.PI, 0); g.fill(); g.stroke(); }
+  else if (d.kind === 'serve') { hudText(g, ':check:', cx, cy - 18, 44, '#fff'); g.fillStyle = '#ffd23f'; g.beginPath(); g.arc(cx, cy + 34, 12, Math.PI, 0); g.fill(); g.stroke(); }
   else if (d.kind === 'trash') { g.fillStyle = '#2b3550'; g.fillRect(cx - 22, cy - 18, 44, 40); g.strokeStyle = '#1d2540'; g.strokeRect(cx - 22, cy - 18, 44, 40); g.fillStyle = '#2b3550'; g.fillRect(cx - 28, cy - 24, 56, 8); }
 }
 

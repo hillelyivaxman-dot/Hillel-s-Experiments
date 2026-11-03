@@ -48,7 +48,7 @@ function message(lang: string, m: any, name: (id: string) => string): string {
     case 'coin': return T(lang, `${n} מקבל/ת ${m.n} מטבעות`, `${n} gets ${m.n} coins`);
     case 'trap': return T(lang, `${n} נתפס/ה במלכודת: −3`, `${n} hit a trap: −3`);
     case 'power': return T(lang, `${n} קיבל/ה כוח מיוחד!`, `${n} got a power card!`);
-    case 'star': return T(lang, `${n} קנה/תה כוכב! ⭐`, `${n} bought a star! ⭐`);
+    case 'star': return T(lang, `${n} קנה/תה כוכב! :star:`, `${n} bought a star! :star:`);
     case 'passStart': return T(lang, `${n} עבר/ה בבית: +2`, `${n} passed Home: +2`);
     case 'duel': return T(lang, `דו־קרב! ${name(m.a)} נגד ${name(m.b)}`, `DUEL! ${name(m.a)} vs ${name(m.b)}`);
     case 'duelResult': return m.w ? T(lang, `${name(m.w)} גונב/ת 3 מטבעות`, `${name(m.w)} steals 3 coins`) : T(lang, 'תיקו!', 'A draw!');
@@ -57,7 +57,7 @@ function message(lang: string, m: any, name: (id: string) => string): string {
       const c = m.c;
       const t = c === 'plus6' ? ['+6 מטבעות', '+6 coins'] : c === 'minus4' ? ['−4 מטבעות', '−4 coins'] : c === 'plus2' ? ['+2 מטבעות', '+2 coins']
         : c === 'swap' ? [`החלפת מקום עם ${name(m.o)}`, `swaps places with ${name(m.o)}`] : c === 'steal' ? [`גונב/ת מ־${name(m.o)}`, `steals from ${name(m.o)}`] : ['קדימה 3 משבצות', 'jumps ahead 3'];
-      return `❓ ${n}: ${T(lang, t[0], t[1])}`;
+      return `:q: ${n}: ${T(lang, t[0], t[1])}`;
     }
     default: return '';
   }
@@ -117,7 +117,7 @@ export const boardRenderer: Renderer = {
       g.fillStyle = f.turn === p.id ? 'rgba(255,210,63,.22)' : 'rgba(255,255,255,.07)';
       g.beginPath(); g.roundRect(x - 14, y - 18, 330, 36, 14); g.fill();
       hudText(g, `${i + 1}. ${info.name}`, x, y, 22, info.color, 'left');
-      hudText(g, `${p.s}★  ${p.c}c${p.w ? (p.w === 'double' ? '  ×2' : '  ✋') : ''}`, x + 312, y, 22, '#fff', 'right');
+      hudText(g, `${p.s}:star:  ${p.c}c${p.w ? (p.w === 'double' ? '  ×2' : '  :hand:') : ''}`, x + 312, y, 22, '#fff', 'right');
     });
     // dice + message / minigame
     const dx = cx + 150;

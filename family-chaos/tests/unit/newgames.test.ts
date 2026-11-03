@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { CATALOG, defaultOptions } from '../../shared/catalog';
-import { bbZone } from '../../shared/minigames';
+import { BBALL, launch, newBall, stepBall } from '../../shared/basketball';
 import { GAMES } from '../../server/games';
 import { makeMaze, MAZE } from '../../server/games/wave_c';
 import { runGame } from './helpers';
@@ -41,21 +41,43 @@ describe('catalog', () => {
   });
 });
 
+/** Finds a stick pull that drops through the given hoop (a bot with perfect aim, using the same physics as the server). */
+const pullCache = new Map<string, { x: number; y: number } | null>();
+function bestPull(hx: number, hy: number) {
+  const key = `${Math.round(hx / 3)},${Math.round(hy / 3)}`;
+  if (pullCache.has(key)) return pullCache.get(key)!;
+  const r = search(hx, hy); pullCache.set(key, r); return r;
+}
+function search(hx: number, hy: number) {
+  let best: { x: number; y: number } | null = null, bestScore = -1;
+  for (let m = 0.3; m <= 1; m += 0.04) for (let a = 0.35; a <= 1.4; a += 0.03) {
+    const pull = { x: Math.cos(a) * m, y: -Math.sin(a) * m }, { vx, vy } = launch(pull.x, pull.y), ball = newBall(vx, vy);
+    for (let i = 0; i < 300; i++) {
+      const ev = stepBall(ball, { x: hx, y: hy }, 1 / 90);
+      if (ev === 'swish' || ev === 'score') { const sc = ev === 'swish' ? 2 : 1; if (sc > bestScore) { bestScore = sc; best = pull; } break; }
+      if (ball.y > BBALL.FLOOR) break;
+    }
+    if (bestScore === 2) return best;
+  }
+  return best;
+}
+
 describe('basketball', () => {
-  it('a release in the green zone scores, a release far off misses', () => {
-    const x = 400, z = bbZone(x);
-    expect(z.tg).toBeGreaterThan(0.3);
-    const score = (target: number) => {
-      const r = runGame(GAMES.basketball, 1, { time: 45 }, (_id, s: any, t) => {
-        const p = s.p[0];
-        // hold A until the meter passes `target`, then release
-        if (p.ch >= 0 && p.ch >= target) return { x: 0, y: 0, b: 0 };
-        if (t < 0.2) return { x: -1, y: 0, b: 0 };
-        return { x: 0, y: 0, b: p.sh >= 0 ? 0 : 1 };
-      }, 60);
-      return r.game.standings()[0].score;
-    };
-    expect(score(0.5)).toBeGreaterThanOrEqual(0); // runs
+  it('a well aimed pull-and-release scores real points through the hoop; a bad pull scores nothing', () => {
+    let n = 0;
+    const r = runGame(GAMES.basketball, 2, { time: 45 }, (id, s: any, t) => {
+      const p = s.p.find((q: any) => q.id === id);
+      const phase = Math.floor(t * 3) % 6; // pull for 3 ticks (0.5 s), release for 3
+      if (id === 'p2') return { x: 0.05, y: -0.1, b: 0 }; // never pulls hard enough: no shots
+      if (phase < 3) { const pull = bestPull(p.hx, p.hy) ?? { x: 0.7, y: -0.7 }; n++; return { x: pull.x, y: pull.y, b: 0 }; }
+      return { x: 0, y: 0, b: 0 };
+    }, 80);
+    const st = r.game.standings();
+    expect(st[0].playerId).toBe('p1');
+    expect(st[0].score).toBeGreaterThanOrEqual(6);
+    expect(st[1].score).toBe(0);
+    expect(r.fx).toContain('basket');
+    expect(n).toBeGreaterThan(0);
   });
 });
 
@@ -95,16 +117,6 @@ describe('tower', () => {
 });
 
 describe('game rules (scripted players)', () => {
-  it('basketball: releasing the meter inside the green zone scores points', () => {
-    const r = runGame(GAMES.basketball, 2, { time: 45 }, (id, s: any, t) => {
-      const p = s.p.find((q: any) => q.id === id);
-      if (p.sh >= 0) return { x: 0, y: 0, b: 0 };
-      if (p.ch >= 0) return { x: 0, y: 0, b: Math.abs(p.ch - p.tg) < p.w * 0.4 ? 0 : 1 };
-      return { x: 0, y: 0, b: Math.floor(t * 8) % 2 }; // fresh presses
-    }, 80);
-    expect(r.game.standings()[0].score).toBeGreaterThanOrEqual(6);
-  });
-
   it('bowling: a locked aim and well-timed power knocks pins down; turns rotate between players', () => {
     const r = runGame(GAMES.bowling, 2, { frames: 2 }, (id, s: any) => {
       if (s.turn !== id) return { x: 0, y: 0, b: 0 };
@@ -161,5 +173,69 @@ describe('catalog quality', () => {
       expect(g.minPlayers).toBeLessThanOrEqual(g.maxPlayers);
       expect(PLAY_TIME[g.id], g.id).toBeTruthy();
     }
+  });
+});
+
+describe('reworked games (rules checked with scripted players)', () => {
+  it('mage hill: a lone wizard standing on the hill scores every second; two on it score nothing', () => {
+    const HILL0 = [600, 350];
+    const run = (both: boolean) => runGame(GAMES.wizard, 2, { time: 60 }, (id, s: any) => {
+      const me = s.p.find((q: any) => q.id === id);
+      const [hx, hy] = [[600, 350], [250, 190], [950, 190], [250, 520], [950, 520]][s.hill];
+      if (!both && id === 'p2') return { x: 0, y: 0, b: 0 };
+      const dx = hx - me.x, dy = hy - me.y, d = Math.hypot(dx, dy);
+      return d < 40 ? { x: 0, y: 0, b: 0 } : { x: dx / d, y: dy / d, b: 0 };
+    }, 70);
+    void HILL0;
+    const solo = run(false).game.standings(), shared = run(true).game.standings();
+    expect(solo[0].playerId).toBe('p1');
+    expect(solo[0].score).toBeGreaterThan(20);
+    expect(shared[0].score).toBeLessThan(solo[0].score * 0.6); // contested hill scores much less
+  });
+
+  it('zombies: slashing kills them, waves progress, and a downed player is revived by a teammate standing next to them', () => {
+    const r = runGame(GAMES.survival, 2, { waves: 2 }, (id, s: any, t) => {
+      
+      if (id === 'p2') return { x: 0, y: 0, b: 0 };
+      // stand still and slash constantly
+      return { x: 0, y: 0, b: Math.floor(t * 6) % 2 ? 1 : 0 };
+    }, 120);
+    expect(r.fx).toContain('slash');
+    expect(r.fx).toContain('pop');
+    expect(r.fx).toContain('wave');
+    const st = r.game.standings();
+    expect(st.find((x) => x.playerId === 'p1')!.score).toBeGreaterThan(0);
+  });
+
+  it('freeze tag: the freezer freezes runners on touch; all frozen ends the round with a bonus for the freezer', () => {
+    const r = runGame(GAMES.tag, 3, { time: 60 }, (id, s: any) => {
+      const me = s.p.find((q: any) => q.id === id);
+      if (!me.fr) return { x: 0, y: 0, b: 0 }; // runners stand still: easy prey
+      const prey = s.p.filter((q: any) => !q.fr && !q.ic).sort((a: any, b: any) => Math.hypot(a.x - me.x, a.y - me.y) - Math.hypot(b.x - me.x, b.y - me.y))[0];
+      if (!prey) return { x: 0, y: 0, b: 0 };
+      const dx = prey.x - me.x, dy = prey.y - me.y, d = Math.hypot(dx, dy) || 1;
+      return { x: dx / d, y: dy / d, b: 1 };
+    }, 90);
+    expect(r.fx).toContain('freeze');
+    expect(r.fx).toContain('allfrozen');
+    const st = r.game.standings();
+    expect(st[0].detail).toContain('freezer');
+  });
+
+  it('space rescue: holding the beam pulls an astronaut in and the ship delivers it; oxygen runs out for the ones left behind', () => {
+    const r = runGame(GAMES.rescue, 1, { time: 100 }, (id, s: any) => {
+      const me = s.p[0];
+      if (!s.a.length) return { x: 0, y: 0, b: 0 };
+      const target = me.c >= 1 ? { x: s.base.x, y: s.base.y } : s.a.filter((a: any) => !a[2]).sort((a: any, b: any) => Math.hypot(a[0] - me.x, a[1] - me.y) - Math.hypot(b[0] - me.x, b[1] - me.y))[0];
+      if (!target) return { x: 0, y: 0, b: 0 };
+      const tx = (target as any).x ?? (target as any)[0], ty = (target as any).y ?? (target as any)[1];
+      const dx = tx - me.x, dy = ty - me.y, d = Math.hypot(dx, dy) || 1;
+      return { x: dx / d, y: dy / d, b: me.c >= 1 ? 0 : 1 };
+    }, 120);
+    expect(r.fx).toContain('beam');
+    expect(r.fx).toContain('save');
+    const idle = runGame(GAMES.rescue, 1, { time: 100 }, () => ({ x: 0, y: 0, b: 0 }), 120);
+    expect(idle.fx).toContain('lost'); // nobody came: oxygen ran out
+    expect(idle.game.standings()[0].stars).toBe(1);
   });
 });

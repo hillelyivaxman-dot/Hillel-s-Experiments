@@ -113,7 +113,7 @@ export const vanishGame: GameModule = {
       standings(): StandingRow[] {
         // survivors first (latest elimination / still alive = best)
         return [...ps].sort((a, b) => (b.alive ? 1e9 : b.diedAt) - (a.alive ? 1e9 : a.diedAt)).map((p) => ({
-          playerId: p.id, score: Math.round((p.alive ? time : p.diedAt) * 10) / 10, detail: p.alive ? '👑' : `${p.diedAt.toFixed(1)}s`, tie: p.alive ? 1e9 : Math.round(p.diedAt * 10),
+          playerId: p.id, score: Math.round((p.alive ? time : p.diedAt) * 10) / 10, detail: p.alive ? ':crown:' : `${p.diedAt.toFixed(1)}s`, tie: p.alive ? 1e9 : Math.round(p.diedAt * 10),
         }));
       },
     };

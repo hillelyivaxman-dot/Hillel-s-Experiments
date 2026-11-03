@@ -230,7 +230,7 @@ export const bumperGame: GameModule = {
         return sorted.map((b) => ({
           playerId: b.id,
           score: b.ko,
-          detail: `${b.lives}♥ · ${b.ko} KO`,
+          detail: `${b.lives}:heart: · ${b.ko} KO`,
           tie: b.lives > 0 ? b.lives * 1000 + b.ko : -Math.round((1000 - b.outAt) * 30),
         }));
       },

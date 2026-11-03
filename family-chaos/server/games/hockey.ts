@@ -139,7 +139,7 @@ export const hockeyGame: GameModule = {
         const win = score[0] === score[1] ? -1 : score[0] > score[1] ? 0 : 1;
         const rank = (m: Mallet) => (win === -1 ? 1 : m.team === win ? 2 : 0);
         return [...ms].sort((a, b) => rank(b) - rank(a) || b.goals - a.goals).map((m) => ({
-          playerId: m.id, score: m.goals, detail: `${m.goals} 🏒 · ${score[m.team]}–${score[1 - m.team]}`, tie: rank(m),
+          playerId: m.id, score: m.goals, detail: `${m.goals} goals · ${score[m.team]}–${score[1 - m.team]}`, tie: rank(m),
         }));
       },
     };

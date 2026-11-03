@@ -47,9 +47,9 @@ export const reactionRenderer: Renderer = {
       drawCritter(g, x, y + jump, Math.min(52, gap * 0.3), info.color, info.avatar, { t, hurt: !!s.e, look: -Math.PI / 2 });
       nameTag(g, x, y + 80, info.name, info.color, 20);
       hudText(g, `${s.sc}`, x, y - 90, 34, '#ffd23f');
-      if (s.e) hudText(g, '✖', x, y - 140, 40, '#ff4d6d');
+      if (s.e) hudText(g, ':cross:', x, y - 140, 40, '#ff4d6d');
       else if (s.ms >= 0) hudText(g, `${s.ms}ms`, x, y - 140, 30, f.w === s.id ? '#5dfc8d' : '#fff');
-      if ((f.ph === 'show' || f.ph === 'done') && f.w === s.id) hudText(g, '👑', x, y - 190, 48);
+      if ((f.ph === 'show' || f.ph === 'done') && f.w === s.id) hudText(g, ':crown:', x, y - 190, 48);
     });
     fx.draw(g);
   },

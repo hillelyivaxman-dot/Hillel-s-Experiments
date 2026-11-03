@@ -97,7 +97,7 @@ test('owner setup: the setup code makes a signed-in user OWNER; only that browse
   for (const n of ['One', 'Two']) await newPhone(browser, `${HTTP}/join/${code}`, n);
   await host.getByTestId('crown-btn').click();
   await host.locator('[data-power="bonus"]').click();
-  await expect(host.locator('.player-tile__meta', { hasText: '⭐3' })).toHaveCount(1);
+  await expect(host.locator('.player-tile__meta', { hasText: /\b3\b/ })).toHaveCount(1);
 
   // an anonymous host never sees the crown
   const { h: anon } = await newHost(browser);

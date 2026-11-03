@@ -153,7 +153,7 @@ export const soccerGame: GameModule = {
         const rank = (p: Pl) => (win === -1 ? 1 : p.team === win ? 2 : 0);
         return [...ps].sort((a, b) => rank(b) - rank(a) || b.goals - a.goals).map((p) => ({
           playerId: p.id, score: p.goals,
-          detail: `${p.goals} ⚽ · ${score[p.team]}–${score[1 - p.team]}`,
+          detail: `${p.goals} goals · ${score[p.team]}–${score[1 - p.team]}`,
           tie: rank(p),
         }));
       },

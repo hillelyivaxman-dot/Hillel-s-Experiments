@@ -1,9 +1,11 @@
 import { sfx } from '../sound';
 import { drawCritter, nameTag } from './critter';
+import { drawIcon } from './icons';
+import { hearts } from './kit';
 import { hudText, starfield, type Renderer } from './types';
 
 const POW_COLOR: Record<string, string> = { mega: '#ff4d6d', shield: '#3ec1ff', speed: '#ffd23f' };
-const POW_ICON: Record<string, string> = { mega: '⬆', shield: '⛨', speed: '⚡' };
+const POW_ICON: Record<string, string> = { mega: 'star', shield: 'shield', speed: 'bolt' };
 
 export const bumperRenderer: Renderer = {
   world: { x: -480, y: -470, w: 960, h: 940 },
@@ -47,11 +49,7 @@ export const bumperRenderer: Renderer = {
       g.arc(0, 0, 20 * pulse, 0, Math.PI * 2);
       g.fill();
       g.shadowBlur = 0;
-      g.fillStyle = '#120a2a';
-      g.font = '900 22px Rubik, sans-serif';
-      g.textAlign = 'center';
-      g.textBaseline = 'middle';
-      g.fillText(POW_ICON[u.k], 0, 1);
+      drawIcon(g, POW_ICON[u.k], 0, 0, 26);
       g.restore();
     }
 
@@ -99,9 +97,7 @@ export const bumperRenderer: Renderer = {
         g.shadowBlur = 0;
       }
       nameTag(g, p.x, p.y - p.r - 30, info.name, info.color, 16);
-      g.font = '16px sans-serif';
-      g.textAlign = 'center';
-      g.fillText('❤'.repeat(Math.max(0, p.l)), p.x, p.y - p.r - 52);
+      hearts(g, p.x, p.y - p.r - 52, p.l, Math.max(p.l, 1), 14);
     }
     fx.draw(g);
   },
@@ -112,7 +108,7 @@ export const bumperRenderer: Renderer = {
     for (const p of f.p) {
       const info = players.get(p.id);
       if (!info) continue;
-      hudText(g, `${info.name}  ${'❤'.repeat(Math.max(0, p.l))}  ${p.k} KO`, 24, y, 22, p.l > 0 ? info.color : '#666', 'left');
+      hudText(g, `${info.name}  ${':heart:'.repeat(Math.max(0, p.l))}  ${p.k} KO`, 24, y, 22, p.l > 0 ? info.color : '#666', 'left');
       y += 32;
     }
   },
@@ -127,7 +123,7 @@ export const bumperRenderer: Renderer = {
         break;
       case 'fall':
         fx.burst(e.x, e.y, col, 40, 420, 8);
-        fx.text(e.x, e.y - 40, e.out ? 'OUT!' : '−1 ❤', col, e.out ? 52 : 38);
+        fx.text(e.x, e.y - 40, e.out ? 'OUT!' : '−1 :heart:', col, e.out ? 52 : 38);
         fx.kick(10);
         sfx.fall();
         break;

@@ -16,7 +16,7 @@ function trackPath(id: number) {
   return p;
 }
 
-const ITEM_ICON: Record<string, string> = { turbo: '🚀', oil: '🛢', shield: '🛡' };
+const ITEM_ICON: Record<string, string> = { turbo: ':rocket:', oil: ':oil:', shield: ':shield:' };
 
 type Kind = 'kart' | 'boat' | 'bike';
 const THEME: Record<Kind, { bg: string; stripe: string; sand: string; curb1: string; curb2: string; road: string; line: string }> = {
@@ -199,11 +199,11 @@ function make(kind: Kind): Renderer { const TH = THEME[kind]; return {
       const c = f.c.find((cc: any) => cc.id === id);
       const info = players.get(id);
       if (!c || !info) return;
-      const right = c.fin ? '🏁' : `${c.lap}/${f.laps}`;
+      const right = c.fin ? ':flag:' : `${c.lap}/${f.laps}`;
       hudText(g, `${i + 1}. ${info.name}  ${right} ${c.it ? ITEM_ICON[c.it] : ''}`, x, y, 22, info.color, 'right');
       y += 32;
     });
-    if (f.end >= 0) hudText(g, `🏁 ${f.end}`, W / 2, 48, 44, '#ffd23f');
+    if (f.end >= 0) hudText(g, `:flag: ${f.end}`, W / 2, 48, 44, '#ffd23f');
   },
 
   event(e, f, { players, fx }) {

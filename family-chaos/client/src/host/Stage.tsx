@@ -1,4 +1,5 @@
 import gsap from 'gsap';
+import { Icon } from '../ui/icons';
 import { useEffect, useRef, useState } from 'react';
 import { getMeta } from '../../../shared/catalog';
 import type { AdminAction, PlayerInfo, RoomState } from '../../../shared/protocol';
@@ -47,7 +48,7 @@ export function Stage({ room, conn, act, watch }: { room: RoomState; conn: Conn;
           if (e.k === 'god_confetti') { for (let i = 0; i < 6; i++) fx.burst(w.x + Math.random() * w.w, w.y + Math.random() * w.h * 0.5, ['#ff4d6d', '#3ec1ff', '#ffd23f', '#5dfc8d'][i % 4], 30, 500, 8, 400); sfx.win(); }
           else if (e.k === 'god_quake') { fx.kick(24); sfx.boom(); }
           else if (e.k === 'god_flash') { fx.blink('#ffffff', 0.9); sfx.power(); }
-          else { fx.text(cx, cy, '👑', '#ffd23f', 160); fx.burst(cx, cy, '#ffd23f', 40, 450, 8); sfx.win(); }
+          else { fx.text(cx, cy, ':crown:', '#ffd23f', 160); fx.burst(cx, cy, '#ffd23f', 40, 450, 8); sfx.win(); }
           continue;
         }
         renderer.event?.(e, m.f, info());
@@ -98,13 +99,13 @@ export function Stage({ room, conn, act, watch }: { room: RoomState; conn: Conn;
         <div className="stage__controls">
           {room.phase === 'paused'
             ? <button className="chip" onClick={() => act({ a: 'resume' })}>▶ {t('resume')}</button>
-            : <button className="chip" onClick={() => act({ a: 'pause' })}>⏸ {t('pause')}</button>}
-          <button className="chip" onClick={() => act({ a: 'end' })}>⏹ {t('endRound')}</button>
+            : <button className="chip" onClick={() => act({ a: 'pause' })}><Icon name="pause" /> {t('pause')}</button>}
+          <button className="chip" onClick={() => act({ a: 'end' })}><Icon name="stop" /> {t('endRound')}</button>
         </div>
       )}
       {room.phase === 'countdown' && <Countdown endsAt={room.countdownEndsAt!} conn={conn} title={l(meta.name)} howTo={l(meta.howTo)} />}
       {room.phase === 'paused' && (
-        <div className="overlay"><div className="overlay__big">⏸ {t('paused')}</div>
+        <div className="overlay"><div className="overlay__big"><Icon name="pause" /> {t('paused')}</div>
           {!watch && <button className="btn btn--primary btn--xl" onClick={() => act({ a: 'resume' })}>▶ {t('resume')}</button>}
         </div>
       )}

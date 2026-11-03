@@ -1,5 +1,6 @@
 // Lightweight particle / screen-shake / floating-text system for game screens.
 import { prefs } from '../prefs';
+import { hudText } from './types';
 
 interface Particle { x: number; y: number; vx: number; vy: number; life: number; max: number; size: number; color: string; g: number }
 interface Floater { x: number; y: number; text: string; color: string; life: number; size: number }
@@ -58,16 +59,9 @@ export class FX {
       g.fill();
     }
     g.globalAlpha = 1;
-    g.textAlign = 'center';
-    g.textBaseline = 'middle';
     for (const f of this.floats) {
       g.globalAlpha = Math.min(1, f.life * 2);
-      g.font = `900 ${f.size}px Rubik, system-ui, sans-serif`;
-      g.lineWidth = 6;
-      g.strokeStyle = 'rgba(10,5,30,0.9)';
-      g.strokeText(f.text, f.x, f.y);
-      g.fillStyle = f.color;
-      g.fillText(f.text, f.x, f.y);
+      hudText(g, f.text, f.x, f.y, f.size, f.color);
     }
     g.globalAlpha = 1;
   }

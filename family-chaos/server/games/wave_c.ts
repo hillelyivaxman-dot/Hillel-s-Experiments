@@ -83,38 +83,45 @@ export const mazeGame: GameModule = {
 };
 
 // ---------------- SPACE RESCUE (co-op) ----------------
-interface Ship extends Body { id: string; carry: number[]; stun: number; boost: number; saved: number; cd: number }
-interface Astro { id: number; x: number; y: number; vx: number; vy: number; by: string | null; saved: boolean }
+// Fly an inertial ship (it drifts!). HOLD the beam button to tractor stranded astronauts toward you, bring up to two to the station.
+// Every astronaut has an oxygen timer: if it runs out they are lost. Rocks stun your ship and drop your passengers.
+interface Ship extends Body { id: string; carry: number[]; stun: number; saved: number; beam: boolean }
+interface Astro { id: number; x: number; y: number; vx: number; vy: number; by: string | null; saved: boolean; lost: boolean; o2: number }
 interface Rock { id: number; x: number; y: number; vx: number; vy: number; r: number }
+const O2 = 34;
 export const spaceRescueGame: GameModule = {
   id: 'rescue',
   create(ctx: GameContext) {
-    const TIME = ctx.options.time ?? 90;
+    const TIME = ctx.options.time ?? 100;
     const base = { x: 150, y: H / 2, r: 80 };
     const ring = spawnRing(ctx.players.length, 60, base.x, base.y);
-    const ships: Ship[] = ctx.players.map((p, i) => ({ id: p.id, x: ring[i].x, y: ring[i].y, vx: 0, vy: 0, r: 20, m: 1, carry: [], stun: 0, boost: 0, saved: 0, cd: 0 }));
+    const ships: Ship[] = ctx.players.map((p, i) => ({ id: p.id, x: ring[i].x, y: ring[i].y, vx: 0, vy: 0, r: 20, m: 1, carry: [], stun: 0, saved: 0, beam: false }));
     const TARGET = 4 + ctx.players.length;
-    const astros: Astro[] = Array.from({ length: TARGET }, (_, i) => ({ id: i, x: 420 + ctx.rand() * 700, y: 60 + ctx.rand() * (H - 120), vx: (ctx.rand() - 0.5) * 30, vy: (ctx.rand() - 0.5) * 30, by: null, saved: false }));
+    const astros: Astro[] = Array.from({ length: TARGET }, (_, i) => ({ id: i, x: 420 + ctx.rand() * 700, y: 60 + ctx.rand() * (H - 120), vx: (ctx.rand() - 0.5) * 30, vy: (ctx.rand() - 0.5) * 30, by: null, saved: false, lost: false, o2: O2 - (i % 3) * 5 }));
     const rocks: Rock[] = Array.from({ length: 9 }, (_, i) => ({ id: i, x: 380 + ctx.rand() * 780, y: ctx.rand() * H, vx: (ctx.rand() - 0.5) * 120, vy: (ctx.rand() - 0.5) * 120, r: 28 + ctx.rand() * 26 }));
-    let time = 0, saved = 0;
-    const hud = () => ships.forEach((s) => ctx.hud(s.id, { carry: s.carry.length, saved, target: TARGET, left: Math.max(0, Math.ceil(TIME - time)), stun: s.stun > 0 ? 1 : 0, boost: s.cd <= 0 ? 1 : 0 }));
+    let time = 0, saved = 0, lost = 0;
+    const hud = () => ships.forEach((s) => ctx.hud(s.id, { carry: s.carry.length, saved, lost, target: TARGET, left: Math.max(0, Math.ceil(TIME - time)), stun: s.stun > 0 ? 1 : 0, boost: s.beam ? 1 : 0 }));
     hud();
     return {
-      onPress(pid, b) { const s = ships.find((q) => q.id === pid); if (s && b === BTN.A && s.cd <= 0 && s.stun <= 0) { s.cd = 3; s.boost = 0.6; ctx.fx('boost', { id: pid }); hud(); } },
       tick(dt) {
         time += dt;
         for (const s of ships) {
-          const i = ctx.input(s.id), had = s.cd <= 0;
-          s.stun = Math.max(0, s.stun - dt); s.cd = Math.max(0, s.cd - dt); s.boost = Math.max(0, s.boost - dt);
+          const i = ctx.input(s.id);
+          s.stun = Math.max(0, s.stun - dt);
           const k = s.stun > 0 ? 0.2 : 1;
-          s.vx += i.x * 900 * k * dt + (s.boost > 0 ? Math.sign(i.x) * 1200 * dt : 0); s.vy += i.y * 900 * k * dt + (s.boost > 0 ? Math.sign(i.y) * 1200 * dt : 0); damp(s, 0.35, dt);
-          const sp = Math.hypot(s.vx, s.vy), cap = s.boost > 0 ? 520 : 300 - s.carry.length * 25; if (sp > cap) { s.vx *= cap / sp; s.vy *= cap / sp; }
+          const beam = (i.b & BTN.A) !== 0 && s.stun <= 0;
+          if (beam !== s.beam) { s.beam = beam; if (beam) ctx.fx('beam', { id: s.id }); hud(); }
+          s.vx += i.x * 760 * k * dt; s.vy += i.y * 760 * k * dt; damp(s, 0.5, dt); // drifty: coasts a while after you let go
+          const sp = Math.hypot(s.vx, s.vy), cap = 290 - s.carry.length * 25; if (sp > cap) { s.vx *= cap / sp; s.vy *= cap / sp; }
           integrate(s, dt);
           if (s.x < s.r || s.x > W - s.r) { s.x = Math.max(s.r, Math.min(W - s.r, s.x)); s.vx *= -0.5; }
           if (s.y < s.r || s.y > H - s.r) { s.y = Math.max(s.r, Math.min(H - s.r, s.y)); s.vy *= -0.5; }
-          if (!had && s.cd <= 0) hud();
-          // pick up (max 2) / deliver at base
-          for (const a of astros) if (!a.saved && a.by === null && s.carry.length < 2 && s.stun <= 0 && Math.hypot(a.x - s.x, a.y - s.y) < s.r + 18) { a.by = s.id; s.carry.push(a.id); ctx.fx('grab', { id: s.id }); hud(); }
+          for (const a of astros) {
+            if (a.saved || a.lost || a.by !== null) continue;
+            const d = Math.hypot(a.x - s.x, a.y - s.y);
+            if (s.beam && d < 200 && d > 1) { a.vx += ((s.x - a.x) / d) * 380 * dt; a.vy += ((s.y - a.y) / d) * 380 * dt; } // tractor beam
+            if (s.carry.length < 2 && s.stun <= 0 && d < s.r + 16) { a.by = s.id; s.carry.push(a.id); ctx.fx('grab', { id: s.id }); hud(); }
+          }
           if (s.carry.length && Math.hypot(s.x - base.x, s.y - base.y) < base.r) {
             for (const id of s.carry) { astros[id].saved = true; astros[id].by = null; s.saved++; saved++; }
             ctx.fx('save', { id: s.id, n: s.carry.length }); ctx.buzz(s.id, 100); s.carry = []; hud();
@@ -131,16 +138,20 @@ export const spaceRescueGame: GameModule = {
           }
         }
         for (const a of astros) {
-          if (a.saved) continue;
-          if (a.by) { const s = ships.find((q) => q.id === a.by)!; const k = s.carry.indexOf(a.id); a.x += (s.x - 26 * (k + 1) * Math.sign(s.vx || 1) - a.x) * 0.2; a.y += (s.y + 14 * k - a.y) * 0.2; }
-          else { a.x += a.vx * dt; a.y += a.vy * dt; if (a.x < 260 || a.x > W - 20) a.vx *= -1; if (a.y < 20 || a.y > H - 20) a.vy *= -1; a.x = Math.max(250, Math.min(W - 10, a.x)); }
+          if (a.saved || a.lost) continue;
+          if (a.by) { const s = ships.find((q) => q.id === a.by)!; const k = s.carry.indexOf(a.id); a.x += (s.x - 26 * (k + 1) * Math.sign(s.vx || 1) - a.x) * 0.2; a.y += (s.y + 14 * k - a.y) * 0.2; continue; }
+          a.o2 -= dt;
+          if (a.o2 <= 0) { a.lost = true; lost++; ctx.fx('lost', { x: Math.round(a.x), y: Math.round(a.y) }); hud(); continue; }
+          a.vx *= Math.exp(-0.4 * dt); a.vy *= Math.exp(-0.4 * dt);
+          a.x += a.vx * dt; a.y += a.vy * dt;
+          if (a.x < 260 || a.x > W - 20) a.vx *= -1; if (a.y < 20 || a.y > H - 20) a.vy *= -1; a.x = Math.max(250, Math.min(W - 10, a.x)); a.y = Math.max(15, Math.min(H - 15, a.y));
         }
       },
-      snapshot: () => ({ t: r1(time), left: Math.max(0, Math.ceil(TIME - time)), saved, target: TARGET, base, p: ships.map((s) => ({ id: s.id, x: Math.round(s.x), y: Math.round(s.y), c: s.carry.length, st: s.stun > 0 ? 1 : 0, bo: s.boost > 0 ? 1 : 0 })), a: astros.filter((a) => !a.saved).map((a) => [Math.round(a.x), Math.round(a.y), a.by ? 1 : 0, a.id]), r: rocks.map((r) => [Math.round(r.x), Math.round(r.y), Math.round(r.r)]) }),
-      isOver: () => saved >= TARGET || time >= TIME,
+      snapshot: () => ({ t: r1(time), left: Math.max(0, Math.ceil(TIME - time)), saved, lost, target: TARGET, base, p: ships.map((s) => ({ id: s.id, x: Math.round(s.x), y: Math.round(s.y), c: s.carry.length, st: s.stun > 0 ? 1 : 0, bo: s.beam ? 1 : 0 })), a: astros.filter((a) => !a.saved && !a.lost).map((a) => [Math.round(a.x), Math.round(a.y), a.by ? 1 : 0, a.id, Math.round((a.o2 / O2) * 10) / 10]), r: rocks.map((r) => [Math.round(r.x), Math.round(r.y), Math.round(r.r)]) }),
+      isOver: () => saved + lost >= TARGET || time >= TIME,
       standings(): StandingRow[] {
         const stars = saved >= TARGET ? 3 : saved >= TARGET * 0.6 ? 2 : 1;
-        return [...ships].sort((a, b) => b.saved - a.saved).map((s) => ({ playerId: s.id, score: s.saved, detail: `${s.saved} 🧑‍🚀 (${saved}/${TARGET})`, stars }));
+        return [...ships].sort((a, b) => b.saved - a.saved).map((s) => ({ playerId: s.id, score: s.saved, detail: `${s.saved} rescued (${saved}/${TARGET})`, stars }));
       },
     };
   },
@@ -201,7 +212,7 @@ export const evacuationGame: GameModule = {
       isOver: () => time >= TIME || got >= total,
       standings(): StandingRow[] {
         const stars = got >= total ? 3 : got >= total * 0.55 ? 2 : 1;
-        return [...ps].sort((a, b) => b.val - a.val).map((p) => ({ playerId: p.id, score: p.val, detail: `${p.val} 💰 (${got}/${total})`, stars }));
+        return [...ps].sort((a, b) => b.val - a.val).map((p) => ({ playerId: p.id, score: p.val, detail: `${p.val} :coin: (${got}/${total})`, stars }));
       },
     };
   },
@@ -257,7 +268,7 @@ export const huntGame: GameModule = {
         return { id: p.id, x: Math.round(p.x), y: Math.round(p.y), dg: p.dig > 0 ? 1 : 0, st: p.stun > 0 ? 1 : 0, s: p.score, pa: tg ? r1(Math.atan2(tg.y - p.y, tg.x - p.x)) : null };
       }) }),
       isOver: () => time >= TIME,
-      standings: (): StandingRow[] => [...ps].sort((a, b) => b.score - a.score).map((p) => ({ playerId: p.id, score: p.score, detail: `${p.score} 💰`, tie: p.score })),
+      standings: (): StandingRow[] => [...ps].sort((a, b) => b.score - a.score).map((p) => ({ playerId: p.id, score: p.score, detail: `${p.score} :coin:`, tie: p.score })),
     };
   },
 };
@@ -291,7 +302,7 @@ export const towerGame: GameModule = {
       },
       snapshot: () => ({ t: r1(time), left: Math.max(0, Math.ceil(TIME - time)), p: ps.map((p) => ({ id: p.id, b: p.blocks.map((b) => [Math.round(b.x), Math.round(b.w)]), sw: p.over ? null : Math.round(swingX(p)), w: Math.round(p.w), ov: p.over ? 1 : 0, fl: r1(p.fall), h: p.blocks.length - 1, pf: p.perfect })) }),
       isOver: () => time >= TIME || ps.every((p) => p.over),
-      standings: (): StandingRow[] => [...ps].sort((a, b) => (b.blocks.length * 10 + b.perfect * 3) - (a.blocks.length * 10 + a.perfect * 3)).map((p) => ({ playerId: p.id, score: p.blocks.length - 1, detail: `${p.blocks.length - 1} 🧱 ${p.perfect ? `· ${p.perfect}✨` : ''}`, tie: p.blocks.length * 10 + p.perfect * 3 })),
+      standings: (): StandingRow[] => [...ps].sort((a, b) => (b.blocks.length * 10 + b.perfect * 3) - (a.blocks.length * 10 + a.perfect * 3)).map((p) => ({ playerId: p.id, score: p.blocks.length - 1, detail: `${p.blocks.length - 1} :brick: ${p.perfect ? `· ${p.perfect}:spark:` : ''}`, tie: p.blocks.length * 10 + p.perfect * 3 })),
     };
   },
 };

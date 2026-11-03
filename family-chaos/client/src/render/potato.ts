@@ -72,10 +72,10 @@ export const potatoRenderer: Renderer = {
 
   hud(g, f, { players, lang }, W) {
     const h = players.get(f.h);
-    if (f.ph === 'play' && h) hudText(g, `💣 ${h.name}`, W / 2, 48, 44, h.color);
+    if (f.ph === 'play' && h) hudText(g, `:bomb: ${h.name}`, W / 2, 48, 44, h.color);
     if (f.ph === 'boom' && f.b) {
       const v = players.get(f.b.id);
-      if (v) hudText(g, `💥 ${v.name} ${lang === 'he' ? 'עף!' : 'is out!'}`, W / 2, 48, 44, v.color);
+      if (v) hudText(g, `:boom: ${v.name} ${lang === 'he' ? 'עף!' : 'is out!'}`, W / 2, 48, 44, v.color);
     }
     hudText(g, `${lang === 'he' ? 'סבב' : 'Round'} ${f.round}`, 24, 40, 26, '#fff', 'left');
   },

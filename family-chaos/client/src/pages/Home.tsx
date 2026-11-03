@@ -1,4 +1,5 @@
 import { useGSAP } from '@gsap/react';
+import { Icon } from '../ui/icons';
 import gsap from 'gsap';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { CATALOG, CATEGORY_NAMES, type Category } from '../../../shared/catalog';
@@ -54,8 +55,7 @@ export function Home() {
   return (
     <div className="home" ref={root}>
       <header className="topbar">
-        {accountsOn && <a className="chip account-chip" href="/account" data-testid="account-link">
-          👤 {me?.signedIn ? me.user!.nickname : t('signIn')}
+        {accountsOn && <a className="chip account-chip" href="/account" data-testid="account-link"><Icon name="user" /> {me?.signedIn ? me.user!.nickname : t('signIn')}
         </a>}
         <SettingsBar />
       </header>
@@ -64,13 +64,13 @@ export function Home() {
         <p className="hero__tagline">{t('tagline')}</p>
         <p className="hero__sub">{t('sub')}</p>
         <div className="hero__cta">
-          <button className="btn btn--primary btn--xl" onClick={() => go('/host')} data-testid="host-btn">📺 {t('host')}</button>
+          <button className="btn btn--primary btn--xl" onClick={() => go('/host')} data-testid="host-btn"><Icon name="tv" /> {t('host')}</button>
           <form className="join-inline" onSubmit={(e) => { e.preventDefault(); go(`/join/${code}`); }}>
             <input
               className="code-input" value={code} maxLength={4} placeholder="ABCD" dir="ltr" aria-label={t('code')}
               onChange={(e) => setCode(e.target.value.toUpperCase().replace(/[^A-Z]/g, ''))}
             />
-            <button className="btn btn--secondary" type="submit">📱 {t('joinPhone')}</button>
+            <button className="btn btn--secondary" type="submit"><Icon name="phone" /> {t('joinPhone')}</button>
           </form>
         </div>
         <div className="hero__crowd" aria-hidden="true">
@@ -91,7 +91,7 @@ export function Home() {
         <h2>{t('library')}</h2>
         <div className="library__tools">
           <input className="search" type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t('searchGames')} aria-label={t('searchGames')} data-testid="game-search" />
-          <button className={`chip ${onlyFavs ? 'is-on' : ''}`} onClick={() => setOnlyFavs((v) => !v)} aria-pressed={onlyFavs} data-testid="favs-toggle">★ {t('favorites')} ({favs.length})</button>
+          <button className={`chip ${onlyFavs ? 'is-on' : ''}`} onClick={() => setOnlyFavs((v) => !v)} aria-pressed={onlyFavs} data-testid="favs-toggle"><Icon name="star" /> {t('favorites')} ({favs.length})</button>
         </div>
         <div className="tabs" role="tablist">
           <button role="tab" aria-selected={cat === 'all'} className={`chip ${cat === 'all' ? 'is-on' : ''}`} onClick={() => setCat('all')}>{t('all')}</button>
@@ -105,7 +105,7 @@ export function Home() {
           {games.map((g) => (
             <div className="game-wrap" key={g.id}>
               <GameCard g={g} showTime onClick={() => go('/host')} />
-              <button className={`fav-btn ${favs.includes(g.id) ? 'is-on' : ''}`} onClick={() => toggleFav(g.id)} aria-pressed={favs.includes(g.id)} aria-label={`${t('favorites')}: ${l(g.name)}`} data-fav={g.id}>★</button>
+              <button className={`fav-btn ${favs.includes(g.id) ? 'is-on' : ''}`} onClick={() => toggleFav(g.id)} aria-pressed={favs.includes(g.id)} aria-label={`${t('favorites')}: ${l(g.name)}`} data-fav={g.id}><Icon name="star" /></button>
             </div>
           ))}
           {!games.length && <p className="muted">{t('noGames')}</p>}

@@ -78,7 +78,7 @@ export const balloonGame: GameModule = {
       tick(dt) { time += dt; for (const p of ps) p.pop = Math.max(0, p.pop - dt); if (Math.floor(time) !== Math.floor(time - dt)) ps.forEach(hud); },
       snapshot: () => ({ t: r1(time), left: Math.max(0, Math.ceil(TIME - time)), p: ps.map((p) => ({ id: p.id, n: p.pumps, b: p.bank, pp: p.pop > 0 ? 1 : 0, pc: p.pops })) }),
       isOver: () => time >= TIME,
-      standings: (): StandingRow[] => [...ps].sort((a, b) => b.bank - a.bank).map((p) => ({ playerId: p.id, score: p.bank, detail: `${p.bank} 🎈 (${p.pops}💥)`, tie: p.bank })),
+      standings: (): StandingRow[] => [...ps].sort((a, b) => b.bank - a.bank).map((p) => ({ playerId: p.id, score: p.bank, detail: `${p.bank} :balloon: (${p.pops}:boom:)`, tie: p.bank })),
     };
   },
 };

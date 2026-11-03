@@ -519,3 +519,14 @@ body { touch-action: manipulation; }
 
 /* choices pads (trivia / puzzle / balloon): big readable symbols */
 .pad__choices--sym .pad-btn__label { font-size: clamp(2.2rem, 12vmin, 5rem); line-height: 1; }
+
+/* phone: short intro over the controller while the countdown runs */
+.phone-game__pad { position: relative; }
+.phone-intro { position: absolute; inset: 0; z-index: 5; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 8px 16px; text-align: center; background: rgba(12, 6, 36, .86); pointer-events: none; animation: introIn .25s ease-out; overflow: hidden; }
+.phone-intro h3 { margin: 0; font-size: clamp(1rem, 4.4vmin, 1.7rem); color: #ffd23f; }
+.phone-intro p { margin: 0; font-size: clamp(.8rem, 3.4vmin, 1.2rem); opacity: .95; max-width: 34em; }
+.phone-intro ul { list-style: none; display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin: 4px 0 0; padding: 0; }
+.phone-intro li { display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; border-radius: 999px; font-weight: 800; font-size: clamp(.75rem, 3vmin, 1.05rem); background: color-mix(in srgb, var(--c) 30%, #1a1040); border: 2px solid var(--c); }
+.phone-intro .pad-icon { width: 1.3em; height: 1.3em; }
+@keyframes introIn { from { opacity: 0; transform: scale(.97); } to { opacity: 1; transform: none; } }
+.game-card__time { display: inline-flex; align-items: center; gap: 3px; white-space: nowrap; margin-inline-start: 6px; }

@@ -7,20 +7,20 @@ import type { GameContext, GameModule, StandingRow } from './types';
 // Arena games on one 1200x700 floor: TANK BATTLE, WIZARD DUEL (last one alive wins),
 // ARENA SURVIVAL and BASE DEFENSE (co-op waves) and TAG CHAOS (do not be "it").
 const { W, H } = ARENA;
-const clampArena = (b: { x: number; y: number }, r: number) => { b.x = Math.max(r, Math.min(W - r, b.x)); b.y = Math.max(r, Math.min(H - r, b.y)); };
-const ang = (dx: number, dy: number) => Math.atan2(dy, dx);
-function turnTo(a: number, to: number, rate: number) { let d = to - a; while (d > Math.PI) d -= Math.PI * 2; while (d < -Math.PI) d += Math.PI * 2; return a + Math.max(-rate, Math.min(rate, d)); }
+export const clampArena = (b: { x: number; y: number }, r: number) => { b.x = Math.max(r, Math.min(W - r, b.x)); b.y = Math.max(r, Math.min(H - r, b.y)); };
+export const ang = (dx: number, dy: number) => Math.atan2(dy, dx);
+export function turnTo(a: number, to: number, rate: number) { let d = to - a; while (d > Math.PI) d -= Math.PI * 2; while (d < -Math.PI) d += Math.PI * 2; return a + Math.max(-rate, Math.min(rate, d)); }
 
-interface Fighter extends Body { id: string; a: number; hp: number; maxHp: number; cd: number; cd2: number; cd3: number; shield: number; inv: number; alive: boolean; diedAt: number; kills: number; dmg: number }
-interface Shot { x: number; y: number; vx: number; vy: number; o: string; life: number; b: number }
+export interface Fighter extends Body { id: string; a: number; hp: number; maxHp: number; cd: number; cd2: number; cd3: number; shield: number; inv: number; alive: boolean; diedAt: number; kills: number; dmg: number }
+export interface Shot { x: number; y: number; vx: number; vy: number; o: string; life: number; b: number }
 
-function fighters(ctx: GameContext, hp: number, r: number): Fighter[] {
+export function fighters(ctx: GameContext, hp: number, r: number): Fighter[] {
   const ring = spawnRing(ctx.players.length, 270, W / 2, H / 2);
   return ctx.players.map((p, i) => ({ id: p.id, x: ring[i].x, y: ring[i].y, vx: 0, vy: 0, r, m: 1, a: ang(W / 2 - ring[i].x, H / 2 - ring[i].y), hp, maxHp: hp, cd: 0, cd2: 0, cd3: 0, shield: 0, inv: 0, alive: true, diedAt: -1, kills: 0, dmg: 0 }));
 }
 function eliminationStandings(fs: Fighter[], time: number): StandingRow[] {
   return [...fs].sort((a, b) => (b.alive ? 1e9 + b.hp * 100 + b.kills : b.diedAt) - (a.alive ? 1e9 + a.hp * 100 + a.kills : a.diedAt))
-    .map((f) => ({ playerId: f.id, score: f.kills, detail: `${f.kills} ✖ ${f.alive ? '👑' : ''}`, tie: f.alive ? 1e9 + f.hp * 100 + f.kills : Math.round(f.diedAt * 5) }));
+    .map((f) => ({ playerId: f.id, score: f.kills, detail: `${f.kills} :cross: ${f.alive ? ':crown:' : ''}`, tie: f.alive ? 1e9 + f.hp * 100 + f.kills : Math.round(f.diedAt * 5) }));
 }
 
 // ---------------- TANK BATTLE ----------------
@@ -93,74 +93,9 @@ export const tankGame: GameModule = {
   },
 };
 
-// ---------------- WIZARD DUEL ----------------
-export const wizardGame: GameModule = {
-  id: 'wizard',
-  create(ctx) {
-    const fs = fighters(ctx, 4, 24);
-    const balls: Shot[] = [];
-    const orbs: { x: number; y: number }[] = [];
-    let time = 0, over = false, orbT = 8;
-    const face = new Map(fs.map((f) => [f.id, f.a]));
-    const hud = (f: Fighter) => ctx.hud(f.id, { hp: f.hp, fire: f.cd <= 0 ? 1 : 0, shield: f.cd2 <= 0 ? 1 : 0, blink: f.cd3 <= 0 ? 1 : 0, left: fs.filter((x) => x.alive).length });
-    fs.forEach(hud);
-    function hurt(f: Fighter, n: number, by: string) {
-      if (!f.alive || f.inv > 0) return;
-      if (f.shield > 0) { ctx.fx('block', { x: Math.round(f.x), y: Math.round(f.y) }); return; }
-      f.hp -= n; f.inv = 0.4; ctx.buzz(f.id, 120);
-      const k = fs.find((x) => x.id === by); if (k && k !== f) k.dmg += n;
-      if (f.hp <= 0) { f.alive = false; f.diedAt = time; if (k && k !== f) k.kills++; ctx.fx('boom', { x: Math.round(f.x), y: Math.round(f.y) }); }
-      fs.forEach(hud);
-    }
-    return {
-      onPress(pid, b) {
-        const f = fs.find((x) => x.id === pid); if (!f || !f.alive) return;
-        const a = face.get(pid)!;
-        if (b === BTN.A && f.cd <= 0) { f.cd = 0.7; balls.push({ x: f.x + Math.cos(a) * 30, y: f.y + Math.sin(a) * 30, vx: Math.cos(a) * 520, vy: Math.sin(a) * 520, o: pid, life: 1.4, b: 0 }); ctx.fx('cast', { id: pid }); hud(f); }
-        else if (b === BTN.B && f.cd2 <= 0) { f.cd2 = 4.5; f.shield = 1.2; ctx.fx('shield', { id: pid }); hud(f); }
-        else if (b === BTN.C && f.cd3 <= 0) { f.cd3 = 3; f.inv = 0.35; f.x += Math.cos(a) * 230; f.y += Math.sin(a) * 230; clampArena(f, f.r); ctx.fx('blink', { id: pid }); hud(f); }
-      },
-      tick(dt) {
-        time += dt;
-        for (const f of fs) {
-          if (!f.alive) continue;
-          const i = ctx.input(f.id), mag = Math.hypot(i.x, i.y);
-          if (mag > 0.25) face.set(f.id, ang(i.x, i.y));
-          f.a = face.get(f.id)!;
-          const rdy = [f.cd <= 0, f.cd2 <= 0, f.cd3 <= 0];
-          f.cd = Math.max(0, f.cd - dt); f.cd2 = Math.max(0, f.cd2 - dt); f.cd3 = Math.max(0, f.cd3 - dt); f.shield = Math.max(0, f.shield - dt); f.inv = Math.max(0, f.inv - dt);
-          f.vx += i.x * 1700 * dt; f.vy += i.y * 1700 * dt; damp(f, 0.012, dt);
-          const sp = Math.hypot(f.vx, f.vy); if (sp > 300) { f.vx *= 300 / sp; f.vy *= 300 / sp; }
-          integrate(f, dt); clampArena(f, f.r);
-          if ((!rdy[0] && f.cd <= 0) || (!rdy[1] && f.cd2 <= 0) || (!rdy[2] && f.cd3 <= 0)) hud(f);
-        }
-        for (let i = 0; i < fs.length; i++) for (let j = i + 1; j < fs.length; j++) if (fs[i].alive && fs[j].alive) collide(fs[i], fs[j], 0.7);
-        for (const s of balls) {
-          s.life -= dt; s.x += s.vx * dt; s.y += s.vy * dt;
-          if (s.x < 0 || s.x > W || s.y < 0 || s.y > H) s.life = 0;
-          const hit = fs.find((f) => f.alive && f.id !== s.o && Math.hypot(f.x - s.x, f.y - s.y) < f.r + 12);
-          if (hit) s.life = 0;
-          if (s.life <= 0 && (hit || s.x > 0)) { // explode: damage + knockback in a radius
-            ctx.fx('explode', { x: Math.round(s.x), y: Math.round(s.y) });
-            for (const f of fs) { const d = Math.hypot(f.x - s.x, f.y - s.y); if (f.alive && f.id !== s.o && d < 80) { hurt(f, 1, s.o); if (d > 1) { f.vx += ((f.x - s.x) / d) * 520; f.vy += ((f.y - s.y) / d) * 520; } } }
-          }
-        }
-        for (let i = balls.length - 1; i >= 0; i--) if (balls[i].life <= 0) balls.splice(i, 1);
-        orbT -= dt;
-        if (orbT <= 0 && orbs.length < 2) { orbT = 9; orbs.push({ x: 150 + ctx.rand() * (W - 300), y: 120 + ctx.rand() * (H - 240) }); }
-        for (let i = orbs.length - 1; i >= 0; i--) { const f = fs.find((q) => q.alive && q.hp < q.maxHp && Math.hypot(q.x - orbs[i].x, q.y - orbs[i].y) < q.r + 20); if (f) { f.hp++; orbs.splice(i, 1); ctx.fx('heal', { id: f.id }); hud(f); } }
-        if (fs.filter((f) => f.alive).length <= (fs.length > 1 ? 1 : 0) || time > 150) over = true;
-      },
-      snapshot: () => ({ t: r1(time), p: fs.map((f) => ({ id: f.id, x: Math.round(f.x), y: Math.round(f.y), a: r1(f.a), hp: f.hp, mh: f.maxHp, sh: f.shield > 0 ? 1 : 0, al: f.alive ? 1 : 0 })), s: balls.map((s) => [Math.round(s.x), Math.round(s.y)]), o: orbs.map((o) => [Math.round(o.x), Math.round(o.y)]) }),
-      isOver: () => over,
-      standings: () => eliminationStandings(fs, time),
-    };
-  },
-};
-
 // ---------------- co-op waves: ARENA SURVIVAL / BASE DEFENSE ----------------
 interface Foe { id: number; x: number; y: number; hp: number; sp: number; r: number; t: number; hit: number }
-function coopWaves(id: 'survival' | 'defense'): GameModule {
+function coopWaves(id: 'defense'): GameModule {
   return {
     id,
     create(ctx) {
@@ -251,57 +186,11 @@ function coopWaves(id: 'survival' | 'defense'): GameModule {
         standings(): StandingRow[] {
           // co-op: stars by how far the team got
           const stars = won ? 3 : wave >= Math.ceil(WAVES * 0.6) ? 2 : 1;
-          return [...fs].sort((a, b) => b.kills - a.kills).map((f) => ({ playerId: f.id, score: f.kills, detail: `${f.kills} ✖ · ${won ? '🏆' : `wave ${wave}`}`, stars }));
+          return [...fs].sort((a, b) => b.kills - a.kills).map((f) => ({ playerId: f.id, score: f.kills, detail: `${f.kills} :cross: · ${won ? ':trophy:' : `wave ${wave}`}`, stars }));
         },
       };
     },
   };
 }
-export const survivalGame = coopWaves('survival');
 export const defenseGame = coopWaves('defense');
 
-// ---------------- TAG CHAOS ----------------
-export const tagGame: GameModule = {
-  id: 'tag',
-  create(ctx) {
-    const fs = fighters(ctx, 1, 24);
-    const TIME = ctx.options.time ?? 60;
-    const own = new Map(fs.map((f) => [f.id, 0])); // seconds spent as "it": lowest wins
-    let it = fs[Math.floor(ctx.rand() * fs.length)].id, time = 0, imm = 1.5;
-    const stam = new Map(fs.map((f) => [f.id, 100]));
-    const hud = () => fs.forEach((f) => ctx.hud(f.id, { it: it === f.id ? 1 : 0, secs: Math.round(own.get(f.id) ?? 0), stam: Math.round(stam.get(f.id) ?? 0), left: Math.max(0, Math.ceil(TIME - time)) }));
-    hud();
-    let hudT = 0;
-    return {
-      tick(dt) {
-        time += dt; imm = Math.max(0, imm - dt); hudT += dt;
-        if (!ctx.connected(it)) { // the tagger left: hand the role to the nearest connected player
-          const from = fs.find((f) => f.id === it)!;
-          const next = fs.filter((f) => f.id !== it && ctx.connected(f.id)).sort((a, b) => Math.hypot(a.x - from.x, a.y - from.y) - Math.hypot(b.x - from.x, b.y - from.y))[0];
-          if (next) { it = next.id; imm = 1.2; ctx.fx('tag', { id: it }); hud(); }
-        }
-        own.set(it, (own.get(it) ?? 0) + dt);
-        for (const f of fs) {
-          const i = ctx.input(f.id), isIt = f.id === it;
-          const sprint = (i.b & BTN.A) !== 0 && (stam.get(f.id) ?? 0) > 0;
-          stam.set(f.id, Math.max(0, Math.min(100, (stam.get(f.id) ?? 0) + (sprint ? -45 : 18) * dt)));
-          const cap = (isIt ? 300 : 285) * (sprint ? 1.45 : 1);
-          f.vx += i.x * 2200 * dt; f.vy += i.y * 2200 * dt; damp(f, 0.005, dt);
-          const sp = Math.hypot(f.vx, f.vy); if (sp > cap) { f.vx *= cap / sp; f.vy *= cap / sp; }
-          integrate(f, dt); clampArena(f, f.r);
-        }
-        for (let a = 0; a < fs.length; a++) for (let b = a + 1; b < fs.length; b++) {
-          const A = fs[a], B = fs[b];
-          if (Math.hypot(A.x - B.x, A.y - B.y) < A.r + B.r + 2) {
-            collide(A, B, 0.6);
-            if (imm <= 0 && (A.id === it || B.id === it)) { it = A.id === it ? B.id : A.id; imm = 1.2; ctx.fx('tag', { id: it }); ctx.buzz(it, 200); hud(); }
-          }
-        }
-        if (hudT > 0.5) { hudT = 0; hud(); }
-      },
-      snapshot: () => ({ t: r1(time), left: Math.max(0, Math.ceil(TIME - time)), it, imm: imm > 0 ? 1 : 0, p: fs.map((f) => ({ id: f.id, x: Math.round(f.x), y: Math.round(f.y), s: r1(own.get(f.id) ?? 0), st: Math.round(stam.get(f.id) ?? 0) })) }),
-      isOver: () => time >= TIME,
-      standings: () => [...fs].sort((a, b) => (own.get(a.id) ?? 0) - (own.get(b.id) ?? 0)).map((f) => ({ playerId: f.id, score: Math.round((own.get(f.id) ?? 0) * 10) / 10, detail: `${(own.get(f.id) ?? 0).toFixed(1)}s it`, tie: Math.round((own.get(f.id) ?? 0) * 2) })),
-    };
-  },
-};

@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { GameMeta } from '../../../shared/catalog';
+import { GameArt } from './gameart';
+import { Icon } from './icons';
 import { CATEGORY_NAMES, PLAY_TIME } from '../../../shared/catalog';
 import { useContext } from 'react';
 import { LangCtx, useT } from '../i18n';
@@ -56,10 +58,10 @@ export function SettingsBar() {
         {lang === 'he' ? 'English' : 'עברית'}
       </button>
       <button className="chip" onClick={() => { setSound(!prefs.sound); unlockAudio(); sfx.click(); force((x) => x + 1); }}>
-        {prefs.sound ? '🔊' : '🔇'} <span className="chip__label">{t('sound')}</span>
+        <Icon name={prefs.sound ? 'sound' : 'mute'} /> <span className="chip__label">{t('sound')}</span>
       </button>
       <button className="chip" onClick={() => { setReducedMotion(!prefs.reducedMotion); force((x) => x + 1); }}>
-        {prefs.reducedMotion ? '🐢' : '✨'} <span className="chip__label">{t('motion')}: {prefs.reducedMotion ? t('reduced') : t('full')}</span>
+        <Icon name={prefs.reducedMotion ? 'pause' : 'spark'} /> <span className="chip__label">{t('motion')}: {prefs.reducedMotion ? t('reduced') : t('full')}</span>
       </button>
     </div>
   );
@@ -79,7 +81,7 @@ export function GameCard({ g, selected, onClick, compact = false, showTime = fal
     >
       <span className="game-card__art"><GameIcon id={g.id} /></span>
       <span className="game-card__body">
-        <span className="game-card__cat">{compact && soon ? t('soon') : `${l(CATEGORY_NAMES[g.category])} · ${g.minPlayers}–${g.maxPlayers} ${t('players')}${PLAY_TIME[g.id] && showTime ? ` · ⏱ ${PLAY_TIME[g.id][0] === PLAY_TIME[g.id][1] ? PLAY_TIME[g.id][0] : PLAY_TIME[g.id].join('–')}′` : ''}`}</span>
+        <span className="game-card__cat">{compact && soon ? t('soon') : `${l(CATEGORY_NAMES[g.category])} · ${g.minPlayers}–${g.maxPlayers} ${t('players')}`}{PLAY_TIME[g.id] && showTime && !(compact && soon) && <span className="game-card__time"><Icon name="clock" size="1em" />{PLAY_TIME[g.id][0] === PLAY_TIME[g.id][1] ? PLAY_TIME[g.id][0] : PLAY_TIME[g.id].join('–')}′</span>}</span>
         <span className="game-card__name">{l(g.name)}</span>
         {!compact && <span className="game-card__tag">{soon ? t('soon') : l(g.tagline)}</span>}
       </span>
@@ -87,11 +89,6 @@ export function GameCard({ g, selected, onClick, compact = false, showTime = fal
     </button>
   );
 }
-
-const GAME_EMOJI: Record<string, string> = {
-  basketball: '🏀', bowling: '🎳', boat: '🚤', bike: '🏍️', tank: '🪖', wizard: '🧙', survival: '⚔️', defense: '🛡️', tag: '🔥', maze: '🌀', rescue: '🧑‍🚀',
-  evac: '🧰', treasure: '💎', tower: '🧱', spacerace: '🚀', balloon: '🎈', puzzle: '🧩', draw: '✏️', trivia: '❓',
-};
 
 /** Original vector icons for each game card. */
 export function GameIcon({ id }: { id: string }) {
@@ -119,10 +116,8 @@ export function GameIcon({ id }: { id: string }) {
       return (<svg {...common}>{[0, 1, 2, 3, 4, 5].map((i) => (i === 4 ? null : <rect key={i} x={8 + (i % 3) * 30} y={22 + Math.floor(i / 3) * 32} width="26" height="26" rx="6" fill={i === 1 ? '#ff6b3c' : i % 2 ? '#6d3fd8' : '#8b5cf6'} stroke="#120a2a" strokeWidth="3" />))}<path d="M40 28l6 10-6 6" stroke="#2b0a05" strokeWidth="3" fill="none" /><circle cx="68" cy="58" r="12" fill="#ff4d6d" stroke="#120a2a" strokeWidth="3" /></svg>);
     case 'rush':
       return (<svg {...common}><path d="M0 74h38v10H0zM58 74h42v10H58z" fill="#5ee27a" stroke="#120a2a" strokeWidth="3" /><path d="M70 74l6-16 6 16zM82 74l6-16 6 16z" fill="#e9edf7" stroke="#120a2a" strokeWidth="2.5" /><circle cx="30" cy="52" r="15" fill="#f472b6" stroke="#120a2a" strokeWidth="3" /><circle cx="25" cy="49" r="3.5" fill="#fff" /><circle cx="35" cy="49" r="3.5" fill="#fff" /><path d="M46 38c8-14 22-14 28-4" stroke="#fff" strokeWidth="4" fill="none" strokeLinecap="round" strokeDasharray="2 8" /><path d="M76 24l8 4-8 6" fill="none" stroke="#ffd23f" strokeWidth="4" strokeLinecap="round" /></svg>);
-    default: {
-      const e = GAME_EMOJI[id];
-      return (<svg {...common}><circle cx="50" cy="50" r="40" fill="rgba(255,255,255,.18)" stroke="#120a2a" strokeWidth="3" /><text x="50" y="50" fontSize="46" textAnchor="middle" dominantBaseline="central" fill="#fff" fontWeight="900">{e ?? '?'}</text></svg>);
-    }
+    default:
+      return GameArt({ id }) ?? (<svg {...common}><circle cx="50" cy="50" r="34" fill="rgba(255,255,255,.15)" /><text x="50" y="62" fontSize="36" textAnchor="middle" fill="#fff" fontWeight="900">?</text></svg>);
   }
 }
 

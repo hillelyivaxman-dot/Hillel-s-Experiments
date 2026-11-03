@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { Icon, Rich } from '../ui/icons';
 import { CATALOG, getMeta } from '../../../shared/catalog';
 import { AVATAR_COUNT, PLAYER_COLORS, type AdminAction, type RoomState } from '../../../shared/protocol';
 import { PadIcon } from '../controller/icons';
@@ -100,7 +101,7 @@ export function Join({ initialCode }: { initialCode: string }) {
     connect();
   };
 
-  if (kicked) return <div className="center-screen phone"><Logo small /><p className="big-msg">{t('kicked')}</p><a className="btn btn--secondary" href="/">🏠</a></div>;
+  if (kicked) return <div className="center-screen phone"><Logo small /><p className="big-msg">{t('kicked')}</p><a className="btn btn--secondary" href="/"><Icon name="home" /></a></div>;
 
   const meInfo = room?.players.find((p) => p.id === me);
   if (!room || !meInfo || !conn) {
@@ -129,7 +130,7 @@ export function Join({ initialCode }: { initialCode: string }) {
           </fieldset>
           {error && <p className="error" role="alert">{error}</p>}
           <button className="btn btn--primary btn--xl" type="submit" disabled={code.length !== 4 || !name.trim()} data-testid="join-btn">
-            {t('enter')} 🎮
+            {t('enter')} <Icon name="gamepad" />
           </button>
           <p className="muted small" data-testid="account-note">
             {account?.signedIn ? t('memberNote', { name: account.user!.nickname }) : <>{t('guestJoin')} <a href="/account">{t('signIn')}</a></>}
@@ -172,7 +173,7 @@ function PhoneLobby({ room, me, conn, act, isLeader }: { room: RoomState; me: st
         </button>
         <div>
           <div className="me-name" style={{ color: p.color }}>{p.name}</div>
-          <div className="muted" dir="ltr">{room.code}{isLeader ? ' · 👑' : ''}</div>
+          <div className="muted" dir="ltr">{room.code}{isLeader ? <> · <Icon name="crown" /></> : null}</div>
         </div>
         <button className="chip" onClick={() => { conn.send({ t: 'leave' }); store.del(`fc.tok.${room.code}`); location.assign('/'); }}>{t('leave')}</button>
       </header>
@@ -186,7 +187,7 @@ function PhoneLobby({ room, me, conn, act, isLeader }: { room: RoomState; me: st
         </div>
       )}
       <button className={`btn btn--xl ready-btn ${p.ready ? 'is-ready' : ''}`} onClick={() => { sfx.click(); conn.send({ t: 'ready', v: !p.ready }); }} data-testid="ready-btn">
-        {p.ready ? `✔ ${t('ready')}` : t('notReady')}
+        {p.ready ? <><Icon name="check" /> {t('ready')}</> : t('notReady')}
       </button>
 
       {isLeader ? (
@@ -217,13 +218,13 @@ function PhoneLobby({ room, me, conn, act, isLeader }: { room: RoomState; me: st
       <ul className="phone-players">
         {room.players.filter((x) => x.id !== me).map((x) => (
           <li key={x.id} style={{ color: x.color }}>
-            <span>{x.id === room.leaderId ? '👑 ' : ''}{x.name}{x.connected ? '' : ' ⚡'}</span>
+            <span>{x.id === room.leaderId ? <Icon name="crown" /> : null}{x.id === room.leaderId ? ' ' : ''}{x.name}{x.connected ? '' : <> <Icon name="bolt" /></>}</span>
             <span className="phone-players__actions">
-              {isLeader && <button className="mini mini--danger" onClick={() => act({ a: 'kick', playerId: x.id })}>✖</button>}
-              {isLeader && <button className="mini" onClick={() => act({ a: 'leader', playerId: x.id })}>👑</button>}
+              {isLeader && <button className="mini mini--danger" onClick={() => act({ a: 'kick', playerId: x.id })}><Icon name="cross" /></button>}
+              {isLeader && <button className="mini" onClick={() => act({ a: 'leader', playerId: x.id })}><Icon name="crown" /></button>}
               <button className="mini" disabled={reported.has(x.id)} title={t('report')} aria-label={t('report')}
                 onClick={() => { conn.send({ t: 'report', playerId: x.id }); setReported(new Set(reported).add(x.id)); }}>
-                {reported.has(x.id) ? '✓' : '⚑'}
+                {reported.has(x.id) ? <Icon name="check" size="1em" /> : <Icon name="flag2" size="1em" />}
               </button>
             </span>
           </li>
@@ -237,16 +238,16 @@ interface HudView { text: string; tone: 'normal' | 'hot' | 'bad' | 'good'; meter
 
 function hudView(game: string, h: Hud, t: ReturnType<typeof useT>['t'], he: boolean): HudView {
   const L = (a: string, b: string) => (he ? a : b);
-  const POW: Record<string, string> = { mega: '⬆', shield: '⛨', speed: '⚡' };
+  const POW: Record<string, string> = { mega: ':arrowup:', shield: ':shield:', speed: ':bolt:' };
   switch (game) {
     case 'bumper':
       return {
-        text: `${'♥'.repeat(Number(h.lives ?? 0))}  ${h.ko ?? 0} KO`,
+        text: `${':heart:'.repeat(Number(h.lives ?? 0))}  ${h.ko ?? 0} KO`,
         tone: Number(h.lives) === 0 ? 'bad' : 'normal',
         chips: [
           { icon: 'dash', on: !!h.dash, label: L('הסתערות', 'DASH') },
           { icon: 'dodge', on: !!h.dodge, label: L('התחמקות', 'DODGE') },
-          { icon: 'star', on: !!h.held, label: h.held ? POW[String(h.held)] ?? '★' : '—' },
+          { icon: 'star', on: !!h.held, label: h.held ? POW[String(h.held)] ?? ':star:' : '—' },
         ],
       };
     case 'kart': case 'boat': case 'bike': {
@@ -262,15 +263,15 @@ function hudView(game: string, h: Hud, t: ReturnType<typeof useT>['t'], he: bool
       return { text: `${t('round')} ${h.round ?? 1}/${h.rounds ?? '-'} · ${t('score')} ${h.score ?? 0}`, tone: 'normal' };
     case 'soccer':
       return {
-        text: `${h.team === 0 ? '🔴' : '🔵'} ${h.a ?? 0} : ${h.b ?? 0}${h.ot ? ' · GOLDEN' : ''}`, tone: 'normal',
+        text: `${h.team === 0 ? ':dotred:' : ':dotblue:'} ${h.a ?? 0} : ${h.b ?? 0}${h.ot ? ' · GOLDEN' : ''}`, tone: 'normal',
         meter: Number(h.stamina ?? 0) / 100, meterLabel: L('ספרינט', 'SPRINT'),
         chips: [{ icon: 'kick', on: !!h.kick, label: L('בעיטה', 'KICK') }],
       };
     case 'hockey':
-      return { text: `${h.team === 0 ? '🔴' : '🔵'} ${h.a ?? 0} : ${h.b ?? 0}${h.sd ? ' · SUDDEN' : ''}`, tone: 'normal', chips: [{ icon: 'turbo', on: !!h.smash, label: L('חבטה', 'SMASH') }] };
+      return { text: `${h.team === 0 ? ':dotred:' : ':dotblue:'} ${h.a ?? 0} : ${h.b ?? 0}${h.sd ? ' · SUDDEN' : ''}`, tone: 'normal', chips: [{ icon: 'turbo', on: !!h.smash, label: L('חבטה', 'SMASH') }] };
     case 'board': {
       const ph = String(h.ph ?? '');
-      const chips = [{ icon: 'star', on: Number(h.stars) > 0, label: `${h.stars ?? 0}★ · ${h.coins ?? 0}c` }, ...(h.power ? [{ icon: 'star', on: true, label: h.power === 'double' ? '×2' : L('גניבה', 'STEAL') }] : [])];
+      const chips = [{ icon: 'star', on: Number(h.stars) > 0, label: `${h.stars ?? 0}:star: · ${h.coins ?? 0}c` }, ...(h.power ? [{ icon: 'star', on: true, label: h.power === 'double' ? '×2' : L('גניבה', 'STEAL') }] : [])];
       if (ph === 'mini' || ph === 'duel') return { text: `${L('לחצו מהר!', 'TAP FAST!')} ${h.taps ?? 0}`, tone: 'hot', chips };
       if (ph === 'done') return { text: L('המשחק נגמר!', 'Game over!'), tone: 'good', chips };
       if (ph === 'result') return { text: L('תוצאות…', 'Results…'), tone: 'normal', chips };
@@ -280,7 +281,7 @@ function hudView(game: string, h: Hud, t: ReturnType<typeof useT>['t'], he: bool
     }
     case 'kitchen': {
       const code = String(h.hold ?? '');
-      const name = code.startsWith('plate:') ? L('צלחת', 'plate') + (code.length > 6 ? ' +' + code.slice(6).split(',').length : '') : code ? code.split('.')[0] + (code.endsWith('.c') ? ' ✂' : code.endsWith('.k') ? ' 🔥' : code.endsWith('.b') ? ' 💥' : '') : L('ידיים ריקות', 'empty hands');
+      const name = code.startsWith('plate:') ? L('צלחת', 'plate') + (code.length > 6 ? ' +' + code.slice(6).split(',').length : '') : code ? code.split('.')[0] + (code.endsWith('.c') ? ' :shovel:' : code.endsWith('.k') ? ' :flame:' : code.endsWith('.b') ? ' :boom:' : '') : L('ידיים ריקות', 'empty hands');
       return { text: `${h.score ?? 0} · ${name}`, tone: 'normal', chips: [{ icon: 'hand', on: !!code, label: `${h.orders ?? 0} ${L('הזמנות', 'orders')}` }] };
     }
     case 'trapbuilders': {
@@ -291,39 +292,41 @@ function hudView(game: string, h: Hud, t: ReturnType<typeof useT>['t'], he: bool
       return { text: `${L('ניקוד', 'Score')} ${h.total ?? 0}`, tone: ph === 'done' ? 'good' : 'normal' };
     }
     case 'basketball':
-      return { text: `${h.score ?? 0} ${L('נק׳', 'pts')} · ${h.left}s${Number(h.streak) > 1 ? ` · 🔥${h.streak}` : ''}`, tone: Number(h.streak) > 1 ? 'hot' : 'normal' };
+      return { text: `${h.score ?? 0} ${L('נק׳', 'pts')} · ${h.left}s${Number(h.streak) > 1 ? ` · :flame:${h.streak}` : ''}`, tone: Number(h.streak) > 1 ? 'hot' : 'normal', chips: [{ icon: 'kick', on: Number(h.streak) >= 3, label: L('רצף', 'STREAK') + ' ' + (h.streak ?? 0) }] };
     case 'bowling':
       if (h.ph === 'done') return { text: L('המשחק נגמר!', 'Game over!'), tone: 'good' };
       if (!h.me) return { text: L(`תור של ${h.who} · ${h.total} נק׳`, `${h.who}'s turn · ${h.total} pts`), tone: 'normal' };
       return { text: h.ph === 'aim' ? L('כוונו עם הג׳ויסטיק ולחצו לנעילה', 'Aim with the stick, press to lock') : h.ph === 'power' ? L('לחצו כשהמד בירוק!', 'Press when the meter is green!') : L('מתגלגל…', 'Rolling…'), tone: 'good' };
     case 'tank':
-      return { text: `${'❤'.repeat(Math.max(0, Number(h.hp ?? 0)))} · ${L('נותרו', 'left')} ${h.left}`, tone: Number(h.hp) <= 1 ? 'bad' : 'normal', chips: [{ icon: 'fire', on: !!h.fire, label: L('ירי', 'FIRE') }, { icon: 'mine', on: !!h.mine, label: L('מוקש', 'MINE') }] };
+      return { text: `${':heart:'.repeat(Math.max(0, Number(h.hp ?? 0)))} · ${L('נותרו', 'left')} ${h.left}`, tone: Number(h.hp) <= 1 ? 'bad' : 'normal', chips: [{ icon: 'fire', on: !!h.fire, label: L('ירי', 'FIRE') }, { icon: 'mine', on: !!h.mine, label: L('מוקש', 'MINE') }] };
     case 'wizard':
-      return { text: `${'❤'.repeat(Math.max(0, Number(h.hp ?? 0)))} · ${L('נותרו', 'left')} ${h.left}`, tone: Number(h.hp) <= 1 ? 'bad' : 'normal', chips: [{ icon: 'fire', on: !!h.fire, label: L('אש', 'FIRE') }, { icon: 'shield', on: !!h.shield, label: L('מגן', 'SHIELD') }, { icon: 'blink', on: !!h.blink, label: L('קפיצה', 'BLINK') }] };
+      if (h.down) return { text: L('הודפתם! חוזרים עוד רגע…', 'Knocked out! Back in a moment…'), tone: 'bad' };
+      return { text: `${h.on ? L('את/ה על הגבעה! ', 'On the hill! ') : ''}${h.pts ?? 0} ${L('נק׳', 'pts')} · ${':heart:'.repeat(Math.max(0, Number(h.hp ?? 0)))} · ${h.left}s`, tone: h.on ? 'good' : Number(h.hp) <= 1 ? 'bad' : 'normal', chips: [{ icon: 'fire', on: !!h.fire, label: L('אש', 'FIRE') }, { icon: 'shield', on: !!h.shield, label: L('מגן', 'SHIELD') }, { icon: 'blink', on: !!h.blink, label: L('קפיצה', 'BLINK') }] };
     case 'survival': case 'defense':
       if (h.down) return { text: L('נפלתם! חבר צריך לעמוד לידכם', 'Down! A teammate must stand next to you'), tone: 'bad' };
-      return { text: `${L('גל', 'Wave')} ${h.wave}/${h.waves} · ${'❤'.repeat(Math.max(0, Number(h.hp ?? 0)))}${h.def ? ` · 💎${h.core} · 🪙${h.alt}` : ''}`, tone: 'normal' };
+      return { text: `${L('גל', 'Wave')} ${h.wave}/${h.waves} · ${':heart:'.repeat(Math.max(0, Number(h.hp ?? 0)))}${h.def ? ` · ${L('גביש', 'crystal')} ${h.core} · ${L('מטבעות', 'coins')} ${h.alt}` : ''}`, tone: Number(h.hp) <= 1 ? 'bad' : 'normal', chips: h.def ? [{ icon: 'fire', on: !!h.atk, label: L('ירי', 'SHOOT') }, { icon: 'star', on: Number(h.alt) >= 4, label: L('צריח', 'TURRET') }] : [{ icon: 'shove', on: !!h.atk, label: L('חיתוך', 'SLASH') }, { icon: 'dodge', on: !!h.alt, label: L('גלגול', 'ROLL') }] };
     case 'tag':
-      return { text: h.it ? L('את/ה התופס! רדפו!', "You're IT! Chase!") : `${L('ברחו!', 'Run!')} ${h.secs}s · ${h.left}s`, tone: h.it ? 'hot' : 'normal', meter: Number(h.stam ?? 0) / 100, meterLabel: L('ספרינט', 'SPRINT') };
+      if (h.fz) return { text: L('קפאתם! חבר צריך לעמוד לידכם', 'Frozen! A teammate must stand next to you'), tone: 'bad' };
+      return { text: h.role ? `${L('את/ה המקפיא!', "You're the FREEZER!")} ${h.pts} ${L('נק׳', 'pts')} · ${h.free} ${L('חופשיים', 'free')}` : `${L('ברחו!', 'Run!')} ${h.pts} ${L('נק׳', 'pts')} · ${h.left}s`, tone: h.role ? 'hot' : 'normal', meter: Number(h.stam ?? 0) / 100, meterLabel: L('ספרינט', 'SPRINT') };
     case 'maze':
-      return { text: `${L('סבב', 'Round')} ${h.round}/${h.rounds} · ${h.pts} ${L('נק׳', 'pts')}${h.done ? ' ✓' : ''}`, tone: h.done ? 'good' : 'normal', chips: [{ icon: 'dash', on: !!h.dash, label: L('הסתערות', 'DASH') }] };
+      return { text: `${L('סבב', 'Round')} ${h.round}/${h.rounds} · ${h.pts} ${L('נק׳', 'pts')}${h.done ? ' :check:' : ''}`, tone: h.done ? 'good' : 'normal', chips: [{ icon: 'dash', on: !!h.dash, label: L('הסתערות', 'DASH') }] };
     case 'rescue':
-      return { text: h.stun ? L('התרסקתם!', 'Crashed!') : `🧑‍🚀 ${h.saved}/${h.target} · ${L('נושאים', 'carrying')} ${h.carry} · ${h.left}s`, tone: h.stun ? 'bad' : 'normal', chips: [{ icon: 'turbo', on: !!h.boost, label: L('האצה', 'BOOST') }] };
+      return { text: h.stun ? L('התרסקתם!', 'Crashed!') : `${L('חולצו', 'Saved')} ${h.saved}/${h.target} · ${L('אבדו', 'lost')} ${h.lost} · ${L('נושאים', 'carrying')} ${h.carry} · ${h.left}s`, tone: h.stun ? 'bad' : 'normal', chips: [{ icon: 'turbo', on: !!h.boost, label: L('קרן', 'BEAM') }] };
     case 'evac':
-      return { text: h.stun ? L('נתפסתם!', 'Caught!') : `💰 ${h.got}/${h.total} · ${Number(h.carry) ? L('נושאים תיבה!', 'carrying a chest!') : L('ידיים ריקות', 'empty hands')} · ${h.left}s`, tone: h.stun ? 'bad' : 'normal' };
+      return { text: h.stun ? L('נתפסתם!', 'Caught!') : `:coin: ${h.got}/${h.total} · ${Number(h.carry) ? L('נושאים תיבה!', 'carrying a chest!') : L('ידיים ריקות', 'empty hands')} · ${h.left}s`, tone: h.stun ? 'bad' : 'normal' };
     case 'treasure':
-      return { text: `💰 ${h.score ?? 0} · ${h.left}s`, tone: Number(h.warm) > 0.7 ? 'hot' : 'normal', meter: Number(h.warm ?? 0), meterLabel: Number(h.warm) > 0.7 ? L('חם מאוד!', 'HOT!') : Number(h.warm) > 0.35 ? L('חמים', 'warm') : L('קר', 'cold'), chips: [{ icon: 'star', on: !!h.ping, label: L('מכ״ם', 'RADAR') }] };
+      return { text: `:coin: ${h.score ?? 0} · ${h.left}s`, tone: Number(h.warm) > 0.7 ? 'hot' : 'normal', meter: Number(h.warm ?? 0), meterLabel: Number(h.warm) > 0.7 ? L('חם מאוד!', 'HOT!') : Number(h.warm) > 0.35 ? L('חמים', 'warm') : L('קר', 'cold'), chips: [{ icon: 'star', on: !!h.ping, label: L('מכ״ם', 'RADAR') }] };
     case 'tower':
-      return h.over ? { text: `${L('המגדל', 'Tower')}: ${h.h} 🧱`, tone: 'good' } : { text: `${h.h} 🧱 · ✨${h.perfect} · ${h.left}s`, tone: 'normal' };
+      return h.over ? { text: `${L('המגדל', 'Tower')}: ${h.h} :brick:`, tone: 'good' } : { text: `${h.h} :brick: · :spark:${h.perfect} · ${h.left}s`, tone: 'normal' };
     case 'spacerace':
       if (h.done) return { text: `${t('finished')} #${h.place}`, tone: 'good' };
       return { text: `#${h.place}/${h.of} · ${h.pct}%`, tone: 'normal', meter: Number(h.en ?? 0) / 100, meterLabel: L('אנרגיה', 'ENERGY') };
     case 'balloon':
-      return { text: `🎈 ${h.pumps} · ${L('בכיס', 'banked')} ${h.bank} · ${h.left}s`, tone: Number(h.pumps) > 12 ? 'hot' : 'normal' };
+      return { text: `:balloon: ${h.pumps} · ${L('בכיס', 'banked')} ${h.bank} · ${h.left}s`, tone: Number(h.pumps) > 12 ? 'hot' : 'normal' };
     case 'puzzle': {
-      const mine = String(h.mine ?? '').split(',').filter(Boolean).map((c) => ['▲', '●', '■', '★'][Number(c)]).join(' ');
+      const mine = String(h.mine ?? '').split(',').filter(Boolean).map((c) => ['▲', '●', '■', ':star:'][Number(c)]).join(' ');
       const ph = String(h.ph);
-      return { text: `${L('הצבעים שלכם', 'Your colours')}: ${mine} · ${ph === 'show' ? L('זכרו!', 'Memorise!') : ph === 'enter' ? `${h.pos}/${h.len}` : ph === 'ok' ? '✔' : ph === 'bad' ? '✖' : ''}`, tone: ph === 'bad' ? 'bad' : ph === 'ok' ? 'good' : 'normal' };
+      return { text: `${L('הצבעים שלכם', 'Your colours')}: ${mine} · ${ph === 'show' ? L('זכרו!', 'Memorise!') : ph === 'enter' ? `${h.pos}/${h.len}` : ph === 'ok' ? ':check:' : ph === 'bad' ? ':cross:' : ''}`, tone: ph === 'bad' ? 'bad' : ph === 'ok' ? 'good' : 'normal' };
     }
     case 'draw': {
       const hebrew = he; const pick = (s: string) => { const [he, en] = s.split('|'); return he && en ? (hebrew ? he : en) : s; };
@@ -333,7 +336,7 @@ function hudView(game: string, h: Hud, t: ReturnType<typeof useT>['t'], he: bool
       return { text: h.locked ? L('ננעל! מחכים…', 'Locked! Waiting…') : `↑${opts[0]} →${opts[1]} ↓${opts[2]} ←${opts[3]}`, tone: h.locked ? 'good' : 'normal' };
     }
     case 'trivia':
-      if (h.ph === 'reveal') return { text: Number(h.ok) ? `✔ ${L('נכון!', 'Correct!')} · ${h.pts}` : `✖ · ${h.pts}`, tone: Number(h.ok) ? 'good' : 'bad' };
+      if (h.ph === 'reveal') return { text: Number(h.ok) ? `:check: ${L('נכון!', 'Correct!')} · ${h.pts}` : `:cross: · ${h.pts}`, tone: Number(h.ok) ? 'good' : 'bad' };
       return { text: Number(h.ans) >= 0 ? L('נעול! מחכים…', 'Locked! Waiting…') : `${L('שאלה', 'Q')} ${h.q}/${h.qs} · ${h.pts}`, tone: 'normal' };
     case 'vanish':
       return h.alive ? { text: `${L('נותרו', 'LEFT')} ${h.left}`, tone: 'normal', chips: [{ icon: 'jump', on: !!h.jump, label: L('קפיצה', 'JUMP') }, { icon: 'shove', on: !!h.dash, label: L('חבטה', 'SHOVE') }] } : { text: L('נפלתם! צפו בסוף', 'You fell! Watch the end'), tone: 'bad' };
@@ -351,6 +354,26 @@ function hudView(game: string, h: Hud, t: ReturnType<typeof useT>['t'], he: bool
   return { text: '', tone: 'normal' };
 }
 
+/** Short "how to play" card on the phone while the countdown runs: the goal and what every control does. */
+function PhoneIntro({ meta }: { meta: ReturnType<typeof getMeta> & object }) {
+  const { l, lang } = useT();
+  const c = meta.controller;
+  const legend: { icon?: string; label: string; color: string }[] = [];
+  if (c.kind === 'wheel') legend.push({ label: lang === 'he' ? 'חצים: ימינה / שמאלה' : 'Arrows: left / right', color: '#8fa0ff' });
+  if (c.kind === 'stick') legend.push({ label: lang === 'he' ? 'ג׳ויסטיק: תזוזה' : 'Stick: move', color: '#8fa0ff' });
+  if (c.kind === 'stick' || c.kind === 'wheel') for (const b of c.buttons) legend.push({ icon: b.icon, label: l(b.label), color: b.color });
+  if (c.kind === 'tap') legend.push({ label: l(c.button.label), color: c.button.color });
+  if (c.kind === 'choices') (c.labels ?? []).forEach((b, i) => legend.push({ label: l(b), color: c.colors?.[i] ?? '#fff' }));
+  const first = l(meta.howTo).split(/(?<=[.!?])\s/)[0];
+  return (
+    <div className="phone-intro" data-testid="phone-intro">
+      <h3>{l(meta.tagline)}</h3>
+      <p>{first}</p>
+      <ul>{legend.map((x, i) => <li key={i} style={{ ['--c' as string]: x.color }}>{x.icon && <PadIcon id={x.icon} />}<span>{x.label}</span></li>)}</ul>
+    </div>
+  );
+}
+
 function PhoneGame({ room, conn, hud, isLeader, act }: { room: RoomState; conn: Conn; hud: Hud; isLeader: boolean; act: (a: AdminAction) => void }) {
   const { t, l, lang } = useT();
   const meta = getMeta(room.gameId!)!;
@@ -361,18 +384,19 @@ function PhoneGame({ room, conn, hud, isLeader, act }: { room: RoomState; conn: 
     <div className={`phone-game tone-${v.tone}`}>
       <div className="phone-game__hud">
         <span className="phone-game__title">{l(meta.name)}</span>
-        <span className="phone-game__line" data-testid="hud">{room.phase === 'countdown' ? '3 · 2 · 1' : room.phase === 'paused' ? `⏸ ${t('paused')}` : v.text}</span>
+        <span className="phone-game__line" data-testid="hud"><Rich text={room.phase === 'countdown' ? '3 · 2 · 1' : room.phase === 'paused' ? `:pause: ${t('paused')}` : v.text} /></span>
         {v.meter !== undefined && (
           <span className="hud-meter" aria-label={v.meterLabel} data-testid="hud-meter"><i style={{ width: `${Math.round(v.meter * 100)}%` }} /><b>{v.meterLabel}</b></span>
         )}
-        {v.chips?.map((c) => <span key={c.icon} className={`hud-chip ${c.on ? 'is-on' : ''}`} title={c.label}><PadIcon id={c.icon} /><span className="hud-chip__label">{c.label}</span></span>)}
+        {v.chips?.map((c) => <span key={c.icon} className={`hud-chip ${c.on ? 'is-on' : ''}`} title={c.label}><PadIcon id={c.icon} /><span className="hud-chip__label"><Rich text={c.label} /></span></span>)}
         {isLeader && (room.phase === 'paused'
           ? <button className="hud-btn" onClick={() => act({ a: 'resume' })} aria-label={t('resume')}>▶</button>
-          : <button className="hud-btn" onClick={() => act({ a: 'pause' })} aria-label={t('pause')}>❚❚</button>)}
-        <button className="hud-btn" onClick={() => setOpen((x) => !x)} aria-label={t('padSettings')} data-testid="pad-settings">⚙</button>
+          : <button className="hud-btn" onClick={() => act({ a: 'pause' })} aria-label={t('pause')}><Icon name="pause" size="1em" /></button>)}
+        <button className="hud-btn" onClick={() => setOpen((x) => !x)} aria-label={t('padSettings')} data-testid="pad-settings"><Icon name="gear" /></button>
       </div>
       <div className="phone-game__pad">
         <Pad layout={meta.controller} conn={conn} settings={settings} />
+        {room.phase === 'countdown' && <PhoneIntro meta={meta} />}
       </div>
       {open && (
         <div className="pad-sheet" role="dialog" aria-label={t('padSettings')}>
@@ -408,7 +432,7 @@ function PhoneGame({ room, conn, hud, isLeader, act }: { room: RoomState; conn: 
             </>
           )}
           {(meta.controller.kind === 'stick' || meta.controller.kind === 'wheel') && <p className="muted small">{t('tiltHint')}</p>}
-          <button className="btn btn--secondary" onClick={() => setOpen(false)}>✓</button>
+          <button className="btn btn--secondary" onClick={() => setOpen(false)}><Icon name="check" /></button>
         </div>
       )}
     </div>
@@ -424,16 +448,16 @@ function PhoneResults({ room, me, isLeader, act }: { room: RoomState; me: string
       <CritterCanvas color={p.color} variant={p.avatar} size={150} hurt={!!r && r.place > 3} />
       {r ? (
         <>
-          <p className="big-msg">{r.place === 1 ? `🏆 ${t('youWon')}` : `${t('place')} #${r.place}`}</p>
-          <p className="stars">{'⭐'.repeat(r.stars) || '—'}</p>
-          <p className="muted">{r.detail}</p>
+          <p className="big-msg"><Rich text={r.place === 1 ? `:trophy: ${t('youWon')}` : `${t('place')} #${r.place}`} /></p>
+          <p className="stars">{r.stars ? Array.from({ length: r.stars }, (_, i) => <Icon key={i} name="star" size="1.4em" />) : '—'}</p>
+          <p className="muted"><Rich text={r.detail ?? ''} /></p>
         </>
       ) : <p className="big-msg">{t('watchScreen')}</p>}
-      <p className="muted">⭐ {p.stars}</p>
+      <p className="muted"><Icon name="star" /> {p.stars}</p>
       {isLeader && (
         <div className="results__actions">
-          <button className="btn btn--primary btn--xl" onClick={() => act({ a: 'again' })}>🔁 {t('playAgain')}</button>
-          <button className="btn btn--secondary" onClick={() => act({ a: 'lobby' })}>🏠 {t('backToLobby')}</button>
+          <button className="btn btn--primary btn--xl" onClick={() => act({ a: 'again' })}><Icon name="repeat" /> {t('playAgain')}</button>
+          <button className="btn btn--secondary" onClick={() => act({ a: 'lobby' })}><Icon name="home" /> {t('backToLobby')}</button>
         </div>
       )}
     </div>

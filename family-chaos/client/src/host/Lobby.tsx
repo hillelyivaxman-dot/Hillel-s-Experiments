@@ -1,4 +1,5 @@
 import { useGSAP } from '@gsap/react';
+import { Icon } from '../ui/icons';
 import gsap from 'gsap';
 import QRCode from 'qrcode';
 import { useEffect, useRef, useState } from 'react';
@@ -41,14 +42,14 @@ function PlayerTile({ p, leader, act, watch, stars }: { p: PlayerInfo; leader: b
   }, []);
   return (
     <div className={`player-tile ${p.connected ? '' : 'is-off'} ${p.ready ? 'is-ready' : ''}`} ref={ref} style={{ ['--pc' as string]: p.color }} data-player={p.name} data-pid={p.id}>
-      {leader && <span className="player-tile__crown" title={t('leader')}>👑</span>}
+      {leader && <span className="player-tile__crown" title={t('leader')}><Icon name="crown" /></span>}
       <CritterCanvas color={p.color} variant={p.avatar} size={110} />
       <span className="player-tile__name">{p.name}</span>
-      <span className="player-tile__meta">{p.ready ? `✔ ${t('ready')}` : p.connected ? '…' : '⚡'}{stars ? ` · ⭐${stars}` : ''}</span>
+      <span className="player-tile__meta">{p.ready ? <><Icon name="check" size="1em" /> {t('ready')}</> : p.connected ? '…' : <Icon name="bolt" size="1em" />}{stars ? <> · <Icon name="star" size="1em" />{stars}</> : null}</span>
       {!watch && (
         <span className="player-tile__actions">
-          {!leader && <button className="mini" onClick={() => act({ a: 'leader', playerId: p.id })}>👑 {t('makeLeader')}</button>}
-          <button className="mini mini--danger" onClick={() => act({ a: 'kick', playerId: p.id })}>✖ {t('kick')}</button>
+          {!leader && <button className="mini" onClick={() => act({ a: 'leader', playerId: p.id })}><Icon name="crown" /> {t('makeLeader')}</button>}
+          <button className="mini mini--danger" onClick={() => act({ a: 'kick', playerId: p.id })}><Icon name="cross" /> {t('kick')}</button>
         </span>
       )}
     </div>
@@ -88,7 +89,7 @@ export function Lobby({ room, act, watch }: { room: RoomState; act: (a: AdminAct
       <header className="topbar">
         <Logo small />
         <div className="topbar__right">
-          {!watch && <button className="chip" onClick={() => setShowSettings((s) => !s)}>⚙ {t('settings')}</button>}
+          {!watch && <button className="chip" onClick={() => setShowSettings((s) => !s)}><Icon name="gear" /> {t('settings')}</button>}
           <SettingsBar />
         </div>
       </header>
@@ -124,7 +125,7 @@ export function Lobby({ room, act, watch }: { room: RoomState; act: (a: AdminAct
           <div className="room-code" dir="ltr" data-testid="room-code">
             {room.code.split('').map((c, i) => <span key={i}>{c}</span>)}
           </div>
-          {room.hasPassword && <p className="muted">🔒 {t('password')}</p>}
+          {room.hasPassword && <p className="muted"><Icon name="lock" /> {t('password')}</p>}
         </aside>
 
         <section className="lobby__players">
@@ -139,17 +140,15 @@ export function Lobby({ room, act, watch }: { room: RoomState; act: (a: AdminAct
           </div>
           {!watch && (
             <div className="tour-pick" data-testid="tour-pick">
-                <span>🏆 {l({ he: 'טורניר מסיבה', en: 'Party tournament' })}</span>
+                <span><Icon name="trophy" /> {l({ he: 'טורניר מסיבה', en: 'Party tournament' })}</span>
                 {[3, 5, 8].map((n) => (
                   <button key={n} className="chip" disabled={connected < 2} data-testid={`tour-${n}`} onClick={() => { sfx.go(); act({ a: 'tournament', count: n }); }}>
                     {n} {l({ he: 'משחקים', en: 'games' })}
                   </button>
                 ))}
-                <button className="chip" disabled={connected < 2} data-testid="tour-knockout" onClick={() => { sfx.go(); act({ a: 'tournament', mode: 'knockout' }); }}>
-                  ⚔ {l({ he: 'נוק־אאוט', en: 'Knockout' })}
+                <button className="chip" disabled={connected < 2} data-testid="tour-knockout" onClick={() => { sfx.go(); act({ a: 'tournament', mode: 'knockout' }); }}><Icon name="fire" /> {l({ he: 'נוק־אאוט', en: 'Knockout' })}
                 </button>
-                <button className={`chip ${custom ? 'is-on' : ''}`} disabled={connected < 2} data-testid="tour-custom" onClick={() => setCustom(custom ? null : [])}>
-                  ✎ {l({ he: 'בחירה ידנית', en: 'Pick games' })}
+                <button className={`chip ${custom ? 'is-on' : ''}`} disabled={connected < 2} data-testid="tour-custom" onClick={() => setCustom(custom ? null : [])}><Icon name="edit" /> {l({ he: 'בחירה ידנית', en: 'Pick games' })}
                 </button>
                 {custom && (
                   <button className="btn btn--primary" disabled={!custom.length} data-testid="tour-custom-go" onClick={() => { sfx.go(); act({ a: 'tournament', games: custom }); setCustom(null); }}>

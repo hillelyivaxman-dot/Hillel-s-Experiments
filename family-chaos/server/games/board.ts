@@ -223,7 +223,7 @@ export const boardGame: GameModule = {
 
       standings(): StandingRow[] {
         return [...ps].sort((a, b) => b.stars - a.stars || b.coins - a.coins).map((p) => ({
-          playerId: p.id, score: p.stars, detail: `${p.stars}★ · ${p.coins}`, tie: p.stars * 1000 + p.coins,
+          playerId: p.id, score: p.stars, detail: `${p.stars}:star: · ${p.coins}`, tie: p.stars * 1000 + p.coins,
         }));
       },
     };

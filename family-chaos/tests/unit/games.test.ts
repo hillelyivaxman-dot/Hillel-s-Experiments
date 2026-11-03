@@ -161,7 +161,7 @@ describe('hot potato', () => {
     expect(r.over).toBe(true);
     const st = r.game.standings();
     expect(st).toHaveLength(4);
-    expect(st[0].detail).toBe('👑');
+    expect(st[0].detail).toBe(':crown:');
     expect(r.fx.filter((k) => k === 'boom')).toHaveLength(3);
   });
 });

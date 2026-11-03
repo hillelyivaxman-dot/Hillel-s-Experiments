@@ -16,7 +16,7 @@ export const bowlingGame: GameModule = {
     const ps: Pl[] = ctx.players.map((p) => ({ id: p.id, frames: [], total: 0 }));
     let turn = 0, frame = 0, roll = 0, ph: Ph = 'aim', pt = 0;
     let standing = PINS.map(() => true);
-    let aim = 0, power = 0, pdir = 1, ballY = 0, lastHit = 0, done = false, time = 0;
+    let aim = 0, power = 0, pdir = 1, hook = 0, ballY = 0, lastHit = 0, done = false, time = 0;
     let anim: { x0: number; x1: number; hits: number[] } | null = null;
     const cur = () => ps[turn];
     const hud = () => ps.forEach((p, i) => ctx.hud(p.id, { me: i === turn ? 1 : 0, ph, who: cur().id === p.id ? '' : ctx.players[turn].name, fr: frame + 1, frs: FRAMES, roll: roll + 1, total: p.total }));
@@ -24,7 +24,7 @@ export const bowlingGame: GameModule = {
 
     function resolve() {
       // the ball travels from lane bottom to top; its lateral drift grows with an off-sweet-spot power
-      const curve = (power - 0.8) * 90;
+      const curve = hook * 100; // the stick during the power phase bends the throw
       const x0 = aim * 100, x1 = x0 + curve;
       const hits: number[] = [];
       const speed = 0.45 + power * 0.65;
@@ -32,7 +32,7 @@ export const bowlingGame: GameModule = {
         if (!standing[i]) return;
         const k = (130 - pin.y) / 260 + 0.5; // 0..1 progress along lane when reaching the pin row
         const bx = x0 + (x1 - x0) * Math.min(1, Math.max(0, k));
-        if (Math.abs(pin.x - bx) < BOWL.PIN_R + BOWL.BALL_R - 4 && power > 0.18) hits.push(i);
+        if (Math.abs(pin.x - bx) < BOWL.PIN_R + BOWL.BALL_R - 4 && power > 0.3) hits.push(i); // a weak roll never reaches the pins
       });
       // chain reaction: knocked pins knock neighbours with a probability that grows with speed
       const down = new Set(hits);
@@ -56,6 +56,7 @@ export const bowlingGame: GameModule = {
     function lock() {
       if (ph === 'aim') { ph = 'power'; pt = 0; power = 0; pdir = 1; }
       else if (ph === 'power') {
+        hook = Math.max(-1, Math.min(1, ctx.input(cur().id).x));
         const fell = resolve();
         const p = cur();
         const n = fell.length;
@@ -94,7 +95,7 @@ export const bowlingGame: GameModule = {
       },
       snapshot: () => ({
         t: r1(time), ph, turn: ps[turn].id, fr: frame + 1, frs: FRAMES, roll: roll + 1,
-        aim: Math.round(aim * 100) / 100, pw: Math.round(power * 100) / 100, by: Math.round(ballY * 100) / 100,
+        aim: Math.round(aim * 100) / 100, pw: Math.round(power * 100) / 100, hk: ph === 'power' ? Math.round(Math.max(-1, Math.min(1, ctx.input(ps[turn].id).x)) * 10) / 10 : Math.round(hook * 10) / 10, by: Math.round(ballY * 100) / 100,
         an: ph === 'roll' || ph === 'pause' ? anim : null, pin: standing.map((s) => (s ? 1 : 0)).join(''),
         p: ps.map((p) => ({ id: p.id, s: p.total, f: p.frames.map((f) => f.join('/')).join(' ') })),
       }),

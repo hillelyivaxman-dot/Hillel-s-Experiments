@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { Icon } from '../ui/icons';
 import { GOD_POWERS, type AdminAction, type GodPower, type RoomState } from '../../../shared/protocol';
 import { Lobby } from '../host/Lobby';
 import { Results } from '../host/Results';
@@ -8,10 +9,10 @@ import { Conn, store } from '../net';
 import { ConnBanner, Logo, useConnStatus } from '../ui/common';
 
 const GOD_LABEL: Record<GodPower, { icon: string; he: string; en: string }> = {
-  confetti: { icon: '🎉', he: 'קונפטי', en: 'Confetti' }, quake: { icon: '🌋', he: 'רעידת אדמה', en: 'Earthquake' }, flash: { icon: '⚡', he: 'הבזק', en: 'Flash' },
-  announce: { icon: '📣', he: 'הכרזה מלכותית', en: 'Royal fanfare' }, freeze: { icon: '🧊', he: 'הקפאה 3 שנ׳', en: 'Freeze 3s' }, slowmo: { icon: '🐌', he: 'הילוך איטי', en: 'Slow motion' },
-  turbo: { icon: '🚀', he: 'טורבו לכולם', en: 'Turbo for all' }, mirror: { icon: '🪞', he: 'היגוי הפוך', en: 'Mirror controls' }, bonus: { icon: '⭐', he: '+3 כוכבים לאחד', en: '+3 stars to one' },
-  steal: { icon: '🦹', he: 'גניבת כוכבים מהמוביל', en: 'Rob the leader' }, leader: { icon: '👑', he: 'החלפת מנהיג', en: 'New leader' }, end: { icon: '🏁', he: 'סיים משחק', en: 'End game' },
+  confetti: { icon: 'spark', he: 'קונפטי', en: 'Confetti' }, quake: { icon: 'boom', he: 'רעידת אדמה', en: 'Earthquake' }, flash: { icon: 'bolt', he: 'הבזק', en: 'Flash' },
+  announce: { icon: 'crown', he: 'הכרזה מלכותית', en: 'Royal fanfare' }, freeze: { icon: 'ice', he: 'הקפאה 3 שנ׳', en: 'Freeze 3s' }, slowmo: { icon: 'clock', he: 'הילוך איטי', en: 'Slow motion' },
+  turbo: { icon: 'rocket', he: 'טורבו לכולם', en: 'Turbo for all' }, mirror: { icon: 'repeat', he: 'היגוי הפוך', en: 'Mirror controls' }, bonus: { icon: 'star', he: '+3 כוכבים לאחד', en: '+3 stars to one' },
+  steal: { icon: 'coin', he: 'גניבת כוכבים מהמוביל', en: 'Rob the leader' }, leader: { icon: 'crown', he: 'החלפת מנהיג', en: 'New leader' }, end: { icon: 'flag', he: 'סיים משחק', en: 'End game' },
 };
 
 /** The big screen (TV / PC). Also used read-only for remote "watch" screens. */
@@ -88,13 +89,13 @@ export function Host({ watchCode }: { watchCode?: string }) {
       {room.phase === 'results' && <Results room={room} act={act} watch={watch} />}
       {owner && !watch && (
         <div className="crown" data-testid="crown">
-          <button className="crown__btn" onClick={() => setCrown((v) => !v)} aria-expanded={crown} aria-label="Crown powers" data-testid="crown-btn">👑</button>
+          <button className="crown__btn" onClick={() => setCrown((v) => !v)} aria-expanded={crown} aria-label="Crown powers" data-testid="crown-btn"><Icon name="crown" /></button>
           {crown && (
             <div className="crown__menu" role="menu">
               {room.tour && !room.tour.done && <p className="muted small">{t('errors_competitive')}</p>}
               {GOD_POWERS.map((p) => (
                 <button key={p} role="menuitem" className="chip" disabled={!!room.tour && !room.tour.done} data-power={p} onClick={() => conn.send({ t: 'god', power: p })}>
-                  {GOD_LABEL[p].icon} {GOD_LABEL[p][lang]}
+                  <Icon name={GOD_LABEL[p].icon} /> {GOD_LABEL[p][lang]}
                 </button>
               ))}
             </div>

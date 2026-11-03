@@ -1,49 +1,79 @@
+import { BBALL, preview } from '../../../shared/basketball';
 import { BOWL, PINS } from '../../../shared/minigames';
 import { sfx } from '../sound';
-import { bar, circle, gradBg, scoreboard, who } from './kit';
+import { bar, circle, gradBg, who } from './kit';
 import { hudText, type Renderer } from './types';
 
 export const basketballRenderer: Renderer = {
   world: { x: 0, y: 0, w: 1200, h: 700 },
-  background(g, w, h) { gradBg(g, w, h, '#1b1450', '#4a1d6e'); },
+  background(g, w, h) { gradBg(g, w, h, '#1b1450', '#3a1a66'); },
   draw(g, f, { players, t, fx }) {
-    // gym floor + crowd
-    g.fillStyle = '#c98a4b'; g.fillRect(0, 590, 1200, 110);
-    g.fillStyle = 'rgba(255,255,255,.25)'; for (let x = 0; x < 1200; x += 100) g.fillRect(x, 590, 3, 110);
-    g.fillStyle = 'rgba(255,255,255,.14)'; for (let i = 0; i < 40; i++) { g.beginPath(); g.arc(30 + i * 30, 150 + Math.sin(t * 3 + i) * 6, 14, 0, 7); g.fill(); }
-    // hoop
-    g.fillStyle = '#fff'; g.strokeStyle = '#120a2a'; g.lineWidth = 5; g.beginPath(); g.roundRect(1070, 150, 22, 190, 6); g.fill(); g.stroke();
-    g.strokeStyle = '#ff6b3c'; g.lineWidth = 9; g.beginPath(); g.moveTo(1070, 300); g.lineTo(985, 300); g.stroke();
-    g.strokeStyle = 'rgba(255,255,255,.8)'; g.lineWidth = 2; for (let i = 0; i < 6; i++) { g.beginPath(); g.moveTo(988 + i * 14, 303); g.lineTo(996 + i * 11, 360); g.stroke(); }
-    for (const p of f.p) {
-      const info = players.get(p.id); if (!info) continue;
-      who(g, info, p.x, 540, 36, t);
-      if (p.ch >= 0) { // power meter
-        const x = p.x - 60, y = 430;
-        g.fillStyle = 'rgba(0,0,0,.55)'; g.beginPath(); g.roundRect(x, y, 120, 18, 9); g.fill();
-        g.fillStyle = '#5dfc8d'; g.fillRect(x + (p.tg - p.w) * 120, y + 2, p.w * 240, 14);
-        g.fillStyle = '#fff'; g.fillRect(x + p.ch * 120 - 3, y - 4, 6, 26);
+    const n = f.p.length, cols = Math.min(4, Math.max(1, n)), rows = Math.ceil(n / cols);
+    const cw = 1200 / cols, ch = 640 / rows, sc = Math.min((cw - 16) / BBALL.LW, (ch - 16) / BBALL.LH);
+    f.p.forEach((p: any, i: number) => {
+      const info = players.get(p.id); if (!info) return;
+      const ox = (i % cols) * cw + (cw - BBALL.LW * sc) / 2, oy = 52 + Math.floor(i / cols) * ch + (ch - BBALL.LH * sc) / 2;
+      g.save(); g.translate(ox, oy); g.scale(sc, sc);
+      g.save(); g.beginPath(); g.roundRect(0, 0, BBALL.LW, BBALL.LH, 22); g.clip();
+      const sky = g.createLinearGradient(0, 0, 0, BBALL.LH); sky.addColorStop(0, '#2c2170'); sky.addColorStop(1, '#6a2a8a'); g.fillStyle = sky; g.fillRect(0, 0, BBALL.LW, BBALL.LH);
+      g.fillStyle = 'rgba(255,255,255,.08)'; for (let k = 0; k < 14; k++) { g.beginPath(); g.arc(14 + k * 30, 60 + Math.sin(t * 2 + k + i) * 4 + (k % 3) * 12, 11, 0, 7); g.fill(); } // crowd
+      g.fillStyle = '#d29a58'; g.fillRect(0, BBALL.FLOOR, BBALL.LW, BBALL.LH - BBALL.FLOOR); g.fillStyle = 'rgba(255,255,255,.35)'; g.fillRect(0, BBALL.FLOOR, BBALL.LW, 3);
+      // hoop: pole, backboard, rim, net
+      const hx = p.hx, hy = p.hy, bx = hx + BBALL.RIM_HALF + 12;
+      g.fillStyle = '#4b5563'; g.fillRect(bx + 18, hy - 20, 8, BBALL.FLOOR - hy + 20);
+      g.fillStyle = '#f8fafc'; g.strokeStyle = '#111827'; g.lineWidth = 3; g.beginPath(); g.roundRect(bx, hy - BBALL.BOARD_H + 18, BBALL.BOARD_W, BBALL.BOARD_H, 4); g.fill(); g.stroke();
+      g.strokeStyle = '#ef4444'; g.lineWidth = 3; g.strokeRect(bx + 1, hy - 24, BBALL.BOARD_W - 2, 22);
+      const sway = p.nt ? Math.sin(t * 30) * 5 : 0;
+      g.strokeStyle = 'rgba(255,255,255,.9)'; g.lineWidth = 2;
+      for (let k = 0; k <= 4; k++) { const x0 = hx - BBALL.RIM_HALF + (k * BBALL.RIM_HALF * 2) / 4; g.beginPath(); g.moveTo(x0, hy); g.lineTo(hx - 14 + (k * 28) / 4 + sway, hy + 34 + (p.nt ? 6 : 0)); g.stroke(); }
+      for (let k = 1; k <= 3; k++) { const yy = hy + k * 10; g.beginPath(); g.moveTo(hx - 26 + k * 3 + sway * (k / 3), yy); g.lineTo(hx + 26 - k * 3 + sway * (k / 3), yy); g.stroke(); }
+      g.strokeStyle = '#ff6b3c'; g.lineWidth = 7; g.lineCap = 'round'; g.beginPath(); g.moveTo(hx - BBALL.RIM_HALF, hy); g.lineTo(hx + BBALL.RIM_HALF, hy); g.stroke();
+      // shooter + aim preview
+      who(g, info, 36, BBALL.FLOOR - 26, 26, t, { tag: false });
+      const m = Math.hypot(p.ax, p.ay);
+      if (m > 0.2) {
+        const pts = preview(p.ax, p.ay);
+        g.fillStyle = 'rgba(255,255,255,.85)';
+        pts.forEach(([x, y], k) => { if (y < BBALL.FLOOR) { g.globalAlpha = 1 - k / 28; g.beginPath(); g.arc(x, y, 4, 0, 7); g.fill(); } });
+        g.globalAlpha = 1;
+        bar(g, 14, BBALL.LH - 20, 120, 8, m, m > 0.85 ? '#ff6b3c' : '#5dfc8d');
       }
-      if (p.sh >= 0) { // ball flight (arc to the hoop; misses bounce off the rim)
-        const k = p.sh, sx = p.x + 20, sy = 500, ex = p.ok ? 1010 : 1040 + 40, ey = p.ok ? 310 : 280;
-        const bx = sx + (ex - sx) * k, by = sy + (ey - sy) * k - Math.sin(k * Math.PI) * 260;
-        circle(g, bx, by, 18, '#ff8c42'); g.strokeStyle = '#7a2e0b'; g.lineWidth = 2; g.beginPath(); g.moveTo(bx - 18, by); g.lineTo(bx + 18, by); g.stroke();
-      }
-      hudText(g, String(p.s), p.x, 610, 24, info.color);
-    }
+      if (!f.bl.some((b: any) => b.id === p.id)) { circle(g, BBALL.SX, BBALL.SY, 12, '#ff8c42'); }
+      g.restore();
+      g.strokeStyle = info.color; g.lineWidth = 4 / sc; g.beginPath(); g.roundRect(0, 0, BBALL.LW, BBALL.LH, 22); g.stroke();
+      const ball = f.bl.find((b: any) => b.id === p.id);
+      if (ball) { g.save(); g.beginPath(); g.rect(-20, -60, BBALL.LW + 40, BBALL.LH + 60); g.clip(); circle(g, ball.x, ball.y, BBALL.BR, '#ff8c42', '#7a2e0b', 2.5); g.strokeStyle = '#7a2e0b'; g.lineWidth = 1.5; g.beginPath(); g.moveTo(ball.x - 12, ball.y); g.lineTo(ball.x + 12, ball.y); g.moveTo(ball.x, ball.y - 12); g.lineTo(ball.x, ball.y + 12); g.stroke(); g.restore(); }
+      g.restore();
+      hudText(g, `${info.name}  ${p.s}`, ox + (BBALL.LW * sc) / 2, oy - 14, 24, info.color);
+      if (p.st >= 3) { g.save(); g.translate(ox + BBALL.LW * sc - 26, oy + 24); flame(g, t, 16); g.restore(); }
+    });
     fx.draw(g);
   },
   hud(g, f, { players }, W) {
-    hudText(g, `${f.left}s`, W / 2, 44, 52, '#ffd23f');
-    scoreboard(g, [...f.p].sort((a: any, b: any) => b.s - a.s).map((p: any) => ({ id: p.id, v: p.s })), players, W, hudText);
+    hudText(g, `${f.left}s`, W / 2, 30, 46, '#ffd23f');
+    void players;
   },
   event(e, f, { fx, players }) {
-    const p = f.p.find((q: any) => q.id === e.id); const col = players.get(e.id)?.color ?? '#fff';
-    if (e.k === 'swish' && p) { fx.text(1010, 250, `+${e.pts}`, '#5dfc8d', 60); fx.burst(1010, 310, col, 24, 300, 6); sfx.coin(); }
-    if (e.k === 'miss') sfx.bump();
-    if (e.k === 'shoot') sfx.pass();
+    const i = f.p.findIndex((q: any) => q.id === e.id); if (i < 0) return;
+    const col = players.get(e.id)?.color ?? '#fff';
+    const n = f.p.length, cols = Math.min(4, Math.max(1, n)), rows = Math.ceil(n / cols), cw = 1200 / cols, ch = 640 / rows, sc = Math.min((cw - 16) / BBALL.LW, (ch - 16) / BBALL.LH);
+    const ox = (i % cols) * cw + (cw - BBALL.LW * sc) / 2, oy = 52 + Math.floor(i / cols) * ch + (ch - BBALL.LH * sc) / 2;
+    const P = f.p[i];
+    if (e.k === 'basket') { fx.text(ox + P.hx * sc, oy + (P.hy - 40) * sc, e.swish ? `SWISH +${e.pts}` : `+${e.pts}`, e.swish ? '#5dfc8d' : '#ffd23f', 40); fx.burst(ox + P.hx * sc, oy + P.hy * sc, col, 22, 300, 6); sfx.coin(); if (e.streak >= 3) sfx.win(); }
+    else if (e.k === 'rim') { fx.burst(ox + P.hx * sc, oy + P.hy * sc, '#ff6b3c', 5, 160, 3); sfx.tick(); }
+    else if (e.k === 'board') sfx.click();
+    else if (e.k === 'shoot') sfx.pass();
+    else if (e.k === 'miss') sfx.bump();
   },
 };
+
+/** Little fire icon (drawn, no emoji): shown next to a player who is on a streak. */
+export function flame(g: CanvasRenderingContext2D, t: number, r: number) {
+  g.save(); g.scale(1 + Math.sin(t * 12) * 0.06, 1 + Math.sin(t * 9) * 0.08);
+  g.fillStyle = '#ff6b3c'; g.beginPath(); g.moveTo(0, -r * 1.5); g.bezierCurveTo(r * 1.2, -r * 0.4, r * 1.2, r * 0.9, 0, r); g.bezierCurveTo(-r * 1.2, r * 0.9, -r * 1.2, -r * 0.4, 0, -r * 1.5); g.fill();
+  g.fillStyle = '#ffd23f'; g.beginPath(); g.moveTo(0, -r * 0.4); g.bezierCurveTo(r * 0.7, r * 0.1, r * 0.6, r * 0.8, 0, r * 0.85); g.bezierCurveTo(-r * 0.6, r * 0.8, -r * 0.7, r * 0.1, 0, -r * 0.4); g.fill();
+  g.restore();
+}
 
 export const bowlingRenderer: Renderer = {
   world: { x: 0, y: 0, w: 1200, h: 700 },
@@ -65,14 +95,14 @@ export const bowlingRenderer: Renderer = {
     const cur = players.get(f.turn);
     const x0 = (f.ph === 'aim' || f.ph === 'power' ? f.aim * 100 : f.an ? f.an.x0 : 0), x1 = f.an ? f.an.x1 : x0;
     if (f.ph === 'aim' || f.ph === 'power') { // aim arrow + ball at the foul line
-      g.strokeStyle = 'rgba(255,255,255,.55)'; g.lineWidth = 4; g.setLineDash([10, 12]); g.beginPath(); g.moveTo(cx + f.aim * 110, bot - 20); g.lineTo(cx + f.aim * 110, top + 120); g.stroke(); g.setLineDash([]);
+      g.strokeStyle = 'rgba(255,255,255,.55)'; g.lineWidth = 4; g.setLineDash([10, 12]); g.beginPath(); g.moveTo(cx + f.aim * 110, bot - 20); g.quadraticCurveTo(cx + f.aim * 110, (bot + top) / 2, cx + f.aim * 110 + (f.ph === 'power' ? f.hk * 110 : 0), top + 120); g.stroke(); g.setLineDash([]);
       circle(g, cx + f.aim * 110, bot - 20, BOWL.BALL_R, cur?.color ?? '#3ec1ff');
     } else if (f.ph === 'roll' || f.ph === 'pause') {
       const k = f.ph === 'pause' ? 1 : f.by;
       const bx = cx + (x0 + (x1 - x0) * k) * 1.1, by = bot - 20 - (bot - 20 - (top + 120)) * k;
       if (k < 1) circle(g, bx, by, BOWL.BALL_R * (1 - k * 0.25), cur?.color ?? '#3ec1ff');
     }
-    if (f.ph === 'power') { bar(g, 1020, 140, 36, 420, f.pw, f.pw > 0.65 && f.pw < 0.92 ? '#5dfc8d' : '#ffd23f'); hudText(g, 'POWER', 1038, 120, 22); }
+    if (f.ph === 'power') { bar(g, 1020, 140, 36, 420, f.pw, f.pw > 0.65 ? '#5dfc8d' : '#ffd23f'); hudText(g, 'POWER', 1038, 120, 22); hudText(g, '◀ HOOK ▶', cx, 676, 24, '#ffd23f'); }
     if (cur) who(g, cur, 330, 560, 44, t);
     f.p.forEach((p: any, i: number) => { const info = players.get(p.id); if (info) { hudText(g, `${p.s}`, 70, 120 + i * 62, 40, info.color, 'left'); hudText(g, `${info.name} ${p.f}`, 150, 120 + i * 62, 22, info.color, 'left'); } });
     fx.draw(g);

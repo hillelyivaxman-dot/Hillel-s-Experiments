@@ -197,7 +197,7 @@ export const kitchenGame: GameModule = {
       standings(): StandingRow[] {
         const stars = K.STAR_AT.filter((t) => score >= t).length;
         // co-op: everyone shares the team result and its stars
-        return ps.map((p) => ({ playerId: p.id, score, detail: `${score} · ${served} ✓ · ${late} ✗`, tie: 1, stars }));
+        return ps.map((p) => ({ playerId: p.id, score, detail: `${score} · ${served} :check: · ${late} late`, tie: 1, stars }));
       },
     };
   },

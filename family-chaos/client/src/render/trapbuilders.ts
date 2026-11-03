@@ -64,7 +64,7 @@ export const trapBuildersRenderer: Renderer = {
           g.strokeStyle = info.color; g.lineWidth = 8; g.setLineDash([18, 14]); g.beginPath(); g.moveTo(p.cx, G - 360); g.lineTo(p.cx, G); g.stroke(); g.setLineDash([]);
           g.save(); g.translate(p.cx, G - 400); g.scale(1 / s * 0.9, 1 / s * 0.9);
           drawCritter(g, 0, 0, 22, info.color, info.avatar, { t });
-          g.fillStyle = 'rgba(10,5,30,.8)'; g.beginPath(); g.roundRect(-52, 30, 104, 26, 13); g.fill(); hudText(g, `${['▲', '✺', '▬'][p.ty]} ×${p.l}`, 0, 43, 18, info.color);
+          g.fillStyle = 'rgba(10,5,30,.8)'; g.beginPath(); g.roundRect(-52, 30, 104, 26, 13); g.fill(); hudText(g, `${['A', 'O', '='][p.ty]} ×${p.l}`, 0, 43, 18, info.color);
           g.restore();
         }
       }
@@ -100,8 +100,8 @@ export const trapBuildersRenderer: Renderer = {
       hudText(g, `${T('בונים מלכודות!', 'BUILD YOUR TRAPS!')}  ${f.tm}`, W / 2, 48, 46, '#ffd23f');
       hudText(g, T('ג׳ויסטיק: להזיז · B: סוג מלכודת · A: להניח', 'Stick: move · B: trap type · A: place'), W / 2, H - 28, 22, '#fff');
     } else if (f.ph === 'run') {
-      hudText(g, f.end >= 0 ? `🏁 ${f.end}` : `${f.tm}`, W / 2, 44, 44, '#fff');
-      [...f.p].sort((a: any, b: any) => b.x - a.x).forEach((p: any, i: number) => { const info = players.get(p.id); if (info) hudText(g, `${i + 1}. ${info.name}${p.c ? ' 🏁' : ''}`, 24, 84 + i * 28, 20, info.color, 'left'); });
+      hudText(g, f.end >= 0 ? `:flag: ${f.end}` : `${f.tm}`, W / 2, 44, 44, '#fff');
+      [...f.p].sort((a: any, b: any) => b.x - a.x).forEach((p: any, i: number) => { const info = players.get(p.id); if (info) hudText(g, `${i + 1}. ${info.name}${p.c ? ' :flag:' : ''}`, 24, 84 + i * 28, 20, info.color, 'left'); });
     } else if (f.ph === 'score' || f.ph === 'done') {
       g.fillStyle = 'rgba(10,5,30,.8)'; g.beginPath(); g.roundRect(W / 2 - 330, H / 2 - 40, 660, 80 + f.p.length * 38, 24); g.fill();
       hudText(g, T('ניקוד', 'SCORES'), W / 2, H / 2 - 4, 34, '#ffd23f');

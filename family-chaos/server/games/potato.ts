@@ -184,7 +184,7 @@ export const potatoGame: GameModule = {
           .map((r) => ({
             playerId: r.id,
             score: r.out ? r.outRound - 1 : round,
-            detail: r.out ? `💥 R${r.outRound}` : '👑',
+            detail: r.out ? `:boom: R${r.outRound}` : ':crown:',
             tie: key(r),
           }));
       },

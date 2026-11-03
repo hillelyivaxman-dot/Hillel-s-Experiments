@@ -49,7 +49,7 @@ export const templateGame: GameModule = {
       snapshot: () => ({ t: r1(time), left: Math.ceil(DURATION - time), coin, p: rs.map((r) => ({ id: r.id, x: r1(r.x), y: r1(r.y), c: r.coins })) }),
       isOver: () => time >= DURATION,
       standings: (): StandingRow[] =>
-        [...rs].sort((a, b) => b.coins - a.coins).map((r) => ({ playerId: r.id, score: r.coins, detail: `${r.coins} 🪙`, tie: r.coins })),
+        [...rs].sort((a, b) => b.coins - a.coins).map((r) => ({ playerId: r.id, score: r.coins, detail: `${r.coins} :coin:`, tie: r.coins })),
     };
   },
 };

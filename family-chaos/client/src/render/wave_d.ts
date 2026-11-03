@@ -2,7 +2,7 @@ import { sfx } from '../sound';
 import { bar, circle, emoji, gradBg, scoreboard, who } from './kit';
 import { hudText, type Renderer } from './types';
 
-const SHAPE = ['▲', '●', '■', '★'];
+const SHAPE = ['▲', '●', '■', ':star:'];
 const COL = ['#ff4d6d', '#3ec1ff', '#ffd23f', '#5dfc8d'];
 
 export const spaceRaceRenderer: Renderer = {
@@ -29,7 +29,7 @@ export const spaceRaceRenderer: Renderer = {
   },
   hud(g, f, { players }, Wd) {
     const o = [...f.p].sort((a: any, b: any) => b.y - a.y);
-    o.slice(0, 6).forEach((p: any, i: number) => { const info = players.get(p.id); if (info) hudText(g, `${i + 1}. ${info.name} ${p.f ? '🏁' : Math.round((p.y / f.len) * 100) + '%'}`, Wd - 24, 40 + i * 28, 21, info.color, 'right'); });
+    o.slice(0, 6).forEach((p: any, i: number) => { const info = players.get(p.id); if (info) hudText(g, `${i + 1}. ${info.name} ${p.f ? ':flag:' : Math.round((p.y / f.len) * 100) + '%'}`, Wd - 24, 40 + i * 28, 21, info.color, 'right'); });
   },
   event(e, _f, { fx }) { if (e.k === 'crash') { fx.burst(e.x, 560, '#ff8c42', 16, 300, 6); fx.kick(6); sfx.bump(); } else if (e.k === 'orb') sfx.coin(); else if (e.k === 'finish') { sfx.win(); fx.text(550, 300, `#${e.place}`, '#ffd23f', 90); } },
 };
@@ -50,11 +50,11 @@ export const balloonRenderer: Renderer = {
         g.strokeStyle = '#fff'; g.lineWidth = 2; g.beginPath(); g.moveTo(cx + wob, baseY); g.lineTo(cx, baseY + 30); g.stroke();
       }
       who(g, info, cx, baseY + 50, 22, t);
-      hudText(g, `🎈 ${p.b}`, cx, oy + 10, 34, '#fff');
+      hudText(g, `:balloon: ${p.b}`, cx, oy + 10, 34, '#fff');
     });
     fx.draw(g);
   },
-  hud(g, f, _i, Wd) { hudText(g, `⏱ ${f.left}`, Wd / 2, 36, 44, '#ffd23f'); },
+  hud(g, f, _i, Wd) { hudText(g, `:clock: ${f.left}`, Wd / 2, 36, 44, '#ffd23f'); },
   event(e, f, { fx }) {
     if (e.k === 'pop') { fx.kick(8); sfx.boom(); } else if (e.k === 'pump') sfx.tick(); else if (e.k === 'bank') { sfx.coin(); void f; void fx; }
   },
@@ -77,8 +77,8 @@ export const puzzleRenderer: Renderer = {
     fx.draw(g);
   },
   hud(g, f, { lang }, Wd) {
-    hudText(g, `${lang === 'he' ? 'שלב' : 'Level'} ${f.level}/${f.levels}   ${'❤️'.repeat(Math.max(0, f.lives))}`, Wd / 2, 36, 38, '#ffd23f');
-    const msg = f.ph === 'show' ? (lang === 'he' ? 'זכרו את הרצף!' : 'Remember the sequence!') : f.ph === 'enter' ? (lang === 'he' ? 'עכשיו הזינו יחד!' : 'Now enter it together!') : f.ph === 'ok' ? '✔' : f.ph === 'bad' ? '✖' : '';
+    hudText(g, `${lang === 'he' ? 'שלב' : 'Level'} ${f.level}/${f.levels}   ${':heart:'.repeat(Math.max(0, f.lives))}`, Wd / 2, 36, 38, '#ffd23f');
+    const msg = f.ph === 'show' ? (lang === 'he' ? 'זכרו את הרצף!' : 'Remember the sequence!') : f.ph === 'enter' ? (lang === 'he' ? 'עכשיו הזינו יחד!' : 'Now enter it together!') : f.ph === 'ok' ? ':check:' : f.ph === 'bad' ? ':cross:' : '';
     hudText(g, msg, Wd / 2, 640, 44, f.ph === 'bad' ? '#ff4d6d' : '#fff');
   },
   event(e, _f, { fx }) { if (e.k === 'right') sfx.coin(); else if (e.k === 'wrong') { fx.kick(8); sfx.bad(); } else if (e.k === 'level') sfx.win(); },
@@ -107,10 +107,10 @@ export const drawRenderer: Renderer = {
   },
   hud(g, f, { players, lang }, Wd) {
     const dr = players.get(f.dr);
-    if (dr) hudText(g, `✏️ ${dr.name} · ${lang === 'he' ? 'סבב' : 'Round'} ${f.round}/${f.rounds}`, Wd - 24, 692, 24, dr.color, 'right');
-    scoreboard(g, [...f.p].sort((a: any, b: any) => b.s - a.s).map((p: any) => ({ id: p.id, v: `${p.s}${p.g ? ' ✓' : ''}` })), players, Wd, hudText, false);
+    if (dr) hudText(g, `:pencil: ${dr.name} · ${lang === 'he' ? 'סבב' : 'Round'} ${f.round}/${f.rounds}`, Wd - 24, 692, 24, dr.color, 'right');
+    scoreboard(g, [...f.p].sort((a: any, b: any) => b.s - a.s).map((p: any) => ({ id: p.id, v: `${p.s}${p.g ? ' :check:' : ''}` })), players, Wd, hudText, false);
   },
-  event(e, _f, { fx }) { if (e.k === 'correct') { sfx.coin(); fx.text(600, 340, '✔', '#5dfc8d', 90); } else if (e.k === 'nope') sfx.bad(); else if (e.k === 'clear') sfx.click(); },
+  event(e, _f, { fx }) { if (e.k === 'correct') { sfx.coin(); fx.text(600, 340, ':check:', '#5dfc8d', 90); } else if (e.k === 'nope') sfx.bad(); else if (e.k === 'clear') sfx.click(); },
 };
 
 export const triviaRenderer: Renderer = {
@@ -128,7 +128,7 @@ export const triviaRenderer: Renderer = {
       hudText(g, SHAPE[i], x + 50, y + 50, 56, '#fff'); hudText(g, lab(a), x + 290, y + 50, lab(a).length > 22 ? 28 : 38, '#fff'); g.globalAlpha = 1;
     });
     bar(g, 80, 530, 1040, 14, f.ph === 'ask' ? 1 - f.pt / f.lim : 0, '#5dfc8d');
-    f.p.forEach((p: any, i: number) => { const info = players.get(p.id); if (!info) return; const x = 80 + (i % 6) * 175, y = 585 + Math.floor(i / 6) * 70; who(g, info, x + 20, y, 16, t, { tag: false, alpha: 1 }); hudText(g, `${p.s}${p.an && f.ph === 'ask' ? ' ✔' : ''}${f.ph === 'reveal' ? (p.ok ? ' ✔' : ' ✖') : ''}`, x + 50, y, 24, p.ok && f.ph === 'reveal' ? '#5dfc8d' : info.color, 'left'); });
+    f.p.forEach((p: any, i: number) => { const info = players.get(p.id); if (!info) return; const x = 80 + (i % 6) * 175, y = 585 + Math.floor(i / 6) * 70; who(g, info, x + 20, y, 16, t, { tag: false, alpha: 1 }); hudText(g, `${p.s}${p.an && f.ph === 'ask' ? ' :check:' : ''}${f.ph === 'reveal' ? (p.ok ? ' :check:' : ' :cross:') : ''}`, x + 50, y, 24, p.ok && f.ph === 'reveal' ? '#5dfc8d' : info.color, 'left'); });
   },
   event(e, _f, { fx }) { if (e.k === 'reveal') { sfx.power(); fx.kick(2); } else if (e.k === 'answered') sfx.click(); },
 };

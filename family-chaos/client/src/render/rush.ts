@@ -154,7 +154,7 @@ export const rushRenderer: Renderer = {
 
   hud(g, f, { players, lang }, W, H) {
     const lv = makeLevel(f.sd, f.ln);
-    hudText(g, f.end >= 0 ? `🏁 ${f.end}` : `${f.left}`, W / 2, 44, 44, f.end >= 0 || f.left <= 15 ? '#ff4d6d' : '#fff');
+    hudText(g, f.end >= 0 ? `:flag: ${f.end}` : `${f.left}`, W / 2, 44, 44, f.end >= 0 || f.left <= 15 ? '#ff4d6d' : '#fff');
     // standings (left)
     f.o.slice(0, 8).forEach((id: string, i: number) => {
       const info = players.get(id);
@@ -167,7 +167,7 @@ export const rushRenderer: Renderer = {
     g.strokeStyle = 'rgba(255,255,255,.35)'; g.lineWidth = 4;
     g.beginPath(); g.moveTo(bx, by); g.lineTo(bx + bw, by); g.stroke();
     for (const c of lv.checkpoints.slice(1)) { g.fillStyle = 'rgba(255,255,255,.5)'; g.fillRect(bx + (c / lv.finishX) * bw - 1, by - 8, 3, 16); }
-    hudText(g, '🏁', bx + bw + 4, by, 26);
+    hudText(g, ':flag:', bx + bw + 4, by, 26);
     for (const p of f.p) {
       const info = players.get(p.id);
       if (!info) continue;
@@ -190,7 +190,7 @@ export const rushRenderer: Renderer = {
         break;
       case 'dash': sfx.dash(); break;
       case 'shove': fx.kick(5); sfx.bump(); break;
-      case 'checkpoint': fx.text(e.x, 380, '✓', '#5dfc8d', 44); sfx.coin(); break;
+      case 'checkpoint': fx.text(e.x, 380, ':check:', '#5dfc8d', 44); sfx.coin(); break;
       case 'finish': if (p) { fx.burst(p.x, p.y - 30, col, 60, 450, 8, 300); fx.text(p.x, p.y - 100, `#${e.place}`, '#ffd23f', 60); } sfx.win(); break;
     }
   },

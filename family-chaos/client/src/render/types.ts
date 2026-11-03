@@ -1,5 +1,6 @@
 import type { Lang, PlayerInfo } from '../../../shared/protocol';
 import type { FX } from './fx';
+import { drawIcon, splitTokens } from './icons';
 
 export interface RenderInfo {
   players: Map<string, PlayerInfo>;
@@ -19,14 +20,23 @@ export interface Renderer {
 
 export function hudText(g: CanvasRenderingContext2D, text: string, x: number, y: number, size: number, color = '#fff', align: CanvasTextAlign = 'center') {
   g.font = `900 ${size}px Rubik, system-ui, sans-serif`;
-  g.textAlign = align;
   g.textBaseline = 'middle';
   g.lineWidth = Math.max(4, size / 7);
   g.strokeStyle = 'rgba(10,5,30,0.9)';
   g.lineJoin = 'round';
-  g.strokeText(text, x, y);
-  g.fillStyle = color;
-  g.fillText(text, x, y);
+  const segs = text.includes(':') ? splitTokens(text) : [{ text }];
+  if (segs.length === 1 && segs[0].text !== undefined) { // plain text (the common case)
+    g.textAlign = align; g.strokeText(text, x, y); g.fillStyle = color; g.fillText(text, x, y); return;
+  }
+  const iw = size * 1.05, widths = segs.map((s) => (s.icon ? iw : g.measureText(s.text ?? '').width));
+  const total = widths.reduce((a, b) => a + b, 0);
+  let cx = align === 'center' ? x - total / 2 : align === 'right' || align === 'end' ? x - total : x;
+  g.textAlign = 'left';
+  segs.forEach((s, i) => {
+    if (s.icon) drawIcon(g, s.icon, cx + iw / 2, y, size * 0.95);
+    else { g.strokeText(s.text!, cx, y); g.fillStyle = color; g.fillText(s.text!, cx, y); }
+    cx += widths[i];
+  });
 }
 
 export function starfield(g: CanvasRenderingContext2D, W: number, H: number, t: number, top = '#1b0f45', bottom = '#07031a') {

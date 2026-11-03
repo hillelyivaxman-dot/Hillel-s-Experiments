@@ -1,7 +1,7 @@
 import { ARENA } from '../../../shared/minigames';
 import { MAZE_GEOM } from '../../../shared/mazegeom';
 import { sfx } from '../sound';
-import { circle, emoji, gradBg, ring, scoreboard, who } from './kit';
+import { astronaut, circle, emoji, gradBg, ring, scoreboard, who } from './kit';
 import { hudText, type Renderer } from './types';
 
 const world = { x: -20, y: -20, w: ARENA.W + 40, h: ARENA.H + 40 };
@@ -29,12 +29,17 @@ export const mazeRenderer: Renderer = {
     }
     g.fillStyle = '#8b7bff'; g.fill(path);
     ring(g, f.ex.x, f.ex.y, 26 + Math.sin(t * 5) * 3, '#5dfc8d', 6); emoji(g, '🚪', f.ex.x, f.ex.y, 30);
+    // fog of war: only the area around each runner (and the exit's glow) is lit
+    g.save(); g.fillStyle = 'rgba(5,3,22,.9)'; g.beginPath(); g.rect(OX - 40, OY - 40, COLS * CELL + 80, ROWS * CELL + 80);
+    for (const p of f.p) if (!p.d) { g.moveTo(p.x + 118, p.y); g.arc(p.x, p.y, 118 + Math.sin(t * 3 + p.x) * 4, 0, Math.PI * 2, true); }
+    g.moveTo(f.ex.x + 40, f.ex.y); g.arc(f.ex.x, f.ex.y, 40, 0, Math.PI * 2, true);
+    g.fill('evenodd'); g.restore();
     for (const p of f.p) { const info = players.get(p.id); if (info && !p.d) who(g, info, p.x, p.y, 16, t, { tag: false }); }
     fx.draw(g);
   },
   hud(g, f, { players, lang }, Wd) {
     hudText(g, `${lang === 'he' ? 'סבב' : 'Round'} ${f.round}/${f.rounds}`, Wd / 2, 22, 30, '#ffd23f');
-    scoreboard(g, [...f.p].sort((a: any, b: any) => b.pts - a.pts).map((p: any) => ({ id: p.id, v: `${p.pts}${p.d ? ' ✓' : ''}` })), players, Wd, hudText, false);
+    scoreboard(g, [...f.p].sort((a: any, b: any) => b.pts - a.pts).map((p: any) => ({ id: p.id, v: `${p.pts}${p.d ? ' :check:' : ''}` })), players, Wd, hudText, false);
   },
   event(e, _f, { fx }) { if (e.k === 'exit') { fx.text(e.x ?? 1000, 560, `+${e.pts}`, '#5dfc8d', 60); sfx.win(); } else if (e.k === 'dash') sfx.dash(); else if (e.k === 'newmaze') sfx.go(); },
 };
@@ -43,21 +48,29 @@ export const rescueRenderer: Renderer = {
   world,
   background(g, w, h, t) { gradBg(g, w, h, '#0b1040', '#020312'); g.fillStyle = '#fff'; for (let i = 0; i < 60; i++) { g.globalAlpha = 0.3 + 0.5 * Math.abs(Math.sin(t + i)); g.fillRect((i * 97) % w, (i * 57) % h, 2, 2); } g.globalAlpha = 1; },
   draw(g, f, { players, t, fx }) {
-    const b = f.base; circle(g, b.x, b.y, b.r, 'rgba(94,234,212,.15)', '#5eead4', 5); emoji(g, '🛰️', b.x, b.y, 60);
-    for (const [rx, ry, rr] of f.r) { g.fillStyle = '#6b5b73'; g.strokeStyle = '#120a2a'; g.lineWidth = 4; g.beginPath(); g.arc(rx, ry, rr, 0, 7); g.fill(); g.stroke(); circle(g, rx - rr * 0.3, ry - rr * 0.2, rr * 0.22, 'rgba(0,0,0,.25)', '', 0); }
-    for (const [ax, ay, ac, aid] of f.a) { emoji(g, '🧑‍🚀', ax, ay + Math.sin(t * 2 + aid) * 4, ac ? 24 : 34); }
+    const b = f.base;
+    // the station: docking ring with blinking lights
+    circle(g, b.x, b.y, b.r, 'rgba(94,234,212,.14)', '#5eead4', 5);
+    g.save(); g.translate(b.x, b.y); g.rotate(t * 0.4); g.fillStyle = '#cbd5e1'; g.strokeStyle = '#120a2a'; g.lineWidth = 4; g.beginPath(); g.roundRect(-26, -26, 52, 52, 10); g.fill(); g.stroke(); g.fillStyle = '#38bdf8'; g.fillRect(-60, -7, 34, 14); g.fillRect(26, -7, 34, 14); g.strokeRect(-60, -7, 34, 14); g.strokeRect(26, -7, 34, 14); g.restore();
+    for (let k = 0; k < 8; k++) { const a = (k / 8) * Math.PI * 2; circle(g, b.x + Math.cos(a) * (b.r - 6), b.y + Math.sin(a) * (b.r - 6), 4, Math.floor(t * 3 + k) % 2 ? '#ffd23f' : '#5eead4', '', 0); }
+    for (const [rx, ry, rr] of f.r) { g.fillStyle = '#6b5b73'; g.strokeStyle = '#120a2a'; g.lineWidth = 4; g.beginPath(); g.arc(rx, ry, rr, 0, 7); g.fill(); g.stroke(); circle(g, rx - rr * 0.3, ry - rr * 0.2, rr * 0.22, 'rgba(0,0,0,.25)', '', 0); circle(g, rx + rr * 0.35, ry + rr * 0.3, rr * 0.14, 'rgba(0,0,0,.2)', '', 0); }
+    for (const p of f.p) if (p.bo) { const gr = g.createRadialGradient(p.x, p.y, 10, p.x, p.y, 200); gr.addColorStop(0, 'rgba(120,220,255,.35)'); gr.addColorStop(1, 'rgba(120,220,255,.04)'); g.fillStyle = gr; g.beginPath(); g.arc(p.x, p.y, 200, 0, 7); g.fill(); g.strokeStyle = 'rgba(160,235,255,.7)'; g.lineWidth = 3; g.setLineDash([10, 14]); g.lineDashOffset = t * 60; g.beginPath(); g.arc(p.x, p.y, 200 - ((t * 120) % 160), 0, 7); g.stroke(); g.setLineDash([]); }
+    for (const [ax, ay, ac, aid, o2] of f.a) {
+      astronaut(g, ax, ay, ac ? 22 : 30, t + aid);
+      if (!ac) { g.strokeStyle = o2 > 0.4 ? '#5dfc8d' : o2 > 0.2 ? '#ffd23f' : '#ff4d6d'; g.lineWidth = 5; g.lineCap = 'round'; g.globalAlpha = o2 < 0.2 ? 0.5 + 0.5 * Math.sin(t * 14) : 1; g.beginPath(); g.arc(ax, ay, 26, -Math.PI / 2, -Math.PI / 2 + o2 * Math.PI * 2); g.stroke(); g.globalAlpha = 1; }
+    }
     for (const p of f.p) {
       const info = players.get(p.id); if (!info) continue;
-      if (p.bo) { g.fillStyle = '#ffd23f'; g.beginPath(); g.arc(p.x - 28, p.y, 14 + Math.random() * 6, 0, 7); g.fill(); }
       g.globalAlpha = p.st ? 0.5 + 0.5 * Math.sin(t * 30) : 1;
-      circle(g, p.x, p.y, 24, 'rgba(180,220,255,.5)', '#e0f2fe', 4); who(g, info, p.x, p.y, 16, t);
+      g.fillStyle = info.color; g.strokeStyle = '#120a2a'; g.lineWidth = 3; g.beginPath(); g.ellipse(p.x, p.y + 4, 30, 14, 0, 0, 7); g.fill(); g.stroke();
+      circle(g, p.x, p.y - 4, 20, 'rgba(180,220,255,.5)', '#e0f2fe', 4); who(g, info, p.x, p.y - 4, 14, t);
       g.globalAlpha = 1;
     }
     fx.draw(g);
   },
-  hud(g, f, { lang }, Wd) { hudText(g, `🧑‍🚀 ${f.saved}/${f.target}   ⏱ ${f.left}`, Wd / 2, 44, 46, '#ffd23f'); void lang; },
+  hud(g, f, { lang }, Wd) { hudText(g, `${lang === 'he' ? 'חולצו' : 'Saved'} ${f.saved}/${f.target}  ·  ${lang === 'he' ? 'אבדו' : 'Lost'} ${f.lost}  ·  ${f.left}s`, Wd / 2, 44, 36, '#ffd23f'); },
   event(e, _f, { fx }) {
-    if (e.k === 'crash') { fx.burst(e.x, e.y, '#ff8c42', 20, 300, 6); fx.kick(8); sfx.bump(); } else if (e.k === 'save') { fx.text(150, 280, `+${e.n}`, '#5dfc8d', 60); sfx.win(); } else if (e.k === 'grab') sfx.coin(); else if (e.k === 'boost') sfx.boost();
+    if (e.k === 'crash') { fx.burst(e.x, e.y, '#ff8c42', 20, 300, 6); fx.kick(8); sfx.bump(); } else if (e.k === 'save') { fx.text(150, 280, `+${e.n}`, '#5dfc8d', 60); sfx.win(); } else if (e.k === 'grab') sfx.coin(); else if (e.k === 'beam') sfx.power(); else if (e.k === 'lost') { fx.burst(e.x, e.y, '#9aa4b2', 14, 200, 6); fx.text(e.x, e.y - 30, 'LOST', '#ff4d6d', 34); sfx.bad(); }
   },
 };
 
@@ -67,7 +80,7 @@ export const evacRenderer: Renderer = {
   draw(g, f, { players, t, fx }) {
     g.fillStyle = '#6b4a2b'; g.fillRect(0, 0, W, H); g.fillStyle = '#7a5733'; for (let x = 0; x < W; x += 100) for (let y = 0; y < H; y += 100) if ((x + y) / 100 % 2 === 0) g.fillRect(x, y, 100, 100);
     g.fillStyle = 'rgba(94,234,212,.25)'; g.beginPath(); g.arc(f.exit.x, f.exit.y, f.exit.r, 0, 7); g.fill(); emoji(g, '🚪', f.exit.x, f.exit.y, 54);
-    for (const c of f.c) if (!c.by) { emoji(g, '🧰', c.x, c.y, 38); hudText(g, `${'💰'.repeat(c.v)}`, c.x, c.y - 28, 14); }
+    for (const c of f.c) if (!c.by) { emoji(g, '🧰', c.x, c.y, 38); hudText(g, `${':coin:'.repeat(c.v)}`, c.x, c.y - 28, 14); }
     for (const gd of f.g) { circle(g, gd.x, gd.y, 24, gd.st ? '#999' : '#b91c1c'); emoji(g, '💂', gd.x, gd.y, 30); }
     for (const p of f.p) { const info = players.get(p.id); if (!info) continue; g.globalAlpha = p.st ? 0.5 : 1; who(g, info, p.x, p.y, 20, t); g.globalAlpha = 1; if (p.c) emoji(g, '🧰', p.x, p.y - 38, 30); }
     // flood
@@ -75,7 +88,7 @@ export const evacRenderer: Renderer = {
     g.fillStyle = 'rgba(180,230,255,.6)'; g.beginPath(); g.moveTo(f.fl, 0); for (let y = 0; y <= H; y += 20) g.lineTo(f.fl + Math.sin(t * 4 + y / 30) * 8, y); g.lineTo(W + 20, H); g.lineTo(W + 20, 0); g.closePath(); g.globalAlpha = 0.5; g.fill(); g.globalAlpha = 1;
     fx.draw(g);
   },
-  hud(g, f, _i, Wd) { hudText(g, `💰 ${f.got}/${f.total}   ⏱ ${f.left}`, Wd / 2, 44, 46, '#ffd23f'); },
+  hud(g, f, _i, Wd) { hudText(g, `:coin: ${f.got}/${f.total}   :clock: ${f.left}`, Wd / 2, 44, 46, '#ffd23f'); },
   event(e, _f, { fx }) { if (e.k === 'score') { fx.text(70, 300, `+${e.v}`, '#ffd23f', 60); sfx.coin(); } else if (e.k === 'caught') { fx.kick(8); sfx.bad(); } else if (e.k === 'grab' || e.k === 'drop') sfx.click(); },
 };
 
@@ -94,7 +107,7 @@ export const huntRenderer: Renderer = {
     }
     fx.draw(g);
   },
-  hud(g, f, { players }, Wd) { hudText(g, `💰 ${f.left2}   ⏱ ${f.left}`, Wd / 2, 44, 46, '#ffd23f'); scoreboard(g, [...f.p].sort((a: any, b: any) => b.s - a.s).map((p: any) => ({ id: p.id, v: p.s })), players, Wd, hudText); },
+  hud(g, f, { players }, Wd) { hudText(g, `:coin: ${f.left2}   :clock: ${f.left}`, Wd / 2, 44, 46, '#ffd23f'); scoreboard(g, [...f.p].sort((a: any, b: any) => b.s - a.s).map((p: any) => ({ id: p.id, v: p.s })), players, Wd, hudText); },
   event(e, _f, { fx }) {
     if (e.k === 'found') { fx.text(e.x, e.y - 30, `+${e.v}`, '#ffd23f', 64); fx.burst(e.x, e.y, '#ffd23f', 30, 360, 7); sfx.coin(); sfx.win(); }
     else if (e.k === 'bomb') { fx.burst(e.x, e.y, '#ff8c42', 24, 340, 7); fx.kick(8); sfx.boom(); } else if (e.k === 'dig') sfx.tick(); else if (e.k === 'empty') sfx.click(); else if (e.k === 'ping') sfx.power();
@@ -128,10 +141,10 @@ export const towerRenderer: Renderer = {
         g.fillStyle = info.color; g.strokeStyle = '#120a2a'; g.lineWidth = 3; g.beginPath(); g.roundRect(p.sw - p.w / 2, -(k + 1) * 34 - 60, p.w, 34, 6); g.fill(); g.stroke();
       }
       g.restore();
-      hudText(g, `${info.name}  ${p.h}🧱${p.ov ? ' 💥' : ''}`, cx, oy + 26, 22, info.color);
+      hudText(g, `${info.name}  ${p.h}:brick:${p.ov ? ' :boom:' : ''}`, cx, oy + 26, 22, info.color);
     });
     fx.draw(g);
   },
-  hud(g, f, _i, Wd) { hudText(g, `⏱ ${f.left}`, Wd / 2, 44, 44, '#ffd23f'); },
+  hud(g, f, _i, Wd) { hudText(g, `:clock: ${f.left}`, Wd / 2, 44, 44, '#ffd23f'); },
   event(e, _f, { fx }) { if (e.k === 'perfect') { fx.text(600, 340, 'PERFECT!', '#ffd23f', 64); sfx.win(); } else if (e.k === 'place') sfx.bump(); else if (e.k === 'collapse') { fx.kick(10); sfx.fall(); } },
 };
