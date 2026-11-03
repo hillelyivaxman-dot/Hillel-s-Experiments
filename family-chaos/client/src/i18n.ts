@@ -132,6 +132,15 @@ const S = {
   padSettings: { he: 'הגדרות שלט', en: 'Controller settings' },
   buttonSize: { he: 'גודל כפתורים', en: 'Button size' },
   swapSides: { he: 'החלפת צדדים (שמאליים)', en: 'Swap sides (left-handed)' },
+  steering: { he: 'היגוי', en: 'Steering' },
+  steerWheel: { he: 'הגה', en: 'Wheel' },
+  steerArrows: { he: 'חצים', en: 'Arrows' },
+  steerTilt: { he: 'הטיה', en: 'Tilt' },
+  tiltEnable: { he: 'הפעלת חיישן הטיה', en: 'Enable tilt sensor' },
+  tiltCalibrate: { he: 'כיול (החזיקו ישר)', en: 'Calibrate (hold level)' },
+  tiltNone: { he: 'אין חיישן הטיה בדפדפן הזה. עברו להגה או לחצים.', en: 'No tilt sensor in this browser. Use wheel or arrows.' },
+  tiltDenied: { he: 'ההרשאה לחיישן נדחתה. אפשר להפעיל בהגדרות הדפדפן.', en: 'Sensor permission denied. Enable it in browser settings.' },
+  tiltInvert: { he: 'היפוך כיוון הטיה', en: 'Invert tilt direction' },
 };
 
 export type Key = keyof typeof S;

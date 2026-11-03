@@ -4,6 +4,7 @@ import { BTN } from '../../../shared/protocol';
 import { useT } from '../i18n';
 import type { Conn } from '../net';
 import { PadIcon } from './icons';
+import { ArrowSteer, TiltSteer, Wheel } from './steering';
 import { computeLayout, stickVector, type Circle } from './layout';
 import type { PadSettings } from './settings';
 
@@ -123,8 +124,15 @@ export function Pad({ layout, conn, settings }: { layout: ControllerLayout; conn
     flush(); // button edges go out immediately (lowest latency)
   };
 
+  // racing: steering comes from the wheel / arrows / tilt and is sent as x; y stays 0
+  const setSteer = (x: number) => {
+    if (x === state.current.x && state.current.y === 0) return;
+    state.current = { ...state.current, x, y: 0 };
+    stickChanged();
+  };
+
   const L = useMemo(() => {
-    if (layout.kind !== 'stick' || !area.w) return null;
+    if ((layout.kind !== 'stick' && layout.kind !== 'wheel') || !area.w) return null;
     return computeLayout({ w: area.w, h: area.h, buttons: layout.buttons.length, style: layout.style, size: settings.size, mirrored: settings.mirrored, stick: true });
   }, [layout, area.w, area.h, settings.size, settings.mirrored]);
 
@@ -133,6 +141,14 @@ export function Pad({ layout, conn, settings }: { layout: ControllerLayout; conn
       {layout.kind === 'stick' && L && (
         <>
           <Stick region={L.stickRegion!} rest={L.stickRest} radius={L.stickRadius} onChange={setStick} releasers={releasers.current} />
+          {layout.buttons.map((b, i) => <PadButton key={b.key} b={b} c={L.buttons[i]} primary={i === 0} onChange={setBtn} releasers={releasers.current} />)}
+        </>
+      )}
+      {layout.kind === 'wheel' && L && (
+        <>
+          {settings.steer === 'wheel' && <Wheel region={L.stickRegion!} onSteer={setSteer} releasers={releasers.current} />}
+          {settings.steer === 'arrows' && <ArrowSteer region={L.stickRegion!} onSteer={setSteer} releasers={releasers.current} />}
+          {settings.steer === 'tilt' && <TiltSteer region={L.stickRegion!} onSteer={setSteer} invert={settings.tiltInvert} releasers={releasers.current} />}
           {layout.buttons.map((b, i) => <PadButton key={b.key} b={b} c={L.buttons[i]} primary={i === 0} onChange={setBtn} releasers={releasers.current} />)}
         </>
       )}

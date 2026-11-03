@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { BTN } from '../../shared/protocol';
-import { delta, frame, HTTP, HTTPS, newHost, newPhone, padProblems, playerIds, waitPlaying, type SentInput } from './util';
+import { delta, frame, HTTP, HTTPS, newHost, newPhone, padProblems, playerIds, waitPlaying, wheelAt, type SentInput } from './util';
 
 // Regression tests for the controller bugs found in the review (see docs/CONTROLLER.md).
 // Touch input is real CDP touch emulation in Chromium (not a physical phone).
@@ -68,12 +68,13 @@ test('stick: finger slides off the stick area and the screen side — still stee
 test('touch cancel (system gesture / incoming call) releases stick and buttons', async ({ browser }) => {
   const { a } = await (await startGame('kart'))(browser);
   const t = await touch(a.p);
-  const s = await center(a.p, '.stick-zone');
+  const w = await wheelAt(a.p);
   const gas = await center(a.p, '[data-btn="A"]');
-  await t('touchStart', [{ ...s, id: 1 }]);
-  await t('touchMove', [{ x: s.x + 60, y: s.y, id: 1 }]);
-  await t('touchStart', [{ x: s.x + 60, y: s.y, id: 1 }, { ...gas, id: 2 }]);
+  await t('touchStart', [{ ...w.at(0), id: 1 }]);
+  for (const d of [20, 40, 60]) await t('touchMove', [{ ...w.at(d), id: 1 }]);
+  await t('touchStart', [{ ...w.at(60), id: 1 }, { ...gas, id: 2 }]);
   await expect.poll(() => last(a.inputs).b).toBe(BTN.A);
+  await expect.poll(() => last(a.inputs).x).toBeGreaterThan(0.3);
   await t('touchCancel', []);
   await expect.poll(() => last(a.inputs)).toMatchObject({ x: 0, y: 0, b: 0 });
   await expect(a.p.locator('[data-btn="A"]')).not.toHaveClass(/is-down/);
@@ -82,11 +83,11 @@ test('touch cancel (system gesture / incoming call) releases stick and buttons',
 test('screen lock / app switch while holding GAS and steering: everything is released (no runaway car)', async ({ browser }) => {
   const { a } = await (await startGame('kart'))(browser);
   const t = await touch(a.p);
-  const s = await center(a.p, '.stick-zone');
+  const w = await wheelAt(a.p);
   const gas = await center(a.p, '[data-btn="A"]');
-  await t('touchStart', [{ ...s, id: 1 }]);
-  await t('touchMove', [{ x: s.x - 60, y: s.y, id: 1 }]);
-  await t('touchStart', [{ x: s.x - 60, y: s.y, id: 1 }, { ...gas, id: 2 }]);
+  await t('touchStart', [{ ...w.at(0), id: 1 }]);
+  for (const d of [-30, -60, -90]) await t('touchMove', [{ ...w.at(d), id: 1 }]);
+  await t('touchStart', [{ ...w.at(-90), id: 1 }, { ...gas, id: 2 }]);
   await expect.poll(() => last(a.inputs)).toMatchObject({ b: BTN.A });
   await expect.poll(() => last(a.inputs).x).toBeLessThan(-0.5);
   // the phone goes to sleep: the browser fires visibilitychange, and no pointerup will ever arrive
@@ -100,14 +101,14 @@ test('screen lock / app switch while holding GAS and steering: everything is rel
 test('three fingers at once: steer + GAS + TURBO (Kart) all reach the server', async ({ browser }) => {
   const { h, a, ids } = await (await startGame('kart'))(browser);
   const t = await touch(a.p);
-  const s = await center(a.p, '.stick-zone');
+  const w = await wheelAt(a.p);
   const gas = await center(a.p, '[data-btn="A"]');
   const turbo = await center(a.p, '[data-btn="D"]');
   const f0 = await frame(h);
-  await t('touchStart', [{ ...s, id: 1 }]);
-  await t('touchStart', [{ ...s, id: 1 }, { ...gas, id: 2 }]);
-  await t('touchStart', [{ ...s, id: 1 }, { ...gas, id: 2 }, { ...turbo, id: 3 }]);
-  await t('touchMove', [{ x: s.x + 50, y: s.y, id: 1 }, { ...gas, id: 2 }, { ...turbo, id: 3 }]);
+  await t('touchStart', [{ ...w.at(0), id: 1 }]);
+  await t('touchStart', [{ ...w.at(0), id: 1 }, { ...gas, id: 2 }]);
+  await t('touchStart', [{ ...w.at(0), id: 1 }, { ...gas, id: 2 }, { ...turbo, id: 3 }]);
+  for (const d of [30, 60, 90]) await t('touchMove', [{ ...w.at(d), id: 1 }, { ...gas, id: 2 }, { ...turbo, id: 3 }]);
   await expect.poll(() => last(a.inputs).b).toBe(BTN.A | BTN.D);
   await expect.poll(() => last(a.inputs).x).toBeGreaterThan(0.4); // stick moves are coalesced (~16 ms)
   await expect(a.p.locator('.pad-btn.is-down')).toHaveCount(2);
@@ -126,8 +127,8 @@ test('controls stay visible and tappable when the browser bar shows/hides and wh
   const { a } = await (await startGame('kart'))(browser);
   for (const vp of [{ width: 412, height: 860 }, { width: 412, height: 760 }, { width: 860, height: 412 }, { width: 860, height: 330 }, { width: 412, height: 915 }]) {
     await a.p.setViewportSize(vp);
-    await a.p.waitForTimeout(150);
-    expect(await padProblems(a.p), `${vp.width}x${vp.height}`).toEqual([]);
+    // the layout settles within a few frames of the resize; wait for it instead of sleeping a fixed time
+    await expect.poll(() => padProblems(a.p), { message: `${vp.width}x${vp.height}`, timeout: 6000 }).toEqual([]);
     await expect(a.p.locator('.pad-btn')).toHaveCount(4);
   }
 });
@@ -213,4 +214,92 @@ test('Chaos Rush: run, jump with a real tap, dash and shove reach the server and
   await expect.poll(() => a.inputs.some((i) => (i.b & BTN.B) !== 0)).toBe(true);
   await t('touchEnd', []);
   await expect.poll(() => last(a.inputs)).toMatchObject({ x: 0, y: 0, b: 0 });
+});
+
+test('wheel: rotating a finger steers proportionally, fine near centre, full at the lock; release snaps back to straight', async ({ browser }) => {
+  const { a } = await (await startGame('kart'))(browser);
+  const t = await touch(a.p);
+  const w = await wheelAt(a.p);
+  await t('touchStart', [{ ...w.at(0), id: 1 }]);
+  await t('touchMove', [{ ...w.at(10), id: 1 }]);
+  await expect.poll(() => last(a.inputs).x).toBeGreaterThan(0.02);
+  expect(last(a.inputs).x).toBeLessThan(0.15); // tiny rotation = tiny steering
+  for (const d of [30, 50, 70]) await t('touchMove', [{ ...w.at(d), id: 1 }]);
+  await expect.poll(() => last(a.inputs).x).toBeGreaterThan(0.4);
+  expect(last(a.inputs).x).toBeLessThan(0.8);
+  for (const d of [90, 110, 130, 150]) await t('touchMove', [{ ...w.at(d), id: 1 }]);
+  await expect.poll(() => last(a.inputs).x).toBe(1); // locked
+  // the visible wheel really rotated
+  const rot = await a.p.locator('.wheel').evaluate((e) => getComputedStyle(e).transform);
+  expect(rot).not.toBe('none');
+  // turning back the other way reduces the steering
+  for (const d of [100, 60, 20, -20]) await t('touchMove', [{ ...w.at(d), id: 1 }]);
+  await expect.poll(() => last(a.inputs).x).toBeLessThan(0.1);
+  await t('touchEnd', []);
+  await expect.poll(() => last(a.inputs)).toMatchObject({ x: 0 });
+});
+
+test('arrows mode: holding left/right steers fully, both = straight, and the choice is remembered', async ({ browser }) => {
+  const { a } = await (await startGame('kart'))(browser);
+  await a.p.getByTestId('pad-settings').click();
+  await a.p.locator('[data-steer-mode="arrows"]').click();
+  await a.p.locator('.pad-sheet .btn').click();
+  await expect(a.p.locator('.arrow-btn')).toHaveCount(2);
+  const t = await touch(a.p);
+  const L = await center(a.p, '[data-btn="L"]'), R = await center(a.p, '[data-btn="R"]');
+  await t('touchStart', [{ ...R, id: 1 }]);
+  await expect.poll(() => last(a.inputs).x).toBe(1);
+  await t('touchStart', [{ ...R, id: 1 }, { ...L, id: 2 }]);
+  await expect.poll(() => last(a.inputs).x).toBe(0);
+  await t('touchEnd', [{ ...R, id: 1 }]);
+  await expect.poll(() => last(a.inputs).x).toBe(-1);
+  await t('touchEnd', []);
+  await expect.poll(() => last(a.inputs).x).toBe(0);
+  expect(await padProblems(a.p)).toEqual([]);
+  await a.p.reload();
+  await expect(a.p.locator('.arrow-btn')).toHaveCount(2); // remembered after reload
+});
+
+test('tilt mode: a (simulated) sensor steers, calibration centres it, and a missing sensor says so', async ({ browser }) => {
+  const { a } = await (await startGame('kart', { viewport: { width: 891, height: 412 } }))(browser);
+  // Only our synthetic (untrusted) motion events reach the page: the browser's own emulated ones are ignored,
+  // so "no sensor" and "sensor" can both be tested deterministically.
+  await a.ctx.addInitScript(() => {
+    // iPhone-style: motion access needs a tap and a permission answer
+    (window.DeviceMotionEvent as unknown as { requestPermission: () => Promise<string> }).requestPermission = async () => 'granted';
+    const orig = window.addEventListener.bind(window);
+    window.addEventListener = ((type: string, fn: EventListenerOrEventListenerObject, opts?: boolean | AddEventListenerOptions) =>
+      type === 'devicemotion' ? orig(type, (e: Event) => { if (!e.isTrusted) (fn as EventListener)(e); }, opts) : orig(type, fn, opts)) as typeof window.addEventListener;
+  });
+  await a.p.reload();
+  await expect(a.p.locator('.pad')).toBeVisible();
+  await a.p.getByTestId('pad-settings').click();
+  await a.p.locator('[data-steer-mode="tilt"]').click();
+  await a.p.locator('.pad-sheet .btn').click();
+  await a.p.getByTestId('tilt-enable').click(); // permission tap
+  // no sensor events at all: a clear message after a moment
+  await expect(a.p.locator('.tilt-msg .warn')).toBeVisible({ timeout: 6000 });
+
+  // the sensor "appears": remount the tilt steering, then send level + tilted readings
+  const fire = (x: number, y: number) => a.p.evaluate(([gx, gy]) => {
+    const e = new Event('devicemotion');
+    (e as unknown as { accelerationIncludingGravity: unknown }).accelerationIncludingGravity = { x: gx, y: gy, z: 0 };
+    window.dispatchEvent(e);
+  }, [x, y]);
+  await a.p.getByTestId('pad-settings').click();
+  await a.p.locator('[data-steer-mode="wheel"]').click();
+  await a.p.locator('[data-steer-mode="tilt"]').click();
+  await a.p.locator('.pad-sheet .btn').click();
+  await a.p.getByTestId('tilt-enable').click();
+  await a.p.waitForTimeout(100);
+  await fire(9.8, 0); await a.p.waitForTimeout(50); await fire(9.8, 0);
+  await expect(a.p.getByTestId('tilt-calibrate')).toBeVisible();
+  // landscape (screen angle 90): level = gravity along +x. Tilting changes the y component.
+  await fire(9.8 * Math.cos(0.4), 9.8 * Math.sin(0.4)); // about 23 degrees one way
+  await expect.poll(() => Math.abs(last(a.inputs).x)).toBeGreaterThan(0.3);
+  const one = last(a.inputs).x;
+  await fire(9.8 * Math.cos(0.4), -9.8 * Math.sin(0.4)); // the other way
+  await expect.poll(() => last(a.inputs).x * one).toBeLessThan(0);
+  await fire(9.8, 0);
+  await expect.poll(() => last(a.inputs).x).toBe(0);
 });

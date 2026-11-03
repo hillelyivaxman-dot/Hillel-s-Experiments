@@ -26,6 +26,8 @@ export type PadStyle = 'racing' | 'fighter' | 'platform' | 'party';
 export type ControllerLayout =
   // buttons are ordered by importance: [0] is the primary button under the resting thumb
   | { kind: 'stick'; style: PadStyle; buttons: ControllerButton[]; landscape?: boolean }
+  // racing: a wheel to rotate with a finger (or arrows / phone tilt) instead of a joystick
+  | { kind: 'wheel'; style: PadStyle; buttons: ControllerButton[] }
   | { kind: 'tap'; button: ControllerButton } // one giant button
   | { kind: 'choices'; count: 2 | 3 | 4 };
 
@@ -51,6 +53,7 @@ export interface GameMeta {
   options: GameOption[];
 }
 
+const wheelPad = (style: PadStyle, buttons: ControllerButton[]): ControllerLayout => ({ kind: 'wheel', style, buttons });
 const stickPad = (style: PadStyle, buttons: ControllerButton[], landscape = true): ControllerLayout =>
   ({ kind: 'stick', style, buttons, landscape });
 
@@ -82,7 +85,7 @@ export const CATALOG: GameMeta[] = [
     },
     category: 'racing', minPlayers: 1, maxPlayers: 8, status: 'playable',
     accent: ['#3ec1ff', '#5d5dff'],
-    controller: stickPad('racing', [
+    controller: wheelPad('racing', [
       { key: 'A', label: { he: 'גז', en: 'GAS' }, color: '#5dfc8d', big: true, icon: 'gas' },
       { key: 'B', label: { he: 'בלם', en: 'BRAKE' }, color: '#ff8c42', icon: 'brake' },
       { key: 'D', label: { he: 'טורבו', en: 'TURBO' }, color: '#3ec1ff', icon: 'turbo' },

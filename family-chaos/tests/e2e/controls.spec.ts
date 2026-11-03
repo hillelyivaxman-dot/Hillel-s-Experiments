@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { delta, frame, HTTP, newHost, newPhone, playerIds, waitPlaying } from './util';
+import { delta, frame, HTTP, newHost, newPhone, playerIds, waitPlaying, wheelAt } from './util';
 
 // Controller tests with real (CDP-emulated) touch input, as a phone browser would deliver it.
 
@@ -49,11 +49,13 @@ test('joystick: dragging a finger moves the critter in that direction and releas
   // release: knob returns to centre, critter slows to a stop (friction)
   await t('touchEnd', []);
   await expect(a.p.locator('.stick-knob')).toHaveCSS('transform', /matrix\(1, 0, 0, 1, 0, 0\)|none/);
-  await h.waitForTimeout(1500);
-  const f4 = await frame(h);
-  await h.waitForTimeout(400);
-  const f5 = await frame(h);
-  expect(delta(f4, f5, 'p', ids.Thumb).d).toBeLessThan(8);
+  // after release the critter coasts to a stop (poll: it may have fallen off and respawned while the host page lagged)
+  await expect.poll(async () => {
+    const x = await frame(h);
+    await h.waitForTimeout(250);
+    const y = await frame(h);
+    return y.p.find((p: any) => p.id === ids.Thumb).f ? 0 : delta(x, y, 'p', ids.Thumb).d;
+  }, { timeout: 10_000 }).toBeLessThan(8);
 });
 
 test('multi-touch: steering with one finger while holding GAS with another (Kart)', async ({ browser }) => {
@@ -65,17 +67,17 @@ test('multi-touch: steering with one finger while holding GAS with another (Kart
   await h.getByTestId('start-btn').click();
   await waitPlaying(h);
   const t = await touch(a.p);
-  const s = await center(a.p, '.stick-zone');
+  const w = await wheelAt(a.p);
   const gas = await center(a.p, '[data-btn="A"]');
   const f0 = await frame(h);
 
-  // finger 1 on the stick, finger 2 on GAS at the same time
-  await t('touchStart', [{ ...s, id: 1 }]);
-  await t('touchStart', [{ ...s, id: 1 }, { ...gas, id: 2 }]);
+  // finger 1 on the wheel, finger 2 on GAS at the same time
+  await t('touchStart', [{ ...w.at(0), id: 1 }]);
+  await t('touchStart', [{ ...w.at(0), id: 1 }, { ...gas, id: 2 }]);
   await expect(a.p.locator('[data-btn="A"]')).toHaveClass(/is-down/);
   await h.waitForTimeout(700); // straight acceleration
   const fMid = await frame(h);
-  await t('touchMove', [{ x: s.x + 70, y: s.y, id: 1 }, { ...gas, id: 2 }]); // steer right while still on the gas
+  for (const d of [30, 60, 90]) await t('touchMove', [{ ...w.at(d), id: 1 }, { ...gas, id: 2 }]); // turn the wheel right while still on the gas
   await h.waitForTimeout(900);
   const f1 = await frame(h);
   await t('touchEnd', []);

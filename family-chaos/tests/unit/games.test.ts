@@ -48,11 +48,20 @@ describe('kart chaos', () => {
   for (let track = 0; track < TRACK_COUNT; track++) {
     it(`an autopilot finishes 2 laps on track ${track}`, () => {
       const tr = getTrack(track);
+      const progress = new Map<string, number>();
       const r = runGame(kartGame, 3, { laps: 2, track }, (id, snap) => {
         const me = snap.c.find((c: any) => c.id === id);
         // aim at the track point slightly ahead of the closest sample
-        let best = 0, bd = Infinity;
-        tr.pts.forEach((p, i) => { const d = (p.x - me.x) ** 2 + (p.y - me.y) ** 2; if (d < bd) { bd = d; best = i; } });
+        // follow progress along the track (a global nearest-point search jumps branches at the figure-eight crossing)
+        const n = tr.pts.length;
+        const from = progress.get(id) ?? 0;
+        let best = from, bd = Infinity;
+        for (let k = -20; k <= 60; k++) {
+          const i = (((from + k) % n) + n) % n, p = tr.pts[i];
+          const d = (p.x - me.x) ** 2 + (p.y - me.y) ** 2;
+          if (d < bd) { bd = d; best = i; }
+        }
+        progress.set(id, best);
         const ahead = pointAt(tr, (tr.cum[best] + 90) / tr.length);
         const want = Math.atan2(ahead.y - me.y, ahead.x - me.x);
         let diff = want - me.a;

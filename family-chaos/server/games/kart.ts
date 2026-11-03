@@ -9,7 +9,15 @@ export const KART = {
   MAX: 470,
   BOOST_MAX: 740,
   REVERSE: -160,
-  TURN: 2.7,
+  // arcade handling
+  TURN_LOW: 2.9, // max yaw rate (rad/s) at low speed ...
+  TURN_HIGH: 1.7, // ... falling to this at top speed: no snap turns when fast
+  STEER_IN: 6.5, // steering smoothing (1/s): wheel/arrow input ramps instead of jumping
+  STEER_OUT: 10,
+  GRIP: 9, // lateral grip (1/s); the car slides a little instead of turning on rails
+  GRIP_DRIFT: 3.2, // while braking in a turn
+  CORNER_DRAG: 150, // speed lost per second at full lock and full speed
+  ASSIST: 1.15, // rad/s pull towards the track direction when not steering
   CAR_R: 22,
   WALL: 48, // extra room beyond the asphalt before the wall
   SECTORS: 8,
@@ -26,6 +34,9 @@ interface Car {
   sector: number; mask: number; lap: number; cross: number;
   item: Item; boostT: number; spinT: number; shieldT: number;
   turbo: number; // 0..100 turbo meter, TURBO button spends 50
+  steer: number; // smoothed steering -1..1
+  lat: number; // sideways velocity (px/s, + = right of heading)
+  drift: boolean;
   finished: number; // finish time, -1 if racing
   offTrack: boolean;
 }
@@ -42,7 +53,14 @@ function nearest(tr: Track, x: number, y: number, hint: number) {
     }
   };
   scan(hint - 25, hint + 25);
-  if (bestD > (TRACK_WIDTH * 1.5) ** 2) scan(0, n - 1); // lost: full search
+  // Off the road near a track crossing (figure eight) the window can sit on the wrong branch: when the
+  // windowed best is off-road, look at the whole track and switch if another part of it is clearly closer.
+  if (bestD > (TRACK_WIDTH / 2 + 8) ** 2) {
+    const wBest = best, wD = bestD;
+    bestD = Infinity;
+    scan(0, n - 1);
+    if (bestD > wD - 15 * 15) { best = wBest; bestD = wD; } // no clearly closer spot: keep the continuous one
+  }
   return { idx: best, dist: Math.sqrt(bestD) };
 }
 
@@ -69,7 +87,7 @@ export const kartGame: GameModule = {
       return {
         id: p.id, x, y, a: Math.atan2(pt.ty, pt.tx), v: 0, idx: nr.idx, s: tr.cum[nr.idx],
         sector: K.SECTORS - 1, mask: 1 << (K.SECTORS - 1), lap: 0, cross: -1,
-        item: '', boostT: 0, spinT: 0, shieldT: 0, turbo: 50, finished: -1, offTrack: false,
+        item: '', boostT: 0, spinT: 0, shieldT: 0, turbo: 50, steer: 0, lat: 0, drift: false, finished: -1, offTrack: false,
       };
     });
     const byId = new Map(cars.map((c) => [c.id, c]));
@@ -132,26 +150,58 @@ export const kartGame: GameModule = {
           const racing = c.finished < 0;
           const gas = racing && ((inp.b & BTN.A) !== 0 || inp.y < -0.55);
           const brake = racing && ((inp.b & BTN.B) !== 0 || inp.y > 0.65);
-          const steer = racing ? Math.max(-1, Math.min(1, inp.x)) : 0;
-          const max = (c.boostT > 0 ? K.BOOST_MAX : K.MAX) * (c.offTrack ? 0.5 : 1);
+          const steerIn = racing ? Math.max(-1, Math.min(1, inp.x)) : 0;
+          const max = (c.boostT > 0 ? K.BOOST_MAX : K.MAX) * (c.offTrack ? 0.55 : 1);
 
+          // --- steering input smoothing (wheel, arrows and tilt all feel the same) ---
+          const rate = Math.abs(steerIn) > Math.abs(c.steer) ? K.STEER_IN : K.STEER_OUT;
+          const dSt = steerIn - c.steer;
+          c.steer += Math.max(-rate * dt, Math.min(rate * dt, dSt));
+
+          // --- longitudinal ---
+          const sp = Math.min(1.2, Math.abs(c.v) / K.MAX);
           if (c.boostT > 0) c.v += 1300 * dt;
-          else if (gas) c.v += K.ACC * dt;
-          if (brake) c.v -= (c.v > 0 ? 950 : 320) * dt;
-          if (!gas && !brake && c.boostT <= 0) c.v *= Math.pow(0.35, dt);
-          if (!racing) c.v *= Math.pow(0.2, dt);
+          else if (gas) c.v += K.ACC * (1 - 0.6 * Math.min(1, c.v / K.MAX) ** 2) * dt;
+          if (brake) c.v -= (c.v > 15 ? 720 : 320) * dt;
+          if (!gas && !brake && c.boostT <= 0) c.v *= Math.exp(-1.05 * dt);
+          if (c.offTrack) c.v *= Math.exp(-0.9 * dt);
+          if (!racing) c.v *= Math.exp(-1.6 * dt);
+          c.v -= Math.sign(c.v) * K.CORNER_DRAG * Math.abs(c.steer) * Math.min(1, sp) * Math.min(1, sp) * dt; // scrub speed in hard turns
           if (c.v > max) c.v = Math.max(max, c.v - 900 * dt);
           if (c.v < K.REVERSE) c.v = K.REVERSE;
 
-          const grip = Math.max(-1, Math.min(1, c.v / 170));
-          c.a += steer * K.TURN * dt * grip;
-          if (c.spinT > 0) { c.a += 10 * dt; c.v *= Math.pow(0.15, dt); c.spinT -= dt; }
+          // --- yaw: rate falls with speed, so full lock at full speed is a wide, stable arc ---
+          c.drift = brake && Math.abs(c.steer) > 0.45 && c.v > 140 && c.spinT <= 0;
+          const yawMax = (K.TURN_LOW + (K.TURN_HIGH - K.TURN_LOW) * Math.min(1, sp)) * (c.drift ? 1.25 : 1);
+          const dirK = Math.max(-1, Math.min(1, c.v / 120)); // no turning on the spot, reverse flips steering
+          let dA = c.steer * yawMax * dirK * dt;
+          // gentle straight-line assist towards the track direction when the player is not steering
+          if (racing && Math.abs(c.v) > 80 && c.spinT <= 0) {
+            const p0 = tr.pts[c.idx], p1 = tr.pts[(c.idx + 3) % tr.pts.length];
+            let diff = Math.atan2(p1.y - p0.y, p1.x - p0.x) - c.a;
+            while (diff > Math.PI) diff -= 2 * Math.PI;
+            while (diff < -Math.PI) diff += 2 * Math.PI;
+            if (Math.abs(diff) < 1.2) dA += Math.max(-1, Math.min(1, diff * 2)) * K.ASSIST * (1 - Math.abs(steerIn)) * Math.sign(c.v) * dt;
+          }
+          if (c.spinT > 0) { dA += 7 * dt; c.v *= Math.exp(-1.9 * dt); c.spinT -= dt; }
+          // rotate the velocity frame with the heading: the sideways part appears as slip
+          const sn = Math.sin(dA), cs = Math.cos(dA);
+          const v2 = c.v * cs + c.lat * sn, l2 = -c.v * sn + c.lat * cs;
+          c.v = v2; c.lat = l2; c.a += dA;
+          // lateral grip; part of the removed slide is converted to forward speed (keeps cornering fast and fun)
+          const grip = c.drift ? K.GRIP_DRIFT : c.offTrack ? 5 : K.GRIP;
+          const removed = c.lat * (1 - Math.exp(-grip * dt));
+          c.lat -= removed;
+          c.v += Math.sign(c.v || 1) * Math.abs(removed) * 0.6;
+          c.lat = Math.max(-0.75 * Math.abs(c.v) - 60, Math.min(0.75 * Math.abs(c.v) + 60, c.lat));
           c.boostT = Math.max(0, c.boostT - dt);
           if (racing) c.turbo = Math.min(100, c.turbo + 3 * dt); // slow regen
           c.shieldT = Math.max(0, c.shieldT - dt);
 
-          c.x += Math.cos(c.a) * c.v * dt;
-          c.y += Math.sin(c.a) * c.v * dt;
+          const fx0 = Math.cos(c.a), fy0 = Math.sin(c.a);
+          let vxw = c.v * fx0 - c.lat * fy0, vyw = c.v * fy0 + c.lat * fx0;
+          c.x += vxw * dt;
+          c.y += vyw * dt;
 
           // track / walls
           const nr = nearest(tr, c.x, c.y, c.idx);
@@ -161,11 +211,18 @@ export const kartGame: GameModule = {
           const lim = TRACK_WIDTH / 2 + K.WALL;
           if (nr.dist > lim) {
             const p = tr.pts[nr.idx];
+            const nx = (c.x - p.x) / nr.dist, ny = (c.y - p.y) / nr.dist; // outward normal
             const k = lim / nr.dist;
             c.x = p.x + (c.x - p.x) * k;
             c.y = p.y + (c.y - p.y) * k;
-            if (Math.abs(c.v) > 120) { ctx.fx('wall', { x: r1(c.x), y: r1(c.y) }); ctx.buzz(c.id, 40); }
-            c.v *= 0.55;
+            const into = vxw * nx + vyw * ny;
+            if (into > 0) {
+              if (into > 120) { ctx.fx('wall', { x: r1(c.x), y: r1(c.y) }); ctx.buzz(c.id, 40); }
+              vxw -= 1.15 * into * nx; vyw -= 1.15 * into * ny; // slide along the wall with a small bounce
+              vxw *= 0.9; vyw *= 0.9;
+              c.v = vxw * Math.cos(c.a) + vyw * Math.sin(c.a);
+              c.lat = -vxw * Math.sin(c.a) + vyw * Math.cos(c.a);
+            }
           }
 
           // sectors & laps
@@ -257,7 +314,7 @@ export const kartGame: GameModule = {
           end: endAt === Infinity ? -1 : Math.max(0, Math.ceil(endAt - time)),
           c: cars.map((c) => ({
             id: c.id, x: Math.round(c.x), y: Math.round(c.y), a: Math.round(c.a * 100) / 100,
-            b: c.boostT > 0 ? 1 : 0, s: c.spinT > 0 ? 1 : 0, h: c.shieldT > 0 ? 1 : 0,
+            b: c.boostT > 0 ? 1 : 0, s: c.spinT > 0 ? 1 : 0, dr: c.drift ? 1 : 0, st: Math.round(c.steer * 10) / 10, h: c.shieldT > 0 ? 1 : 0,
             lap: Math.min(c.lap + 1, laps), fin: c.finished >= 0 ? 1 : 0, it: c.item,
           })),
           ord: o.map((c) => c.id),

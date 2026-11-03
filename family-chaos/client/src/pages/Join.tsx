@@ -314,7 +314,25 @@ function PhoneGame({ room, conn, hud, isLeader, act }: { room: RoomState; conn: 
               {settings.mirrored ? t('on') : t('off')}
             </button>
           </div>
-          {meta.controller.kind === 'stick' && <p className="muted small">{t('tiltHint')}</p>}
+          {meta.controller.kind === 'wheel' && (
+            <>
+              <div className="pad-sheet__row">
+                <span>{t('steering')}</span>
+                {(['wheel', 'arrows', 'tilt'] as const).map((m) => (
+                  <button key={m} className={`chip ${settings.steer === m ? 'is-on' : ''}`} data-steer-mode={m} onClick={() => setSettings({ steer: m })}>
+                    {t(m === 'wheel' ? 'steerWheel' : m === 'arrows' ? 'steerArrows' : 'steerTilt')}
+                  </button>
+                ))}
+              </div>
+              {settings.steer === 'tilt' && (
+                <div className="pad-sheet__row">
+                  <span>{t('tiltInvert')}</span>
+                  <button className={`chip ${settings.tiltInvert ? 'is-on' : ''}`} onClick={() => setSettings({ tiltInvert: !settings.tiltInvert })}>{settings.tiltInvert ? t('on') : t('off')}</button>
+                </div>
+              )}
+            </>
+          )}
+          {(meta.controller.kind === 'stick' || meta.controller.kind === 'wheel') && <p className="muted small">{t('tiltHint')}</p>}
           <button className="btn btn--secondary" onClick={() => setOpen(false)}>✓</button>
         </div>
       )}

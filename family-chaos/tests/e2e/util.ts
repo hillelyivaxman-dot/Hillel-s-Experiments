@@ -108,3 +108,10 @@ export async function padProblems(p: Page) {
     return out;
   });
 }
+
+/** Geometry of the steering wheel on a phone page: `at(deg)` = a point on the rim, clockwise from the top. */
+export async function wheelAt(p: Page) {
+  const b = (await p.locator('.wheel-zone').boundingBox())!;
+  const cx = b.x + b.width / 2, cy = b.y + b.height / 2, R = Math.min(b.width, b.height) * 0.32;
+  return { cx, cy, R, at: (deg: number) => ({ x: cx + R * Math.sin((deg * Math.PI) / 180), y: cy - R * Math.cos((deg * Math.PI) / 180) }) };
+}

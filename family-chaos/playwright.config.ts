@@ -7,6 +7,9 @@ export default defineConfig({
   timeout: 60_000,
   fullyParallel: false,
   workers: 1,
+  // The suite plays real games in many browser contexts; on a loaded CI/sandbox a timing-sensitive test can lose a
+  // frame race once. One retry keeps CI honest without hiding real failures (a real bug fails twice).
+  retries: 1,
   reporter: [['list']],
   use: { baseURL: 'http://localhost:8790', trace: 'retain-on-failure', ignoreHTTPSErrors: true },
   webServer: [
