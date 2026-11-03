@@ -29,7 +29,7 @@ export type ControllerLayout =
   // racing: a wheel to rotate with a finger (or arrows / phone tilt) instead of a joystick
   | { kind: 'wheel'; style: PadStyle; buttons: ControllerButton[] }
   | { kind: 'tap'; button: ControllerButton } // one giant button
-  | { kind: 'choices'; count: 2 | 3 | 4 };
+  | { kind: 'choices'; count: 2 | 3 | 4; labels?: L10n[]; colors?: string[]; icons?: string[] }; // 2-4 big labelled buttons
 
 export interface GameOption {
   key: string;
@@ -145,11 +145,83 @@ export const CATALOG: GameMeta[] = [
     ]),
     options: [{ key: 'len', label: { he: 'אורך מסלול', en: 'Course length' }, values: [8, 12, 16], default: 12 }],
   },
-  soon('soccer', 'מיני כדורגל', 'Mini Soccer', 'sports', ['#22c55e', '#15803d']),
+  {
+    id: 'board',
+    name: { he: 'מסיבת לוח משפחתית', en: 'Family Board Party' },
+    tagline: { he: 'קוביות, כוכבים, מטבעות והפתעות', en: 'Dice, stars, coins and surprises' },
+    howTo: {
+      he: 'בתורכם: קוביה (A) וצעדו על הלוח. אספו מטבעות, קנו כוכב ב־10 מטבעות (הוא כל הזמן זז!), הפעילו כוחות (B) והתמודדו בדו־קרבות. בסוף כל סבב יש משחקון לחיצות. הכי הרבה כוכבים מנצח.',
+      en: 'On your turn: roll (A) and walk the board. Collect coins, buy a star for 10 (it keeps moving!), use powers (B) and duel rivals. Every round ends with a tap race. Most stars wins.',
+    },
+    category: 'board', minPlayers: 2, maxPlayers: 8, status: 'playable',
+    accent: ['#8b5cf6', '#ec4899'],
+    controller: { kind: 'choices', count: 2, labels: [{ he: 'קוביה / כן / לחצו!', en: 'ROLL / YES / TAP!' }, { he: 'כוח / לא', en: 'POWER / NO' }], colors: ['#5dfc8d', '#ffb347'], icons: ['dice', 'star'] },
+    options: [{ key: 'rounds', label: { he: 'סבבים', en: 'Rounds' }, values: [5, 8, 10], default: 8 }],
+  },
+  {
+    id: 'kitchen',
+    name: { he: 'מטבח משוגע', en: 'Crazy Kitchen' },
+    tagline: { he: 'מבשלים יחד, מגישים מהר, לא נשרפים!', en: 'Cook together, serve fast, do not burn it!' },
+    howTo: {
+      he: 'שיתוף פעולה! קחו חומרי גלם (A), חתכו ירקות על הקרש (החזיקו B), בשלו קציצות במחבת (אל תתנו להן להישרף!), הרכיבו על צלחת והגישו לחלון לפני שההזמנה פוקעת. באמצע המשחק המטבח מתחלף!',
+      en: 'Co-op! Grab ingredients (A), chop veg on a board (hold B), cook patties on the stove (do not let them burn!), build the plate and serve it before the order expires. Half way through, the kitchen reshuffles!',
+    },
+    category: 'coop', minPlayers: 1, maxPlayers: 6, status: 'playable',
+    accent: ['#fb923c', '#e11d48'],
+    controller: stickPad('party', [
+      { key: 'A', label: { he: 'קח / שים', en: 'TAKE / PUT' }, color: '#5dfc8d', big: true, icon: 'hand' },
+      { key: 'B', label: { he: 'חתוך', en: 'CHOP' }, color: '#ffd23f', icon: 'chop' },
+    ]),
+    options: [{ key: 'time', label: { he: 'זמן', en: 'Time' }, values: [120, 180, 240], default: 180, names: [{ he: '2 דקות', en: '2 min' }, { he: '3 דקות', en: '3 min' }, { he: '4 דקות', en: '4 min' }] }],
+  },
   soon('treasure', 'ציד אוצרות', 'Treasure Hunt', 'arcade', ['#fbbf24', '#b45309']),
-  soon('hockey', 'הוקי אוויר', 'Air Hockey', 'sports', ['#38bdf8', '#0ea5e9']),
+  {
+    id: 'soccer',
+    name: { he: 'כדורגל', en: 'Soccer' },
+    tagline: { he: 'קבוצה נגד קבוצה — מי יבקיע יותר?', en: 'Team vs team — who scores more?' },
+    howTo: {
+      he: 'הקבוצות נבחרות אוטומטית (אדומים נגד כחולים). ג׳ויסטיק לריצה, בעיטה לבעוט לכיוון הג׳ויסטיק, ספרינט מתכלה. תיקו = הארכה עם גול הזהב.',
+      en: 'Teams are automatic (red vs blue). Stick to run, KICK shoots where you aim, SPRINT drains stamina. A tie goes to golden-goal overtime.',
+    },
+    category: 'sports', minPlayers: 2, maxPlayers: 8, status: 'playable',
+    accent: ['#22c55e', '#15803d'],
+    controller: stickPad('fighter', [
+      { key: 'A', label: { he: 'בעיטה', en: 'KICK' }, color: '#ffd23f', big: true, icon: 'kick' },
+      { key: 'B', label: { he: 'ספרינט', en: 'SPRINT' }, color: '#3ec1ff', icon: 'dash' },
+    ]),
+    options: [{ key: 'time', label: { he: 'זמן משחק', en: 'Match time' }, values: [60, 120, 180], default: 120, names: [{ he: 'דקה', en: '1 min' }, { he: '2 דקות', en: '2 min' }, { he: '3 דקות', en: '3 min' }] }],
+  },
+  {
+    id: 'hockey',
+    name: { he: 'הוקי אוויר', en: 'Air Hockey' },
+    tagline: { he: 'מהיר, חלק ונוצץ — 1 נגד 1 או 2 נגד 2', en: 'Fast, slick, shiny — 1v1 or 2v2' },
+    howTo: {
+      he: 'הזיזו את המחבט עם הג׳ויסטיק (רק בחצי שלכם) והבקיעו לשער היריב. "חבטה" נותנת פרץ מהירות. ראשון ל־7 גולים מנצח.',
+      en: 'Move your mallet with the stick (your half only) and score in the rival goal. SMASH gives a speed burst. First to 7 goals wins.',
+    },
+    category: 'sports', minPlayers: 2, maxPlayers: 4, status: 'playable',
+    accent: ['#38bdf8', '#6366f1'],
+    controller: stickPad('fighter', [{ key: 'A', label: { he: 'חבטה', en: 'SMASH' }, color: '#ffd23f', big: true, icon: 'turbo' }]),
+    options: [{ key: 'goals', label: { he: 'גולים לניצחון', en: 'Goals to win' }, values: [3, 5, 7, 10], default: 7 }],
+  },
   soon('draw', 'צייר ונחש', 'Draw & Guess', 'party', ['#fb7185', '#f59e0b']),
   soon('maze', 'בריחה מהמבוך', 'Maze Escape', 'puzzle', ['#818cf8', '#4338ca']),
+  {
+    id: 'trapbuilders',
+    name: { he: 'בונים מלכודות', en: 'Trap Builders' },
+    tagline: { he: 'קודם בונים מלכודות, אחר כך כולם רצים דרכן!', en: 'First you build the traps, then everyone runs through them!' },
+    howTo: {
+      he: 'שלב הבנייה: ג׳ויסטיק להזיז את הסמן, B להחליף סוג מלכודת (קוצים / מסור / בור), A להניח. שלב המרוץ: ריצה וקפיצה עד לקו הסיום. מי שנפגע במלכודת שלכם מביא לכם נקודה!',
+      en: 'BUILD: stick moves your cursor, B switches trap type (spikes / saw / pit), A places it. RACE: run and jump to the finish. Every runner your trap catches earns you a point!',
+    },
+    category: 'strategy', minPlayers: 2, maxPlayers: 8, status: 'playable',
+    accent: ['#f43f5e', '#7c3aed'],
+    controller: stickPad('platform', [
+      { key: 'A', label: { he: 'קפיצה / הנח', en: 'JUMP / PLACE' }, color: '#5dfc8d', big: true, icon: 'jump' },
+      { key: 'B', label: { he: 'סוג / רוץ', en: 'TYPE / DASH' }, color: '#ffd23f', icon: 'dash' },
+    ]),
+    options: [{ key: 'rounds', label: { he: 'סבבים', en: 'Rounds' }, values: [2, 3, 5], default: 3 }],
+  },
   soon('tower', 'מגדל מתנדנד', 'Tower Stack', 'arcade', ['#2dd4bf', '#0f766e']),
   soon('trivia', 'טריוויה מסיבה', 'Party Trivia', 'party', ['#c084fc', '#7c3aed']),
 ];

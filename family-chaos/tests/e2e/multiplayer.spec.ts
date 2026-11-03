@@ -1,4 +1,5 @@
 import { expect, test, type Browser, type Page } from '@playwright/test';
+import { CATALOG } from '../../shared/catalog';
 import { delta, playerIds } from './util'; // also registers the hook that closes every browser context after each test
 
 // End-to-end: one host screen + phones in separate browser contexts, real server, real WebSockets.
@@ -42,8 +43,27 @@ async function waitPlaying(h: Page) {
 test('home page renders the library and host button', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByTestId('host-btn')).toBeVisible();
-  await expect(page.locator('.library .game-card')).toHaveCount(12);
-  await expect(page.locator('.library .game-card.is-soon')).toHaveCount(7);
+  await expect(page.locator('.library .game-card')).toHaveCount(CATALOG.length);
+  await expect(page.locator('.library .game-card.is-soon')).toHaveCount(CATALOG.filter((g) => g.status !== 'playable').length);
+});
+
+test('library: search filters games (Hebrew and English), favourites are remembered and float to the top', async ({ page }) => {
+  await page.goto('/');
+  const cards = page.locator('.library .game-card');
+  await page.getByTestId('game-search').fill('soccer');
+  await expect(cards).toHaveCount(1);
+  await page.getByTestId('game-search').fill('הוקי');
+  await expect(cards).toHaveCount(1);
+  await page.getByTestId('game-search').fill('zzzz');
+  await expect(cards).toHaveCount(0);
+  await page.getByTestId('game-search').fill('');
+  await expect(cards).toHaveCount(CATALOG.length);
+  await page.locator('[data-fav="kitchen"]').click();
+  await expect(page.locator('.game-wrap').first().locator('.game-card')).toHaveAttribute('data-game', 'kitchen'); // favourite goes first
+  await page.reload();
+  await expect(page.locator('.game-wrap').first().locator('.game-card')).toHaveAttribute('data-game', 'kitchen'); // and is remembered
+  await page.getByTestId('favs-toggle').click();
+  await expect(cards).toHaveCount(1);
 });
 
 test('two phones control two different characters on one screen, then reconnect, results and game switch', async ({ browser }) => {

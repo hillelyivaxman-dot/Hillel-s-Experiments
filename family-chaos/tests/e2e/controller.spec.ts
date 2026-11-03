@@ -167,12 +167,12 @@ test('after a network drop the controller comes back complete and working', asyn
 });
 
 test('the controller updates for each game in the same lobby (buttons appear/disappear correctly)', async ({ browser }) => {
-  test.setTimeout(90_000);
+  test.setTimeout(240_000); // one match start/stop per game
   const { h, code } = await newHost(browser);
   const a = await newPhone(browser, `${HTTP}/join/${code}`, 'Switcher');
   await newPhone(browser, `${HTTP}/join/${code}`, 'B');
   await newPhone(browser, `${HTTP}/join/${code}`, 'C');
-  const expected: Record<string, string[]> = { bumper: ['A', 'B', 'C'], kart: ['A', 'B', 'D', 'C'], reaction: ['A'], potato: ['A', 'B'], rush: ['A', 'B', 'C'] };
+  const expected: Record<string, string[]> = { bumper: ['A', 'B', 'C'], kart: ['A', 'B', 'D', 'C'], reaction: ['A'], potato: ['A', 'B'], rush: ['A', 'B', 'C'], soccer: ['A', 'B'], hockey: ['A'], board: ['A', 'B'], kitchen: ['A', 'B'], trapbuilders: ['A', 'B'] };
   for (const [g, keys] of Object.entries(expected)) {
     await h.locator(`.lobby__games [data-game="${g}"]`).click();
     await h.getByTestId('start-btn').click();

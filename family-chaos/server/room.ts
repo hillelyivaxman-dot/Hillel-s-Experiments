@@ -383,7 +383,7 @@ export class Room {
       const tie = r.tie ?? i;
       const prevTie = prev ? prev.tie ?? i - 1 : undefined;
       const place = prev && tie === prevTie ? results[i - 1].place : i + 1;
-      const stars = rows.length > 1 ? STARS[place - 1] ?? 0 : 0;
+      const stars = r.stars ?? (rows.length > 1 ? STARS[place - 1] ?? 0 : 0);
       results.push({ playerId: r.playerId, place, score: r.score, stars, detail: r.detail });
       const p = this.players.get(r.playerId);
       if (p) {

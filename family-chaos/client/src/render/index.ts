@@ -1,8 +1,13 @@
+import { boardRenderer } from './board';
 import { bumperRenderer } from './bumper';
+import { hockeyRenderer } from './hockey';
 import { kartRenderer } from './kart';
+import { kitchenRenderer } from './kitchen';
 import { potatoRenderer } from './potato';
 import { reactionRenderer } from './reaction';
+import { trapBuildersRenderer } from './trapbuilders';
 import { rushRenderer } from './rush';
+import { soccerRenderer } from './soccer';
 import type { Renderer } from './types';
 
 // Register client renderers here (one per playable game id).
@@ -12,6 +17,11 @@ export const RENDERERS: Record<string, Renderer> = {
   reaction: reactionRenderer,
   potato: potatoRenderer,
   rush: rushRenderer,
+  soccer: soccerRenderer,
+  hockey: hockeyRenderer,
+  board: boardRenderer,
+  kitchen: kitchenRenderer,
+  trapbuilders: trapBuildersRenderer,
 };
 
 const LERP_KEYS = ['x', 'y', 'a'];

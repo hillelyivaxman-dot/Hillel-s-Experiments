@@ -11,7 +11,7 @@ Branch: `ccr-64ced051-a2t8s8` · folder: `family-chaos/` · live site: https://f
 
 ## Done
 - Platform: rooms, lobby, QR, accounts, controllers (measured layout engine), HTTPS/WSS tests, Render blueprint.
-- Playable (5): Bumper Battle, Kart Chaos, Reaction Duel, Hot Potato, Chaos Rush.
+- Playable (10): Bumper Battle, Kart Chaos, Reaction Duel, Hot Potato, Chaos Rush, **Soccer, Air Hockey, Crazy Kitchen, Family Board Party, Trap Builders**.
 - **Task 1 — Kart steering (done):** virtual **steering wheel** you rotate with a finger (grab anywhere, relative rotation, ±115° lock,
   expo curve, snaps back on release), **arrow** steering (hold left/right, ramped on the server) and **tilt** steering
   (DeviceMotion, iPhone permission tap, calibration, invert option). GAS / BRAKE / TURBO / ITEM buttons.
@@ -25,9 +25,10 @@ Branch: `ccr-64ced051-a2t8s8` · folder: `family-chaos/` · live site: https://f
 Legend: [x] playable + tested, [ ] not started. A game is only marked playable in `shared/catalog.ts` when it is [x].
 
 ### Wave 1
-- [ ] Soccer · [ ] Air hockey · [ ] Crazy kitchen · [ ] Family board party · [ ] Trap builders
+- [x] Soccer · [x] Air hockey · [x] Crazy kitchen · [x] Family board party · [x] Trap builders  (wave 1 complete: each has server rules, renderer, phone controller, unit tests; all in the browser suite)
 ### Wave 2
 - [ ] Basketball · [ ] Bowling · [ ] Boat race · [ ] Bike race · [ ] Vanishing floor
+  - *Vanishing floor in progress:* server rules + 4 unit tests are written and passing (`server/games/vanish.ts`, `shared/vanish.ts`, `tests/unit/vanish.test.ts`) but it is **not registered/playable yet**: still needs the renderer (`client/src/render/vanish.ts`), catalog entry, phone HUD, icon and e2e coverage.
 ### Wave 3
 - [ ] Tank battle · [ ] Wizard duel · [ ] Arena survival · [ ] Base defense · [ ] Tag
 ### Wave 4
@@ -36,7 +37,7 @@ Legend: [x] playable + tested, [ ] not started. A game is only marked playable i
 - [ ] Space race · [ ] Popping balloons · [ ] Team puzzle · [ ] Draw & guess · [ ] Party trivia
 
 ## Library / website improvements (requested)
-- [ ] categories filter · [ ] search · [ ] original art per game · [ ] player count + estimated time · [ ] favourites · [ ] transitions · [ ] console-style design
+- [x] categories filter · [x] search · [x] favourites (stored on the device) · [x] player count shown on every card · [x] original vector icon per game · [ ] estimated play time · [ ] page transitions · [ ] console-style redesign of home/lobby
 
 ## Known limits
 - No real-device testing (no physical phones / Safari / Firefox engines in the sandbox).

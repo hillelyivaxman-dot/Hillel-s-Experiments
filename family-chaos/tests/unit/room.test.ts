@@ -80,7 +80,7 @@ describe('rooms & lobby', () => {
   it('cannot start coming-soon games', () => {
     const { host, join, room } = setup();
     join('A'); join('B');
-    room.handle(host, { t: 'admin', act: { a: 'select', game: 'soccer' } });
+    room.handle(host, { t: 'admin', act: { a: 'select', game: 'maze' } });
     expect(host.last('error')!.code).toBe('not_allowed');
   });
 

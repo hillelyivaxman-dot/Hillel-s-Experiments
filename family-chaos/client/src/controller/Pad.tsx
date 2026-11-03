@@ -158,7 +158,7 @@ export function Pad({ layout, conn, settings }: { layout: ControllerLayout; conn
       {layout.kind === 'choices' && (
         <div className="pad__choices">
           {(['A', 'B', 'C', 'D'] as const).slice(0, layout.count).map((k, i) => (
-            <PadButton key={k} b={{ key: k, label: { he: '', en: '' }, color: ['#ff4d6d', '#3ec1ff', '#ffd23f', '#5dfc8d'][i] }} onChange={setBtn} releasers={releasers.current} />
+            <PadButton key={k} b={{ key: k, label: layout.labels?.[i] ?? { he: '', en: '' }, color: layout.colors?.[i] ?? ['#ff4d6d', '#3ec1ff', '#ffd23f', '#5dfc8d'][i], icon: layout.icons?.[i] }} onChange={setBtn} releasers={releasers.current} />
           ))}
         </div>
       )}

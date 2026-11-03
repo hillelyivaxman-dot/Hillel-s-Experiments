@@ -86,14 +86,17 @@ test('every phone gets the right controller for every game, laid out on screen',
     await h.locator(`.lobby__games [data-game="${meta.id}"]`).click();
     await h.getByTestId('start-btn').click();
     await waitPlaying(h);
-    for (const { name, p } of phones) {
+    for (const [idx, { name, p }] of phones.entries()) {
       const where = `${meta.id} on ${name}`;
+      if (idx >= meta.maxPlayers) { await expect(p.locator('.pad'), where).toHaveCount(0); continue; } // spectating phone: no controller
       await expect(p.locator('.pad'), where).toBeVisible();
       const c = meta.controller;
       if (c.kind === 'stick' || c.kind === 'wheel') {
         await expect(p.locator('.stick-zone'), where).toHaveCount(1);
         await expect(p.locator('.pad-btn'), where).toHaveCount(c.buttons.length);
         for (const b of c.buttons) await expect(p.locator(`[data-btn="${b.key}"]`), where).toHaveText(b.label.en);
+      } else if (c.kind === 'choices') {
+        await expect(p.locator('.pad-btn'), where).toHaveCount(c.count);
       } else if (c.kind === 'tap') {
         await expect(p.locator('.stick-zone'), where).toHaveCount(0);
         await expect(p.locator('.pad-btn--huge'), where).toHaveText(c.button.label.en);

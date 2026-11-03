@@ -262,6 +262,36 @@ function hudView(game: string, h: Hud, t: ReturnType<typeof useT>['t'], he: bool
       if (h.msg === 'early') return { text: t('early'), tone: 'bad' };
       if (h.msg === 'tapped') return { text: `${h.ms} ms`, tone: 'good' };
       return { text: `${t('round')} ${h.round ?? 1}/${h.rounds ?? '-'} · ${t('score')} ${h.score ?? 0}`, tone: 'normal' };
+    case 'soccer':
+      return {
+        text: `${h.team === 0 ? '🔴' : '🔵'} ${h.a ?? 0} : ${h.b ?? 0}${h.ot ? ' · GOLDEN' : ''}`, tone: 'normal',
+        meter: Number(h.stamina ?? 0) / 100, meterLabel: L('ספרינט', 'SPRINT'),
+        chips: [{ icon: 'kick', on: !!h.kick, label: L('בעיטה', 'KICK') }],
+      };
+    case 'hockey':
+      return { text: `${h.team === 0 ? '🔴' : '🔵'} ${h.a ?? 0} : ${h.b ?? 0}${h.sd ? ' · SUDDEN' : ''}`, tone: 'normal', chips: [{ icon: 'turbo', on: !!h.smash, label: L('חבטה', 'SMASH') }] };
+    case 'board': {
+      const ph = String(h.ph ?? '');
+      const chips = [{ icon: 'star', on: Number(h.stars) > 0, label: `${h.stars ?? 0}★ · ${h.coins ?? 0}c` }, ...(h.power ? [{ icon: 'star', on: true, label: h.power === 'double' ? '×2' : L('גניבה', 'STEAL') }] : [])];
+      if (ph === 'mini' || ph === 'duel') return { text: `${L('לחצו מהר!', 'TAP FAST!')} ${h.taps ?? 0}`, tone: 'hot', chips };
+      if (ph === 'done') return { text: L('המשחק נגמר!', 'Game over!'), tone: 'good', chips };
+      if (ph === 'result') return { text: L('תוצאות…', 'Results…'), tone: 'normal', chips };
+      if (ph === 'roll') return { text: h.me ? L('התור שלכם! לחצו על הקוביה', 'Your turn! Tap the dice') : L(`תור של ${h.who}`, `${h.who}'s turn`), tone: h.me ? 'good' : 'normal', chips };
+      if (ph === 'buy') return { text: h.me ? (Number(h.can) ? L('לקנות כוכב ב־10? כן/לא', 'Buy a star for 10? Yes/No') : L('אין מספיק מטבעות', 'Not enough coins')) : L(`${h.who} שוקל/ת כוכב`, `${h.who} eyes a star`), tone: h.me ? 'good' : 'normal', chips };
+      return { text: h.me ? L('זזים…', 'Moving…') : L(`תור של ${h.who}`, `${h.who}'s turn`), tone: 'normal', chips };
+    }
+    case 'kitchen': {
+      const code = String(h.hold ?? '');
+      const name = code.startsWith('plate:') ? L('צלחת', 'plate') + (code.length > 6 ? ' +' + code.slice(6).split(',').length : '') : code ? code.split('.')[0] + (code.endsWith('.c') ? ' ✂' : code.endsWith('.k') ? ' 🔥' : code.endsWith('.b') ? ' 💥' : '') : L('ידיים ריקות', 'empty hands');
+      return { text: `${h.score ?? 0} · ${name}`, tone: 'normal', chips: [{ icon: 'hand', on: !!code, label: `${h.orders ?? 0} ${L('הזמנות', 'orders')}` }] };
+    }
+    case 'trapbuilders': {
+      const ph = String(h.ph ?? '');
+      const kind = { spikes: L('קוצים', 'SPIKES'), saw: L('מסור', 'SAW'), pit: L('בור', 'PIT') }[String(h.kind)] ?? '';
+      if (ph === 'build') return { text: `${L('בנייה', 'BUILD')} · ${kind} · ${h.left} ${L('נותרו', 'left')} · ${h.t}`, tone: 'normal', chips: [{ icon: 'star', on: Number(h.left) > 0, label: `${h.total ?? 0}` }] };
+      if (ph === 'run') return h.done ? { text: L('סיימתם!', 'Finished!'), tone: 'good' } : { text: L('רוצו!', 'RUN!'), tone: 'normal', chips: [{ icon: 'dash', on: !!h.dash, label: L('הסתערות', 'DASH') }] };
+      return { text: `${L('ניקוד', 'Score')} ${h.total ?? 0}`, tone: ph === 'done' ? 'good' : 'normal' };
+    }
     case 'rush':
       if (h.done) return { text: `${t('finished')} #${h.place}`, tone: 'good' };
       return {

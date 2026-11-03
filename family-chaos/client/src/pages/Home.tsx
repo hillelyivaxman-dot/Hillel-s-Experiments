@@ -6,6 +6,7 @@ import { PLAYER_COLORS } from '../../../shared/protocol';
 import { useMe } from '../account';
 import { useT } from '../i18n';
 import { prefs } from '../prefs';
+import { store } from '../net';
 import { sfx } from '../sound';
 import { introCards } from '../ui/intro';
 import { CritterCanvas, GameCard, Logo, SettingsBar } from '../ui/common';
@@ -19,8 +20,18 @@ export function Home() {
   const [cat, setCat] = useState<Category | 'all'>('all');
   const [code, setCode] = useState('');
   const cats = useMemo(() => [...new Set(CATALOG.map((g) => g.category))], []);
-  const games = CATALOG.filter((g) => cat === 'all' || g.category === cat)
-    .sort((a, b) => (a.status === b.status ? 0 : a.status === 'playable' ? -1 : 1));
+  const [query, setQuery] = useState('');
+  const [onlyFavs, setOnlyFavs] = useState(false);
+  const [favs, setFavs] = useState<string[]>(() => { try { return JSON.parse(store.get('fc.favs') ?? '[]'); } catch { return []; } });
+  const toggleFav = (id: string) => {
+    const next = favs.includes(id) ? favs.filter((x) => x !== id) : [...favs, id];
+    setFavs(next); store.set('fc.favs', JSON.stringify(next)); sfx.click();
+  };
+  const q = query.trim().toLowerCase();
+  const games = CATALOG
+    .filter((g) => (cat === 'all' || g.category === cat) && (!onlyFavs || favs.includes(g.id)) &&
+      (!q || g.name.he.toLowerCase().includes(q) || g.name.en.toLowerCase().includes(q) || l(CATEGORY_NAMES[g.category]).toLowerCase().includes(q)))
+    .sort((a, b) => (favs.includes(b.id) ? 1 : 0) - (favs.includes(a.id) ? 1 : 0) || (a.status === b.status ? 0 : a.status === 'playable' ? -1 : 1));
 
   useGSAP(() => {
     if (prefs.reducedMotion) return;
@@ -76,6 +87,10 @@ export function Home() {
 
       <section className="library">
         <h2>{t('library')}</h2>
+        <div className="library__tools">
+          <input className="search" type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t('searchGames')} aria-label={t('searchGames')} data-testid="game-search" />
+          <button className={`chip ${onlyFavs ? 'is-on' : ''}`} onClick={() => setOnlyFavs((v) => !v)} aria-pressed={onlyFavs} data-testid="favs-toggle">★ {t('favorites')} ({favs.length})</button>
+        </div>
         <div className="tabs" role="tablist">
           <button role="tab" aria-selected={cat === 'all'} className={`chip ${cat === 'all' ? 'is-on' : ''}`} onClick={() => setCat('all')}>{t('all')}</button>
           {cats.map((c) => (
@@ -85,7 +100,13 @@ export function Home() {
           ))}
         </div>
         <div className="library__grid">
-          {games.map((g) => <GameCard key={g.id} g={g} onClick={() => go('/host')} />)}
+          {games.map((g) => (
+            <div className="game-wrap" key={g.id}>
+              <GameCard g={g} onClick={() => go('/host')} />
+              <button className={`fav-btn ${favs.includes(g.id) ? 'is-on' : ''}`} onClick={() => toggleFav(g.id)} aria-pressed={favs.includes(g.id)} aria-label={`${t('favorites')}: ${l(g.name)}`} data-fav={g.id}>★</button>
+            </div>
+          ))}
+          {!games.length && <p className="muted">{t('noGames')}</p>}
         </div>
       </section>
       <footer className="footer">{t('privacy')} · FAMILY CHAOS</footer>

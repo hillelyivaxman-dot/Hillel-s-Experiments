@@ -42,6 +42,8 @@ export interface StandingRow {
   playerId: string;
   score: number; // shown in results
   detail?: string;
+  /** Overrides the stars for this row (co-op games award stars by team performance instead of by place). */
+  stars?: number;
   /** Rows with the same `tie` value as the previous row share its place. Defaults to unique. */
   tie?: number;
 }

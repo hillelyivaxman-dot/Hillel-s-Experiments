@@ -141,6 +141,8 @@ const S = {
   tiltNone: { he: 'אין חיישן הטיה בדפדפן הזה. עברו להגה או לחצים.', en: 'No tilt sensor in this browser. Use wheel or arrows.' },
   tiltDenied: { he: 'ההרשאה לחיישן נדחתה. אפשר להפעיל בהגדרות הדפדפן.', en: 'Sensor permission denied. Enable it in browser settings.' },
   tiltInvert: { he: 'היפוך כיוון הטיה', en: 'Invert tilt direction' },
+  searchGames: { he: 'חיפוש משחק…', en: 'Search games…' },
+  noGames: { he: 'לא נמצאו משחקים. נסו חיפוש אחר.', en: 'No games found. Try another search.' },
 };
 
 export type Key = keyof typeof S;

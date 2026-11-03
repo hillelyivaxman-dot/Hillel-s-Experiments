@@ -220,3 +220,110 @@ describe('chaos rush', () => {
     }
   });
 });
+
+describe('soccer', () => {
+  const mod = GAMES.soccer;
+  // attacker bot: run behind the ball, then push/kick it toward the opponent's goal
+  const striker = (team: 0 | 1) => (id: string, snap: any, t: number) => {
+    const me = snap.p.find((p: any) => p.id === id), ball = snap.b[0];
+    const gx = team === 0 ? 600 : -600, gy = 0;
+    const toG = Math.atan2(gy - ball.y, gx - ball.x);
+    const behind = { x: ball.x - Math.cos(toG) * 45, y: ball.y - Math.sin(toG) * 45 };
+    const dBall = Math.hypot(ball.x - me.x, ball.y - me.y);
+    const dBehind = Math.hypot(behind.x - me.x, behind.y - me.y);
+    const aim = dBehind > 25 && dBall > 50 ? Math.atan2(behind.y - me.y, behind.x - me.x) : Math.atan2(gy - me.y, gx - me.x);
+    return { x: Math.cos(aim), y: Math.sin(aim), b: dBall < 60 && Math.floor(t * 6) % 2 === 0 ? BTN.A : 0 };
+  };
+  const idle = () => ({ x: 0, y: 0, b: 0 });
+
+  it('assigns alternating teams and a striker scores; the scoring team wins and shares first place', () => {
+    // the opponent wanders off the shot line (a standing defender would block the ball: that is realistic, but not this test)
+    const r = runGame(mod, 2, { time: 40 }, (id, s, t) => (id === 'p1' ? striker(0)(id, s, t) : { x: 0, y: -1, b: 0 }), 90);
+    expect(r.over).toBe(true);
+    expect(r.fx).toContain('goal');
+    expect(r.fx).toContain('kick');
+    const st = r.game.standings();
+    expect(st[0].playerId).toBe('p1');
+    expect(st[0].score).toBeGreaterThanOrEqual(1);
+    expect((r.game.snapshot() as any).sc[0]).toBeGreaterThanOrEqual(1);
+  });
+
+  it('a 0-0 tie plays golden-goal overtime and then ends as a shared draw', () => {
+    const r = runGame(mod, 2, { time: 10 }, idle, 90);
+    expect(r.fx).toContain('overtime');
+    expect(r.over).toBe(true);
+    const st = r.game.standings();
+    expect(st[0].tie).toBe(st[1].tie); // draw: same place
+  });
+
+  it('teams of two: both players of the winning team win; players cannot leave the pitch; ball stays in play', () => {
+    const r = runGame(mod, 4, { time: 30 }, (id, s, t) => (id === 'p1' || id === 'p3' ? striker(0)(id, s, t) : { x: -1, y: 1, b: BTN.B }), 90);
+    const snap = r.game.snapshot() as any;
+    for (const p of snap.p) { expect(Math.abs(p.x)).toBeLessThanOrEqual(600); expect(Math.abs(p.y)).toBeLessThanOrEqual(350); }
+    expect(Math.abs(snap.b[0].y)).toBeLessThanOrEqual(350);
+    const st = r.game.standings();
+    expect(snap.p.filter((p: any) => p.tm === 0).length).toBe(2);
+    if (snap.sc[0] > snap.sc[1]) expect(st.slice(0, 2).every((x) => ['p1', 'p3'].includes(x.playerId))).toBe(true);
+  });
+
+  it('sprint drains stamina and kick has a cooldown', () => {
+    const r = runGame(mod, 2, { time: 10 }, (id, _s, t) => ({ x: 1, y: 0, b: BTN.B | (id === 'p1' && Math.floor(t * 30) % 2 ? BTN.A : 0) }), 6);
+    expect(r.fx.filter((k) => k === 'swing' || k === 'kick').length).toBeLessThan(6 / 0.35 + 2);
+  });
+});
+
+describe('air hockey', () => {
+  const mod = GAMES.hockey;
+  // attacker: line up behind the puck (staying back), then charge through it so it flies into the goal
+  const attacker = (team: 0 | 1) => (id: string, snap: any) => {
+    const me = snap.p.find((p: any) => p.id === id), puck = snap.b[0];
+    const dir = team === 0 ? 1 : -1;
+    const behind = (puck.x - me.x) * dir; // > 0: the puck is in front of me
+    const aligned = Math.abs(me.y - puck.y) < 22;
+    const target = behind > 30 && aligned ? { x: puck.x + dir * 200, y: puck.y } : { x: puck.x - dir * 140, y: puck.y };
+    const dx = target.x - me.x, dy = target.y - me.y, d = Math.hypot(dx, dy) || 1;
+    return { x: dx / d, y: dy / d, b: 0 };
+  };
+  const idle = () => ({ x: 0, y: 0, b: 0 });
+
+  it('mallets stay in their own half and inside the table, the puck stays in play, goals end the match', () => {
+    let maxXTeam0 = -1e9, minXTeam1 = 1e9, maxY = 0;
+    const r = runGame(mod, 2, { goals: 3 }, (id, s) => {
+      for (const p of s.p) { maxY = Math.max(maxY, Math.abs(p.y)); if (p.tm === 0) maxXTeam0 = Math.max(maxXTeam0, p.x); else minXTeam1 = Math.min(minXTeam1, p.x); }
+      return id === 'p1' ? attacker(0)(id, s) : { x: -1, y: Math.sin(s.t * 3), b: 0 }; // p2 pushes towards the centre line (right side: team 1 sits at x > 0)
+    }, 150);
+    expect(maxXTeam0).toBeLessThan(0);
+    expect(minXTeam1).toBeGreaterThan(0);
+    expect(maxY).toBeLessThanOrEqual(290);
+    expect(r.over).toBe(true);
+    expect(r.fx).toContain('hit');
+  });
+
+  it('an attacker scores, the scoring team wins and the final score is reported per player', () => {
+    const r = runGame(mod, 2, { goals: 3 }, (id, s) => (id === 'p1' ? attacker(0)(id, s) : { x: 0, y: 1, b: 0 }), 150); // the defender steps aside
+    const st = r.game.standings();
+    expect(r.fx).toContain('goal');
+    expect(st[0].playerId).toBe('p1');
+    expect(st[0].score).toBeGreaterThanOrEqual(1);
+    expect((r.game.snapshot() as any).sc[0]).toBeGreaterThanOrEqual(1);
+  });
+
+  it('SMASH boosts speed briefly and has a cooldown; 2v2 works', () => {
+    const r = runGame(mod, 4, { goals: 10 }, (id, _s, t) => ({ x: 1, y: 0, b: id === 'p1' && Math.floor(t * 8) % 2 ? BTN.A : 0 }), 10);
+    const smashes = r.fx.filter((k) => k === 'smash').length;
+    expect(smashes).toBeGreaterThanOrEqual(2);
+    expect(smashes).toBeLessThanOrEqual(4); // 3 s cooldown over 10 s
+    expect((r.game.snapshot() as any).p).toHaveLength(4);
+  });
+
+  it('a 0-0 game goes to sudden death and the next goal (or the clock) ends it', () => {
+    const r = runGame(mod, 2, { goals: 7, time: 1 }, idle, 100); // 0-0 after 1 s, before the stall breaker can nudge the puck
+    expect(r.fx).toContain('overtime');
+    expect(r.over).toBe(true);
+    const st = r.game.standings();
+    expect(st).toHaveLength(2);
+    // either someone scored in sudden death (team result differs) or it ran out (draw: same place)
+    const sc = (r.game.snapshot() as any).sc;
+    if (sc[0] === sc[1]) expect(st[0].tie).toBe(st[1].tie); else expect(st[0].tie).not.toBe(st[1].tie);
+  });
+});
