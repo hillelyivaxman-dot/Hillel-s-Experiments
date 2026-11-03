@@ -7,6 +7,7 @@ import { CATALOG, getMeta } from '../../../shared/catalog';
 import type { AdminAction, PlayerInfo, RoomState } from '../../../shared/protocol';
 import { useT } from '../i18n';
 import { prefs } from '../prefs';
+import { store } from '../net';
 import { sfx } from '../sound';
 import { introCards } from '../ui/intro';
 import { CritterCanvas, GameCard, Logo, SettingsBar } from '../ui/common';
@@ -68,6 +69,7 @@ export function Lobby({ room, act, watch }: { room: RoomState; act: (a: AdminAct
   const meta = getMeta(room.selectedGame)!;
   const connected = room.players.filter((p) => p.connected).length;
   const [custom, setCustom] = useState<string[] | null>(null);
+  const favs: string[] = (() => { try { return JSON.parse(store.get('fc.favs') ?? '[]'); } catch { return []; } })(); // favourites float to the front
   const canStart = connected >= meta.minPlayers;
 
   useEffect(() => {
@@ -163,7 +165,7 @@ export function Lobby({ room, act, watch }: { room: RoomState; act: (a: AdminAct
 
       <section className="lobby__bottom">
         <div className="lobby__games">
-          {CATALOG.filter((g) => g.status === 'playable').map((g) => (
+          {[...CATALOG.filter((g) => g.status === 'playable')].sort((a, b) => (favs.includes(b.id) ? 1 : 0) - (favs.includes(a.id) ? 1 : 0)).map((g) => (
             <GameCard key={g.id} g={g} selected={custom ? custom.includes(g.id) : g.id === room.selectedGame} onClick={() => { sfx.click(); if (custom) setCustom(custom.includes(g.id) ? custom.filter((x) => x !== g.id) : [...custom, g.id]); else act({ a: 'select', game: g.id }); }} />
           ))}
           <div className="rail-soon" aria-hidden="true">+{CATALOG.filter((g) => g.status !== 'playable').length}<small>{t('soon')}</small></div>

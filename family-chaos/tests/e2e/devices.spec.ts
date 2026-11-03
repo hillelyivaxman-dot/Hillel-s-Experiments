@@ -93,7 +93,8 @@ test('every phone gets the right controller for every game, laid out on screen',
       await expect(p.locator('.pad'), where).toBeVisible();
       const c = meta.controller;
       if (c.kind === 'stick' || c.kind === 'wheel') {
-        await expect(p.locator('.stick-zone'), where).toHaveCount(1);
+        if (c.kind === 'wheel') { await expect(p.locator('.arrow-btn'), where).toHaveCount(2); } // racing: two big steering arrows (default mode)
+        else await expect(p.locator('.stick-zone'), where).toHaveCount(1);
         await expect(p.locator('.pad-btn'), where).toHaveCount(c.buttons.length);
         for (const b of c.buttons) await expect(p.locator(`[data-btn="${b.key}"]`), where).toHaveText(b.label.en);
       } else if (c.kind === 'choices') {

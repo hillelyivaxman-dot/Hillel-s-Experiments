@@ -81,8 +81,9 @@ test('multi-touch: steering with one finger while pressing TURBO with another (K
   await t('touchEnd', []);
   await expect(a.p.locator('[data-btn="D"]')).not.toHaveClass(/is-down/);
   expect(delta(f0, fMid, 'c', ids.Driver).d).toBeGreaterThan(40); // no gas button needed: it drives by itself
-  expect(delta(fMid, f1, 'c', ids.Driver).da).toBeGreaterThan(0.4); // steered right while using turbo
-  expect(Math.abs(delta(fMid, f1, 'c', ids.Idle).da)).toBeLessThan(0.3); // the idle kart keeps going straight
+  const wrap = (d: number) => { while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI; return d; };
+  // the road bends for both karts (straight-line assist), so compare them: the driver turned right on top of what the idle kart did
+  expect(wrap(delta(fMid, f1, 'c', ids.Driver).da) - wrap(delta(fMid, f1, 'c', ids.Idle).da)).toBeGreaterThan(0.4);
 });
 
 test('game switching: all playable games start, run and return to the lobby in one room', async ({ browser }) => {

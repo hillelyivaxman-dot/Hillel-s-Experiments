@@ -7,7 +7,7 @@ import { hudText, type Renderer } from './types';
 export const basketballRenderer: Renderer = {
   world: { x: 0, y: 0, w: 1200, h: 700 },
   background(g, w, h) { gradBg(g, w, h, '#1b1450', '#3a1a66'); },
-  draw(g, f, { players, t, fx }) {
+  draw(g, f, { players, t, fx, lang }) {
     const n = f.p.length, cols = Math.min(4, Math.max(1, n)), rows = Math.ceil(n / cols);
     const cw = 1200 / cols, ch = 640 / rows, sc = Math.min((cw - 16) / BBALL.LW, (ch - 16) / BBALL.LH);
     f.p.forEach((p: any, i: number) => {
@@ -39,6 +39,7 @@ export const basketballRenderer: Renderer = {
         bar(g, 14, BBALL.LH - 20, 120, 8, m, m > 0.85 ? '#ff6b3c' : '#5dfc8d');
       }
       if (!f.bl.some((b: any) => b.id === p.id)) { circle(g, BBALL.SX, BBALL.SY, 12, '#ff8c42'); }
+      if (m <= 0.2 && p.s === 0 && f.t < 14) { g.globalAlpha = 0.55 + 0.45 * Math.sin(t * 4); hudText(g, lang === 'he' ? 'משכו ושחררו!' : 'Pull back & let go!', 200, 250, 20, '#ffffff'); g.globalAlpha = 1; } // first-shot hint
       g.restore();
       g.strokeStyle = info.color; g.lineWidth = 4 / sc; g.beginPath(); g.roundRect(0, 0, BBALL.LW, BBALL.LH, 22); g.stroke();
       const ball = f.bl.find((b: any) => b.id === p.id);

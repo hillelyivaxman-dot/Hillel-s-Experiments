@@ -1,3 +1,4 @@
+import gsap from 'gsap';
 import { useEffect, useRef, useState } from 'react';
 import { Icon } from '../ui/icons';
 import type { AdminAction, RoomState } from '../../../shared/protocol';
@@ -7,6 +8,7 @@ import { Results } from '../host/Results';
 import { Stage } from '../host/Stage';
 import { useT, type Key } from '../i18n';
 import { Conn, store } from '../net';
+import { prefs } from '../prefs';
 import { ConnBanner, Logo, useConnStatus } from '../ui/common';
 
 /** The big screen (TV / PC). Also used read-only for remote "watch" screens. */
@@ -21,6 +23,12 @@ export function Host({ watchCode }: { watchCode?: string }) {
   const [crown, setCrown] = useState(false);
   const pw = useRef('');
   const status = useConnStatus(conn);
+  const shell = useRef<HTMLDivElement>(null);
+  const groupNow = room ? (room.phase === 'lobby' ? 'lobby' : room.phase === 'results' ? 'results' : 'match') : '';
+  useEffect(() => { // smooth lobby <-> game <-> results transition
+    if (!groupNow || prefs.reducedMotion || !shell.current) return;
+    gsap.fromTo(shell.current, { opacity: 0, scale: 0.985 }, { opacity: 1, scale: 1, duration: 0.35, ease: 'power2.out', clearProps: 'opacity,transform' });
+  }, [groupNow]);
 
   useEffect(() => {
     const c = new Conn((cn) => {
@@ -74,9 +82,10 @@ export function Host({ watchCode }: { watchCode?: string }) {
     return <div className="center-screen"><Logo /><p className="muted">{error ?? t('connecting')}</p><ConnBanner status={status} /></div>;
   }
 
+  const group = room.phase === 'lobby' ? 'lobby' : room.phase === 'results' ? 'results' : 'match';
   const inMatch = room.phase === 'countdown' || room.phase === 'playing' || room.phase === 'paused';
   return (
-    <div className="host" data-phase={room.phase}>
+    <div className="host" data-phase={room.phase} ref={shell} data-group={group}>
       <ConnBanner status={status} />
       {room.phase === 'lobby' && <Lobby room={room} act={act} watch={watch} />}
       {inMatch && <Stage room={room} conn={conn} act={act} watch={watch} />}

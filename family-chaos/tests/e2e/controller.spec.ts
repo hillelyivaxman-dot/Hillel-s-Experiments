@@ -155,11 +155,12 @@ test('after a network drop the controller comes back complete and working', asyn
   await waitPlaying(h);
   await request.get(`${HTTPS}/__proxy/drop`, { ignoreHTTPSErrors: true });
   await expect(a.p.locator('.conn-banner')).toBeHidden({ timeout: 15_000 });
-  await expect(a.p.locator('.pad-btn')).toHaveCount(4);
+  await expect(a.p.locator('.pad-btn')).toHaveCount(3);
+  await expect(a.p.locator('.arrow-btn')).toHaveCount(2);
   expect(await padProblems(a.p)).toEqual([]);
-  await a.p.locator('[data-btn="A"]').hover();
+  await a.p.locator('[data-btn="D"]').hover();
   await a.p.mouse.down();
-  await expect.poll(() => last(a.inputs).b).toBe(BTN.A);
+  await expect.poll(() => last(a.inputs).b).toBe(BTN.D);
   await a.p.mouse.up();
 });
 
