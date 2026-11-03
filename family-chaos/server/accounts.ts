@@ -231,6 +231,15 @@ function send(res: ServerResponse, status: number, body: unknown, headers: Recor
 export async function handleAccountApi(
   acc: Accounts | null, req: IncomingMessage, res: ServerResponse, path: string, ip: string, secure: boolean,
 ): Promise<boolean> {
+  if (path === '/api/admin/status' && req.method === 'GET') { // public, no secrets: tells /admin what is missing
+    const user = acc ? await acc.userFromToken(readCookie(req)) : null;
+    return send(res, 200, {
+      accounts: acc ? acc.db.kind : 'off', persistent: acc?.db.persistent ?? false,
+      signedIn: !!user, role: user?.role ?? null, nickname: user?.nickname ?? null,
+      ownerClaimed: acc ? (await acc.ownerSetupCode()) === null : false,
+      codeFromEnv: !!process.env.OWNER_SETUP_CODE,
+    }), true;
+  }
   if (!path.startsWith('/api/auth/') && !path.startsWith('/api/me')) return false;
   if (!acc) { send(res, 503, { error: 'accounts_unavailable' }); return true; }
   try {

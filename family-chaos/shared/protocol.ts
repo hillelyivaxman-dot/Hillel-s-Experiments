@@ -16,6 +16,7 @@ export interface PlayerInfo {
   connected: boolean;
   ready: boolean;
   stars: number; // total stars earned in this room session
+  rtt?: number; // phone round-trip time in ms (for the owner's connection alerts)
 }
 
 export interface ResultRow {

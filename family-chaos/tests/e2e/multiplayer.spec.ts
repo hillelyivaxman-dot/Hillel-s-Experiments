@@ -138,22 +138,21 @@ test('two phones control two different characters on one screen, then reconnect,
   await a.locator('.phone-games [data-game="kart"]').click();
   await expect(h.locator('.lobby__games [data-game="kart"].is-selected')).toBeVisible();
   await a.getByTestId('phone-start').click();
-  await expect(b.locator('[data-btn="A"]')).toHaveText(/GAS/);
+  await expect(b.locator('[data-btn="D"]')).toHaveText(/TURBO/); // racing pad: two arrows + TURBO / ITEM / BRAKE
   await waitPlaying(h);
   const k0 = await frame(h);
-  // hold GAS with a real pointer (synthetic events lose pointer capture immediately)
-  await b.locator('[data-btn="A"]').hover();
+  // karts drive themselves; Yoni holds the right arrow with a real pointer (synthetic events lose pointer capture immediately)
+  await b.locator('[data-btn="R"]').hover();
   await b.mouse.down();
-  await h.waitForTimeout(1200);
+  await h.waitForTimeout(1500);
   const k1 = await frame(h);
   await b.mouse.up();
   expect(k1.tr).toBe(0);
-  const dist = k1.c.map((c: any) => {
-    const o = k0.c.find((q: any) => q.id === c.id);
-    return Math.hypot(c.x - o.x, c.y - o.y);
-  });
-  expect(Math.max(...dist)).toBeGreaterThan(100); // Yoni drove
-  expect(Math.min(...dist)).toBeLessThan(15); // Dana did not
+  const turned = (name: string) => { const id = ids[name]; let d = k1.c.find((c: any) => c.id === id).a - k0.c.find((c: any) => c.id === id).a; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI; return d; }; // signed heading change (the road itself bends, so compare the two karts)
+  const moved = (name: string) => { const id = ids[name]; const c = k1.c.find((q: any) => q.id === id), o = k0.c.find((q: any) => q.id === id); return Math.hypot(c.x - o.x, c.y - o.y); };
+  expect(moved('Dana')).toBeGreaterThan(60); // both karts accelerate by themselves
+  expect(moved('Yoni')).toBeGreaterThan(60);
+  expect(turned('Yoni') - turned('Dana')).toBeGreaterThan(0.4); // Yoni steered right on top of whatever the road did to both karts
   await expect(b.getByTestId('hud')).toContainText('Lap');
 
   expect(errors).toEqual([]);

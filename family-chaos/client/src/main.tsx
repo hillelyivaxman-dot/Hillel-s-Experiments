@@ -5,6 +5,7 @@ import { initialLang, LangCtx } from './i18n';
 import { store } from './net';
 import { prefs } from './prefs';
 import { Account } from './pages/Account';
+import { Admin } from './pages/Admin';
 import { Home } from './pages/Home';
 import { Host } from './pages/Host';
 import { Join } from './pages/Join';
@@ -18,6 +19,7 @@ function route() {
   const p = location.pathname.replace(/\/+$/, '');
   if (p === '/host') return { page: 'host' as const };
   if (p === '/account') return { page: 'account' as const };
+  if (p === '/admin') return { page: 'admin' as const };
   if (p === '/watch' || p.startsWith('/watch/')) return { page: 'watch' as const, code: p.split('/')[2] ?? '' };
   if (p === '/join' || p.startsWith('/join/')) return { page: 'join' as const, code: p.split('/')[2] ?? '' };
   return { page: 'home' as const };
@@ -48,6 +50,7 @@ function App() {
       {r.page === 'home' && <Home />}
       {r.page === 'host' && <Host />}
       {r.page === 'account' && <Account />}
+      {r.page === 'admin' && <Admin />}
       {r.page === 'watch' && <Host watchCode={r.code} />}
       {r.page === 'join' && <Join initialCode={r.code} />}
     </LangCtx.Provider>

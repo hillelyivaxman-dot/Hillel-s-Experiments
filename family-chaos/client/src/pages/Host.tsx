@@ -1,24 +1,18 @@
 import { useEffect, useRef, useState } from 'react';
 import { Icon } from '../ui/icons';
-import { GOD_POWERS, type AdminAction, type GodPower, type RoomState } from '../../../shared/protocol';
+import type { AdminAction, RoomState } from '../../../shared/protocol';
 import { Lobby } from '../host/Lobby';
+import { AdminPanel } from '../host/AdminPanel';
 import { Results } from '../host/Results';
 import { Stage } from '../host/Stage';
 import { useT, type Key } from '../i18n';
 import { Conn, store } from '../net';
 import { ConnBanner, Logo, useConnStatus } from '../ui/common';
 
-const GOD_LABEL: Record<GodPower, { icon: string; he: string; en: string }> = {
-  confetti: { icon: 'spark', he: 'קונפטי', en: 'Confetti' }, quake: { icon: 'boom', he: 'רעידת אדמה', en: 'Earthquake' }, flash: { icon: 'bolt', he: 'הבזק', en: 'Flash' },
-  announce: { icon: 'crown', he: 'הכרזה מלכותית', en: 'Royal fanfare' }, freeze: { icon: 'ice', he: 'הקפאה 3 שנ׳', en: 'Freeze 3s' }, slowmo: { icon: 'clock', he: 'הילוך איטי', en: 'Slow motion' },
-  turbo: { icon: 'rocket', he: 'טורבו לכולם', en: 'Turbo for all' }, mirror: { icon: 'repeat', he: 'היגוי הפוך', en: 'Mirror controls' }, bonus: { icon: 'star', he: '+3 כוכבים לאחד', en: '+3 stars to one' },
-  steal: { icon: 'coin', he: 'גניבת כוכבים מהמוביל', en: 'Rob the leader' }, leader: { icon: 'crown', he: 'החלפת מנהיג', en: 'New leader' }, end: { icon: 'flag', he: 'סיים משחק', en: 'End game' },
-};
-
 /** The big screen (TV / PC). Also used read-only for remote "watch" screens. */
 export function Host({ watchCode }: { watchCode?: string }) {
   const watch = watchCode !== undefined;
-  const { t, lang } = useT();
+  const { t } = useT();
   const [conn, setConn] = useState<Conn | null>(null);
   const [room, setRoom] = useState<RoomState | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -89,19 +83,10 @@ export function Host({ watchCode }: { watchCode?: string }) {
       {room.phase === 'results' && <Results room={room} act={act} watch={watch} />}
       {owner && !watch && (
         <div className="crown" data-testid="crown">
-          <button className="crown__btn" onClick={() => setCrown((v) => !v)} aria-expanded={crown} aria-label="Crown powers" data-testid="crown-btn"><Icon name="crown" /></button>
-          {crown && (
-            <div className="crown__menu" role="menu">
-              {room.tour && !room.tour.done && <p className="muted small">{t('errors_competitive')}</p>}
-              {GOD_POWERS.map((p) => (
-                <button key={p} role="menuitem" className="chip" disabled={!!room.tour && !room.tour.done} data-power={p} onClick={() => conn.send({ t: 'god', power: p })}>
-                  <Icon name={GOD_LABEL[p].icon} /> {GOD_LABEL[p][lang]}
-                </button>
-              ))}
-            </div>
-          )}
+          <button className="crown__btn" onClick={() => setCrown((v) => !v)} aria-expanded={crown} aria-label="Admin" data-testid="crown-btn"><Icon name="crown" size="1.2em" /></button>
         </div>
       )}
+      {owner && !watch && crown && <AdminPanel room={room} conn={conn} act={act} onClose={() => setCrown(false)} />}
       {error && <div className="toast" role="alert" onClick={() => setError(null)}>{error}</div>}
     </div>
   );

@@ -530,3 +530,38 @@ body { touch-action: manipulation; }
 .phone-intro .pad-icon { width: 1.3em; height: 1.3em; }
 @keyframes introIn { from { opacity: 0; transform: scale(.97); } to { opacity: 1; transform: none; } }
 .game-card__time { display: inline-flex; align-items: center; gap: 3px; white-space: nowrap; margin-inline-start: 6px; }
+
+/* /admin setup page */
+.admin-page { align-items: center; gap: 12px; }
+.admin-card { max-width: 640px; width: min(94vw, 640px); text-align: start; }
+.admin-card h1 { display: flex; align-items: center; gap: 10px; margin-top: 0; }
+.admin-steps { list-style: none; padding: 0; display: grid; gap: 12px; margin: 14px 0 0; }
+.admin-step { display: flex; gap: 12px; padding: 12px 14px; border-radius: 16px; background: rgba(255,255,255,.07); border: 2px solid rgba(255,255,255,.12); }
+.admin-step.is-ok { border-color: #5dfc8d; }
+.admin-step h3 { margin: 0 0 4px; }
+.admin-step p { margin: 4px 0; }
+.admin-step__n { flex: none; width: 34px; height: 34px; border-radius: 50%; background: #3b2a7a; display: grid; place-items: center; font-weight: 900; }
+.admin-step.is-ok .admin-step__n { background: #14532d; }
+
+/* owner admin panel (host screen) */
+.admin-panel { position: fixed; top: 0; inset-inline-end: 0; height: 100%; width: min(94vw, 440px); z-index: 60; overflow-y: auto; padding: 14px 16px 28px; background: rgba(14,8,40,.97); border-inline-start: 3px solid #ffd23f; box-shadow: -12px 0 40px rgba(0,0,0,.5); display: grid; align-content: start; gap: 6px; }
+.admin-panel header { display: flex; justify-content: space-between; align-items: center; }
+.admin-panel h2 { display: flex; align-items: center; gap: 8px; margin: 0; }
+.admin-panel h3 { margin: 12px 0 6px; color: #ffd23f; font-size: 1.05rem; }
+.admin-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.admin-select { width: 100%; padding: 10px; border-radius: 12px; background: #251a58; color: #fff; border: 2px solid #4b3a99; font: inherit; }
+.admin-target { display: grid; gap: 4px; font-size: .85rem; margin-bottom: 8px; }
+.admin-powers { display: grid; gap: 8px; }
+.admin-power { display: flex; gap: 10px; align-items: center; text-align: start; padding: 10px 12px; border-radius: 14px; background: #2b1f66; color: #fff; border: 2px solid #4b3a99; cursor: pointer; font: inherit; }
+.admin-power:hover:not(:disabled) { border-color: #ffd23f; }
+.admin-power:disabled { opacity: .45; cursor: not-allowed; }
+.admin-power span { display: grid; }
+.admin-power small { opacity: .8; font-size: .8rem; }
+.admin-players { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.admin-players li { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 10px; background: rgba(255,255,255,.06); }
+.admin-players i { width: 12px; height: 12px; border-radius: 50%; flex: none; }
+.admin-mini { margin-inline-start: auto; display: flex; gap: 6px; }
+.admin-ping { font-size: .78rem; padding: 2px 8px; border-radius: 999px; }
+.is-ok { color: #5dfc8d; } .is-warn { color: #ffd23f; } .is-bad { color: #ff7a8e; }
+.admin-alert { padding: 8px 12px; border-radius: 12px; background: rgba(255,77,109,.18); margin: 0; }
+.admin-alerts { list-style: none; padding: 0; margin: 8px 0 0; display: grid; gap: 4px; font-size: .85rem; }

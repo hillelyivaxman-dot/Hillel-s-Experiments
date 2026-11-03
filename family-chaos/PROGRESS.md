@@ -1,11 +1,11 @@
-# PROGRESS — FAMILY CHAOS (30 games, tournament v1)
+# PROGRESS — FAMILY CHAOS (30 games, overhaul A-D)
 
 Branch: `ccr-64ced051-a2t8s8` · folder: `family-chaos/` · live site: https://family-chaos.onrender.com
 (Render auto-deploys from this branch. From the dev sandbox the live site is **not reachable**, so "deployed" is never claimed here.)
 
 ## How to continue after an interruption
-1. `cd family-chaos && npm ci && npm run check` (types + unit + build + browser tests; ~7 min). Must be green before pushing.
-2. Read the **Game checklist** below and continue with the first unchecked game of the current wave.
+1. `cd family-chaos && npm ci && npm run check` (types + unit + build + browser tests; ~25 min, run it detached). Must be green before pushing.
+2. Read docs/GAME_AUDIT.md (all 30 games) and NEXT_STEPS.md.
 3. Add a game = `docs/ADDING_A_GAME.md` (server module + renderer + catalog entry + controller + tests).
 4. Commit per game or per wave; push `ccr-64ced051-a2t8s8`. Update this file.
 
@@ -21,30 +21,12 @@ Branch: `ccr-64ced051-a2t8s8` · folder: `family-chaos/` · live site: https://f
   autopilot finishes 2 laps on all 3 tracks; e2e: wheel proportionality / snap back, arrows, tilt with simulated sensor.
   **Not tested on real hardware**: tilt direction/sign on a physical phone (an "invert" switch exists), wheel feel on a real thumb.
 
-## Game checklist — ALL 30 games are playable (server rules + renderer + phone controller + unit smoke tests)
-Legend: every game below is `status: 'playable'` in `shared/catalog.ts`, has server-authoritative rules in `server/games/`, a canvas renderer in `client/src/render/`, a phone HUD in `client/src/pages/Join.tsx`, and is covered by `tests/unit/newgames.test.ts` (bots play it to the end with 1/3/8 players, ranks everyone, snapshot size budget) plus the per-game browser loops (`controls`, `controller`, `devices` specs iterate the whole catalog).
-
-| # | Game | Notes |
-|---|------|-------|
-| 1-11 | Bumper Battle, Kart Chaos, Reaction Duel, Hot Potato, Chaos Rush, Soccer, Air Hockey, Crazy Kitchen, Family Board Party, Trap Builders, Vanishing Floor ("Floor is Lava") | earlier waves, fully tested |
-| 12 | **Basketball Chaos** | hold to charge a meter, release in the green zone (zone depends on distance; far = 3 pts, perfect = +1) |
-| 13 | **Crazy Bowling** | turn-based, aim → power meter, 10 pins with chain reaction, strike/spare bonus |
-| 14-15 | **Boat Racing / Bike Racing** | same racing engine as Kart with different handling presets (`RACER_TUNING` in `server/games/kart.ts`) and water/dirt themes |
-| 16 | **Tank Battle** | walls, shells bounce once, mines, 3 hits |
-| 17 | **Wizard Duel** | fireball with splash + knockback, shield, blink, heal orbs |
-| 18 | **Arena Survival** (co-op) | waves of monsters, slash/roll, teammates revive you by standing next to you; stars by wave reached |
-| 19 | **Base Defense** (co-op) | protect the crystal, shoot, buy auto-turrets with coins |
-| 20 | **Tag Chaos** | "it" with sprint stamina; least time as "it" wins |
-| 21 | **Maze Escape** | new random (always solvable) maze each round, race to the exit |
-| 22 | **Space Rescue** (co-op) | pick up astronauts, bring them to the station, avoid rocks |
-| 23 | **Treasure Evacuation** (co-op) | carry chests to the exit, guards chase, flood rises |
-| 24 | **Treasure Hunt** | dig, hot/cold meter on the phone, radar, bombs |
-| 25 | **Tower Stack** | swinging block, overhang is cut, perfect drops keep width |
-| 26 | **Space Racing** | vertical race through rocks, boost energy, rubber-banding |
-| 27 | **Balloon Panic** | push-your-luck pump/bank |
-| 28 | **Team Puzzle** (co-op) | sequence memory; each player owns only some colours |
-| 29 | **Draw & Guess** | stick draws (pen button), guessers tilt the stick toward one of 4 words and lock; HE/EN word bank |
-| 30 | **Party Trivia** | 26 bilingual questions, 4 coloured answers, speed + streak scoring |
+## MAJOR OVERHAUL (gameplay, controls, graphics, admin) — rounds A-D
+Details per game: **docs/GAME_AUDIT.md** (table of all 30 games, what makes each one different, findings, what is not verified).
+* **Round A — controls & racing.** Racing is now auto-accelerate with two big arrow buttons (wheel and tilt remain as options in the ⚙ sheet). Karts keep items + drift; **boats** have streams/eddies/rocks/whirlpools + SURGE; **bikes** have ramps, hurdles, HOP and a combo. A short "how to play" card shows on every phone during the countdown. Controller e2e tests were rewritten for the new controls.
+* **Round B — gameplay.** Basketball rebuilt (aim with the stick, preview arc, real ball physics on the server, moving hoops, swish/streak). Zombie Survival (3 zombie types, waves, revive, hearts), Mage Hill (replaces Wizard Duel), Freeze Tag (replaces Tag), Space Rescue (tractor beam + oxygen), Bowling hook, Maze fog of war. Library categories regrouped into six by core mechanic.
+* **Round C — graphics.** One drawn icon set (`shared/icons.ts`, drawn by React and canvas) replaced emoji in the UI, phone HUDs, results and scenes; original SVG card art for the 19 newer games; zombies, astronauts, hearts, hoops, ice etc. are drawn in code. (Emoji is no longer used as graphics; a few typographic glyphs like ▲ ● ■ remain as button labels.)
+* **Round D — admin & group experience.** `/admin` page (what is missing: database -> account -> owner code -> host screen), owner-only management panel on the host screen in Hebrew/English (start/pause/end/lobby, pick game, tournaments, 12 crown powers with explanations and reasons when disabled, players with ping and connection alerts). Authorisation is checked on the server for the crown powers (`Room.godPower` uses the verified `client.owner`), refused during tournaments. Browser test `tests/e2e/games-input.spec.ts` presses every control of all 30 games with real touch in two contexts and checks it reaches the server.
 
 ## Tournaments (in-memory, per room)
 Lobby → "🏆 Party tournament": **3 / 5 / 8 random games**, **✎ Pick games** (tap games in the rail in order, then start), or **⚔ Knockout** (the last place of each individual-ranking game is out until one player is left; no-shows forfeit). Points per place 10/7/5/3/2/1, next game starts by itself after 12 s, **Next game now / ⏸ Hold here / Cancel** on the results screen, champion + crown at the end. Ties share a place. Crown powers are refused while a tournament runs. Tests: `tests/unit/tournament.test.ts` (series, skip, cancel, hold, player-count filter, knockout) and a browser test in `tests/e2e/multiplayer.spec.ts`.

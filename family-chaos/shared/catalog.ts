@@ -5,8 +5,8 @@
 import type { ButtonKey } from './protocol';
 
 export type Category =
-  | 'racing' | 'action' | 'sports' | 'party' | 'arcade'
-  | 'puzzle' | 'coop' | 'strategy' | 'survival' | 'board';
+  | 'racing' | 'sports' | 'party' | 'brain' | 'coop' | 'arcade' // the six library categories
+  | 'action' | 'puzzle' | 'strategy' | 'survival' | 'board'; // authoring leftovers, remapped by CATEGORY_OF below
 
 export interface L10n { he: string; en: string }
 
@@ -343,7 +343,16 @@ const NEW_GAMES_LIST: GameMeta[] = [
     'The question shows on screen with four coloured answers. Press the matching symbol (▲ ● ■ ★). Correct and fast earns more, and streaks give a bonus.',
     'party', 1, 12, ['#c084fc', '#7c3aed'], shapeChoices(), [opt('questions', 'שאלות', 'Questions', [5, 8, 12, 16], 8)]),
 ];
-export const CATALOG: GameMeta[] = [...BASE_GAMES, ...NEW_GAMES_LIST];
+/** The library groups every game by its CORE mechanic into six categories. */
+export const CATEGORY_OF: Record<string, Category> = {
+  kart: 'racing', boat: 'racing', bike: 'racing', spacerace: 'racing', rush: 'racing', maze: 'racing',
+  soccer: 'sports', hockey: 'sports', basketball: 'sports', bowling: 'sports', tower: 'sports',
+  reaction: 'party', potato: 'party', bumper: 'party', vanish: 'party', tag: 'party', balloon: 'party', board: 'party',
+  trivia: 'brain', puzzle: 'brain', draw: 'brain',
+  kitchen: 'coop', survival: 'coop', defense: 'coop', rescue: 'coop', evac: 'coop',
+  tank: 'arcade', wizard: 'arcade', trapbuilders: 'arcade', treasure: 'arcade',
+};
+export const CATALOG: GameMeta[] = [...BASE_GAMES, ...NEW_GAMES_LIST].map((g) => ({ ...g, category: CATEGORY_OF[g.id] ?? g.category }));
 
 /** Estimated length of one round in minutes [min, max], shown on the game cards. */
 export const PLAY_TIME: Record<string, [number, number]> = {
@@ -359,14 +368,11 @@ export function defaultOptions(meta: GameMeta): Record<string, number> {
 }
 
 export const CATEGORY_NAMES: Record<Category, L10n> = {
-  racing: { he: 'מרוצים', en: 'Racing' },
-  action: { he: 'אקשן', en: 'Action' },
-  sports: { he: 'ספורט', en: 'Sports' },
-  party: { he: 'מסיבה', en: 'Party' },
-  arcade: { he: 'ארקייד', en: 'Arcade' },
-  puzzle: { he: 'פאזל', en: 'Puzzle' },
-  coop: { he: 'שיתופי', en: 'Co-op' },
-  strategy: { he: 'אסטרטגיה', en: 'Strategy' },
-  survival: { he: 'הישרדות', en: 'Survival' },
-  board: { he: 'לוח', en: 'Board' },
+  racing: { he: 'מרוצים ותנועה', en: 'Racing & movement' },
+  sports: { he: 'ספורט ודיוק', en: 'Sports & precision' },
+  party: { he: 'מסיבה ותגובה', en: 'Party & reflex' },
+  brain: { he: 'חשיבה וחידות', en: 'Brain & puzzles' },
+  coop: { he: 'שיתוף פעולה', en: 'Co-op' },
+  arcade: { he: 'ארקייד והרפתקאות', en: 'Arcade & adventure' },
+  action: { he: 'אקשן', en: 'Action' }, puzzle: { he: 'פאזל', en: 'Puzzle' }, strategy: { he: 'אסטרטגיה', en: 'Strategy' }, survival: { he: 'הישרדות', en: 'Survival' }, board: { he: 'לוח', en: 'Board' },
 };

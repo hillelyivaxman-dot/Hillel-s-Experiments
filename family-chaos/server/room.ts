@@ -65,6 +65,7 @@ export class Room {
   countdownEndsAt: number | null = null;
   results: ResultRow[] | null = null;
   tour: TourState | null = null;
+  private lastRttPush = 0;
   private god = { freezeUntil: 0, scaleUntil: 0, scale: 1, mirrorUntil: 0 };
   godLog: { at: number; userId: number | null; power: string }[] = [];
   private fx: { k: string; [key: string]: unknown }[] = [];
@@ -603,6 +604,7 @@ export class Room {
         if (!p.info.connected && now - p.disconnectedAt > TIMING.DROP_AFTER_MS) this.removePlayer(p.info.id);
       }
     }
+    if (now - this.lastRttPush > 3000) { this.lastRttPush = now; if (this.phase !== 'playing') this.dirty = true; } // keeps the owner's ping column fresh
     if (this.dirty) this.broadcastRoom();
   }
 
@@ -610,7 +612,7 @@ export class Room {
     return {
       code: this.code,
       phase: this.phase,
-      players: [...this.players.values()].map((p) => ({ ...p.info })),
+      players: [...this.players.values()].map((p) => ({ ...p.info, rtt: Math.round(p.client?.rtt ?? 0) })),
       leaderId: this.leaderId,
       selectedGame: this.selectedGame,
       gameId: this.gameId,

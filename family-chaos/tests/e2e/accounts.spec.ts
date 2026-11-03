@@ -98,8 +98,33 @@ test('owner setup: the setup code makes a signed-in user OWNER; only that browse
   await host.getByTestId('crown-btn').click();
   await host.locator('[data-power="bonus"]').click();
   await expect(host.locator('.player-tile__meta', { hasText: /\b3\b/ })).toHaveCount(1);
+  // the management panel: players list with connection state, all 12 powers with explanations, game control
+  await expect(host.getByTestId('admin-panel')).toBeVisible();
+  await expect(host.locator('[data-testid="admin-players"] li')).toHaveCount(2);
+  await expect(host.locator('.admin-power')).toHaveCount(12);
+  await expect(host.locator('.admin-power[data-power="freeze"]')).toBeDisabled(); // only during a game: and says why
+  await expect(host.locator('.admin-power[data-power="freeze"] small')).not.toBeEmpty();
+  await host.getByTestId('admin-start').click(); // start a game from the panel
+  await expect(host.locator('.overlay--countdown')).toBeVisible();
+  await expect(host.locator('.admin-power[data-power="freeze"]')).toBeEnabled();
+  await host.getByTestId('admin-lobby').click(); // and send everybody back to the lobby
+  await expect(host.getByTestId('start-btn')).toBeVisible();
 
   // an anonymous host never sees the crown
   const { h: anon } = await newHost(browser);
   await expect(anon.getByTestId('crown')).toHaveCount(0);
+});
+
+test('/admin page: says exactly what is needed (account, owner code) and never claims admin is active when it is not', async ({ browser }) => {
+  const ctx = await browser.newContext({ viewport: { width: 900, height: 900 }, locale: 'en-US' });
+  const p = await ctx.newPage();
+  await p.goto(`${HTTP}/admin`);
+  await expect(p.getByTestId('admin-step-1')).toBeVisible();
+  await expect(p.getByTestId('admin-step-2')).toBeVisible();
+  await expect(p.getByTestId('admin-owner-ok')).toHaveCount(0); // a stranger is not an owner
+  await expect(p.getByTestId('admin-open-host')).toHaveCount(0);
+  // the same stranger on a host screen never gets a crown
+  await p.goto(`${HTTP}/host`);
+  await expect(p.getByTestId('room-code')).toBeVisible();
+  await expect(p.getByTestId('crown')).toHaveCount(0);
 });
