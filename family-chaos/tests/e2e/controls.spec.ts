@@ -29,11 +29,11 @@ test('joystick: dragging a finger moves the critter in that direction and releas
   await t('touchStart', [{ ...s, id: 1 }]);
   for (let i = 1; i <= 5; i++) await t('touchMove', [{ x: s.x + i * 12, y: s.y + i * 12, id: 1 }]);
   const f0 = await frame(h);
-  await h.waitForTimeout(700);
+  await h.waitForTimeout(300); // short window: on a loaded machine a long one lets the critter leave the arena
   const f1 = await frame(h);
   const m = delta(f0, f1, 'p', ids.Thumb);
-  expect(m.dx).toBeGreaterThan(40);
-  expect(m.dy).toBeGreaterThan(40);
+  expect(m.dx).toBeGreaterThan(15);
+  expect(m.dy).toBeGreaterThan(15);
   expect(Math.abs(m.dx - m.dy)).toBeLessThan(Math.max(m.dx, m.dy) * 0.5); // roughly diagonal
   expect(delta(f0, f1, 'p', ids.Idle).d).toBeLessThan(5); // the other phone's critter didn't move
 

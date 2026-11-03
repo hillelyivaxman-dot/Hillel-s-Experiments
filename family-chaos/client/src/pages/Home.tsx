@@ -7,6 +7,7 @@ import { useMe } from '../account';
 import { useT } from '../i18n';
 import { prefs } from '../prefs';
 import { sfx } from '../sound';
+import { introCards } from '../ui/intro';
 import { CritterCanvas, GameCard, Logo, SettingsBar } from '../ui/common';
 
 gsap.registerPlugin(useGSAP);
@@ -32,7 +33,7 @@ export function Home() {
       .add(() => {
         gsap.to('.hero__crowd > *', { y: -10, duration: 0.9, ease: 'sine.inOut', yoyo: true, repeat: -1, stagger: { each: 0.15, from: 'random' } });
       });
-    gsap.from('.library .game-card', { y: 40, opacity: 0, stagger: 0.04, duration: 0.5, ease: 'power3.out', delay: 0.6 });
+    introCards('.library .game-card', { y: 40, delay: 0.6, stagger: 0.04 });
   }, { scope: root });
 
   const go = (path: string) => { sfx.click(); location.assign(path); };

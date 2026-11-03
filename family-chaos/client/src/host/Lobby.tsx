@@ -7,6 +7,7 @@ import type { AdminAction, PlayerInfo, RoomState } from '../../../shared/protoco
 import { useT } from '../i18n';
 import { prefs } from '../prefs';
 import { sfx } from '../sound';
+import { introCards } from '../ui/intro';
 import { CritterCanvas, GameCard, Logo, SettingsBar } from '../ui/common';
 
 gsap.registerPlugin(useGSAP);
@@ -74,11 +75,12 @@ export function Lobby({ room, act, watch }: { room: RoomState; act: (a: AdminAct
   useGSAP(() => {
     if (prefs.reducedMotion) return;
     gsap.from('.lobby__join', { x: -80, opacity: 0, duration: 0.6, ease: 'power3.out' });
-    gsap.from('.lobby__games .game-card', { y: 60, opacity: 0, stagger: 0.05, duration: 0.5, ease: 'back.out(1.6)', delay: 0.2 });
+    introCards('.lobby__games .game-card', { y: 40, delay: 0.15 });
     gsap.to('.qr-frame', { rotate: 1.5, duration: 1.6, yoyo: true, repeat: -1, ease: 'sine.inOut' });
   }, { scope: root });
 
-  const slots = Math.max(0, Math.min(room.maxPlayers, 8) - room.players.length);
+  // only a few empty slots, so a small screen is never filled with placeholders
+  const slots = Math.max(0, Math.min(room.maxPlayers, Math.max(4, room.players.length + 1)) - room.players.length);
 
   return (
     <div className="lobby" ref={root}>
@@ -139,9 +141,10 @@ export function Lobby({ room, act, watch }: { room: RoomState; act: (a: AdminAct
 
       <section className="lobby__bottom">
         <div className="lobby__games">
-          {CATALOG.map((g) => (
-            <GameCard key={g.id} g={g} compact selected={g.id === room.selectedGame} onClick={() => { sfx.click(); act({ a: 'select', game: g.id }); }} />
+          {CATALOG.filter((g) => g.status === 'playable').map((g) => (
+            <GameCard key={g.id} g={g} selected={g.id === room.selectedGame} onClick={() => { sfx.click(); act({ a: 'select', game: g.id }); }} />
           ))}
+          <div className="rail-soon" aria-hidden="true">+{CATALOG.filter((g) => g.status !== 'playable').length}<small>{t('soon')}</small></div>
         </div>
         <div className="selected-game" style={{ ['--a1' as string]: meta.accent[0], ['--a2' as string]: meta.accent[1] }}>
           <div>
