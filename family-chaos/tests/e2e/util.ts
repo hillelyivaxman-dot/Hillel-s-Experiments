@@ -102,6 +102,11 @@ export async function padProblems(p: Page) {
     }
     for (let i = 0; i < btns.length; i++) for (let j = i + 1; j < btns.length; j++) {
       const a = btns[i].getBoundingClientRect(), b = btns[j].getBoundingClientRect();
+      const rect = btns[i].closest('.pad__choices') && btns[j].closest('.pad__choices'); // grid of rectangles (trivia / puzzle / board): compare rectangles, not circles
+      if (rect) {
+        if (a.left < b.right - 1 && b.left < a.right - 1 && a.top < b.bottom - 1 && b.top < a.bottom - 1) out.push(`buttons ${btns[i].dataset.btn}/${btns[j].dataset.btn} overlap`);
+        continue;
+      }
       const d = Math.hypot(a.x + a.width / 2 - b.x - b.width / 2, a.y + a.height / 2 - b.y - b.height / 2);
       if (d < (a.width + b.width) / 2 - 1) out.push(`buttons ${btns[i].dataset.btn}/${btns[j].dataset.btn} overlap`);
     }

@@ -58,8 +58,14 @@ Lobby → "🏆 Party tournament": **3 / 5 / 8 random games**, **✎ Pick games*
 - Game art: each of the 19 new games uses a canvas-drawn scene and an emoji card icon (not custom SVG art yet).
 - No real-device testing. Balance of the new games has only been checked with bots and screenshots, not with people.
 
+## Last verified test run (sandbox, Chromium only)
+- `npx vitest run`: **13 files / 199 tests passed** (every new game played to the end with bots at 1/3/8 players, scripted rule tests, tournament + knockout + hold, crown authorisation, owner claim, frame-size budget, boat/bike autopilots).
+- `npx playwright test` (all specs except the 30-games x 6-phones layout test): **32 passed, 1 flaky** (known: "two phones control two different characters…" fails its first attempt under load and passes on retry). Includes: all 30 controllers' buttons (1 phone), all 30 games start/run/return to lobby, party tournament in the browser, owner setup + crown in the browser.
+- The 30-games x 6-phone-profiles layout test (`devices.spec.ts` "every phone gets the right controller…") was **not run in full** (it takes ~25 min); it was run for 9 games (trivia, puzzle, balloon, board, draw, basketball, tower, wizard, spacerace) x 6 phones: passed. Run the rest with `npx playwright test devices -g "every phone"` (optionally `DEV_GAMES=a,b,c`).
+- Not done: real phones, Safari/Firefox engines, a real Render deploy check (the sandbox cannot reach the site).
+
 ## Library / website improvements (requested)
-- [x] categories filter · [x] search · [x] favourites (stored on the device) · [x] player count shown on every card · [x] original vector icon per game · [ ] estimated play time · [ ] page transitions · [ ] console-style redesign of home/lobby
+- [x] categories filter · [x] search · [x] favourites (stored on the device) · [x] player count shown on every card · [x] original vector icon per game · [x] estimated play time (home cards) · [x] search also matches taglines · [ ] page transitions · [ ] console-style redesign of home/lobby
 
 ## Incident (fixed)
 Live site returned **502 Bad Gateway**: the in-process Postgres (PGlite) added for accounts used 457 MB idle / 748 MB peak, over Render's 512 MB free limit, so the instance was OOM-killed. Fix: accounts are OFF on Render unless `DATABASE_URL` (Neon) is set; server peak is now ~85 MB. Regression test in `tests/unit/accounts.test.ts`.
