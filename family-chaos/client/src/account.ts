@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from 'react';
 export interface Me {
   signedIn: boolean;
   persistent: boolean;
-  user?: { nickname: string; avatar: number; email: string };
+  user?: { nickname: string; avatar: number; email: string; role?: string };
   stats?: { games: number; wins: number; stars: number; perGame: Record<string, { plays: number; wins: number }> };
   achievements?: { id: string; done: boolean }[];
   favorites?: string[];

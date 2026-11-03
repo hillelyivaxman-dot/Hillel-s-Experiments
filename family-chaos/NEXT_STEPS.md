@@ -1,0 +1,22 @@
+# NEXT STEPS — FAMILY CHAOS
+
+Read PROGRESS.md first. State at the last update: **30/30 games playable, party tournament v1 (in-memory)**; accounts are OFF on Render until `DATABASE_URL` is set.
+
+## Before the next family night (user, in the browser — nothing needs chat secrets)
+1. Render dashboard → service `family-chaos` → **Events/Logs**: confirm the latest deploy (branch `ccr-64ced051-a2t8s8`) is "Live", then open `/health` (must say `ok`) and `/api/info`.
+2. Open `/host` on the TV/PC, join with phones from the QR code. Try 3 phones at least. Rotate phones to landscape.
+3. Use "🏆 Party tournament" (5 games) for the whole evening, or pick single games.
+4. Tell me which games feel too hard / too easy / confusing — the balance numbers are constants at the top of each server file.
+
+## Build next (priority order from the master prompt)
+1. **Accounts + persistence** — connect Neon (`DATABASE_URL`, see docs/DEPLOY.md). Then: `users.role` column (OWNER/ADMIN/HOST/PLAYER), owner claim flow in `/account` using a one-time setup code printed in the Render logs (no secrets in chat), password reset (needs an email provider — free tier only), optional Google login.
+2. **GOD ADMIN crown** — server-side only: `{t:'god', power}` accepted only when the verified `client.userId` has role OWNER, room in "party mode" (no tournament in `competitive` mode), 12 powers implemented as generic room effects (freeze, slow-mo, confetti, bonus stars, swap leader, …) + a log line per use. Tests: non-owner cannot, tournament mode cannot.
+3. **Tournaments v2** — Knockout / League / Multi-day formats, manual game list UI, pause/resume/cancel, no-shows and ties, persistence in Postgres so a Render restart does not lose it, profile card.
+4. **Console-style redesign** — hero + card carousel, estimated play time per game, GSAP page transitions (skills installed: gsap-core/react/performance, frontend-design).
+5. **Game polish** — custom SVG art per game instead of emoji icons, sounds per game, intro/rules screen per game, balance passes from real play, tilt/wheel verification on real phones.
+
+## Known risks
+- Render free plan sleeps after 15 min idle (first load ≈ 1 min) and restarts drop in-memory rooms and tournaments.
+- 5 GB/month bandwidth: frame size budget test (`tests/unit/framesize.test.ts`) keeps snapshots < 900 B average.
+- Draw & Guess sends strokes every ~10 frames; fine for a family, not stress-tested at 12 players.
+- The e2e "all games" loops take several minutes; run `npm run check` detached (see PROGRESS.md "How to continue").

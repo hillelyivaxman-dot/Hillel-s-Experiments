@@ -1,4 +1,4 @@
-# PROGRESS — FAMILY CHAOS (30-game expansion)
+# PROGRESS — FAMILY CHAOS (30 games, tournament v1)
 
 Branch: `ccr-64ced051-a2t8s8` · folder: `family-chaos/` · live site: https://family-chaos.onrender.com
 (Render auto-deploys from this branch. From the dev sandbox the live site is **not reachable**, so "deployed" is never claimed here.)
@@ -11,7 +11,7 @@ Branch: `ccr-64ced051-a2t8s8` · folder: `family-chaos/` · live site: https://f
 
 ## Done
 - Platform: rooms, lobby, QR, accounts, controllers (measured layout engine), HTTPS/WSS tests, Render blueprint.
-- Playable (11): Bumper Battle, Kart Chaos, Reaction Duel, Hot Potato, Chaos Rush, **Soccer, Air Hockey, Crazy Kitchen, Family Board Party, Trap Builders, Vanishing Floor**.
+- Playable: **30 of 30** (see table below). First 11: Bumper Battle, Kart Chaos, Reaction Duel, Hot Potato, Chaos Rush, **Soccer, Air Hockey, Crazy Kitchen, Family Board Party, Trap Builders, Vanishing Floor**.
 - **Task 1 — Kart steering (done):** virtual **steering wheel** you rotate with a finger (grab anywhere, relative rotation, ±115° lock,
   expo curve, snaps back on release), **arrow** steering (hold left/right, ramped on the server) and **tilt** steering
   (DeviceMotion, iPhone permission tap, calibration, invert option). GAS / BRAKE / TURBO / ITEM buttons.
@@ -21,22 +21,42 @@ Branch: `ccr-64ced051-a2t8s8` · folder: `family-chaos/` · live site: https://f
   autopilot finishes 2 laps on all 3 tracks; e2e: wheel proportionality / snap back, arrows, tilt with simulated sensor.
   **Not tested on real hardware**: tilt direction/sign on a physical phone (an "invert" switch exists), wheel feel on a real thumb.
 
-## Game checklist (25 requested)
-Legend: [x] playable + tested, [ ] not started. A game is only marked playable in `shared/catalog.ts` when it is [x].
+## Game checklist — ALL 30 games are playable (server rules + renderer + phone controller + unit smoke tests)
+Legend: every game below is `status: 'playable'` in `shared/catalog.ts`, has server-authoritative rules in `server/games/`, a canvas renderer in `client/src/render/`, a phone HUD in `client/src/pages/Join.tsx`, and is covered by `tests/unit/newgames.test.ts` (bots play it to the end with 1/3/8 players, ranks everyone, snapshot size budget) plus the per-game browser loops (`controls`, `controller`, `devices` specs iterate the whole catalog).
 
-### Wave 1
-- [x] Soccer · [x] Air hockey · [x] Crazy kitchen · [x] Family board party · [x] Trap builders  (wave 1 complete: each has server rules, renderer, phone controller, unit tests; all in the browser suite)
-### Wave 2
-- [ ] Basketball · [ ] Bowling · [ ] Boat race · [ ] Bike race · [x] Vanishing floor
-### Wave 3
-- [ ] Tank battle · [ ] Wizard duel · [ ] Arena survival · [ ] Base defense · [ ] Tag
-### Wave 4
-- [ ] Maze escape · [ ] Space rescue · [ ] Treasure evacuation · [ ] Treasure hunt · [ ] Wobbly tower
-### Wave 5
-- [ ] Space race · [ ] Popping balloons · [ ] Team puzzle · [ ] Draw & guess · [ ] Party trivia
+| # | Game | Notes |
+|---|------|-------|
+| 1-11 | Bumper Battle, Kart Chaos, Reaction Duel, Hot Potato, Chaos Rush, Soccer, Air Hockey, Crazy Kitchen, Family Board Party, Trap Builders, Vanishing Floor ("Floor is Lava") | earlier waves, fully tested |
+| 12 | **Basketball Chaos** | hold to charge a meter, release in the green zone (zone depends on distance; far = 3 pts, perfect = +1) |
+| 13 | **Crazy Bowling** | turn-based, aim → power meter, 10 pins with chain reaction, strike/spare bonus |
+| 14-15 | **Boat Racing / Bike Racing** | same racing engine as Kart with different handling presets (`RACER_TUNING` in `server/games/kart.ts`) and water/dirt themes |
+| 16 | **Tank Battle** | walls, shells bounce once, mines, 3 hits |
+| 17 | **Wizard Duel** | fireball with splash + knockback, shield, blink, heal orbs |
+| 18 | **Arena Survival** (co-op) | waves of monsters, slash/roll, teammates revive you by standing next to you; stars by wave reached |
+| 19 | **Base Defense** (co-op) | protect the crystal, shoot, buy auto-turrets with coins |
+| 20 | **Tag Chaos** | "it" with sprint stamina; least time as "it" wins |
+| 21 | **Maze Escape** | new random (always solvable) maze each round, race to the exit |
+| 22 | **Space Rescue** (co-op) | pick up astronauts, bring them to the station, avoid rocks |
+| 23 | **Treasure Evacuation** (co-op) | carry chests to the exit, guards chase, flood rises |
+| 24 | **Treasure Hunt** | dig, hot/cold meter on the phone, radar, bombs |
+| 25 | **Tower Stack** | swinging block, overhang is cut, perfect drops keep width |
+| 26 | **Space Racing** | vertical race through rocks, boost energy, rubber-banding |
+| 27 | **Balloon Panic** | push-your-luck pump/bank |
+| 28 | **Team Puzzle** (co-op) | sequence memory; each player owns only some colours |
+| 29 | **Draw & Guess** | stick draws (pen button), guessers tilt the stick toward one of 4 words and lock; HE/EN word bank |
+| 30 | **Party Trivia** | 26 bilingual questions, 4 coloured answers, speed + streak scoring |
 
-## Next up (wave 2 remaining)
-Basketball, Bowling, Boat race, Bike race — then waves 3-5. Last green full run: 99 unit tests + 32 browser tests (1 retried flaky: first attempt of the two-phone movement test and the all-phones layout test under load). **11 of 30 games are playable; 14 of the 25 requested new games are still to build.**
+## Party tournament (new, in-memory)
+Lobby → "🏆 Party tournament" (3 / 5 / 8 games): random games the current player count can play, points per place (10/7/5/3/2/1), the next game starts by itself after 12 s (or "Next game now"), champion screen with crown. Covered by `tests/unit/tournament.test.ts`.
+**Not built yet:** Knockout / League / Multi-day formats, persistence across Render restarts (needs `DATABASE_URL`), pause/resume of a tournament, tournament profile card. See NEXT_STEPS.md.
+
+## Honest status of the rest of the master prompt
+- Accounts + GOD ADMIN (OWNER/ADMIN/HOST/PLAYER roles, crown powers, owner claim): **not built** — needs the persistent database (`DATABASE_URL`, Neon) which the user must connect in the browser; accounts are OFF on Render until then.
+- Google login / password reset: not built.
+- XP / cosmetics / profile card: not built (basic stats + achievements exist).
+- Console-style redesign of home/library/lobby, estimated play time on cards, GSAP page transitions: not done (library already has search, favourites, categories, player counts).
+- Game art: each of the 19 new games uses a canvas-drawn scene and an emoji card icon (not custom SVG art yet).
+- No real-device testing. Balance of the new games has only been checked with bots and screenshots, not with people.
 
 ## Library / website improvements (requested)
 - [x] categories filter · [x] search · [x] favourites (stored on the device) · [x] player count shown on every card · [x] original vector icon per game · [ ] estimated play time · [ ] page transitions · [ ] console-style redesign of home/lobby

@@ -346,6 +346,13 @@ const NEW_GAMES_LIST: GameMeta[] = [
 ];
 export const CATALOG: GameMeta[] = [...BASE_GAMES, ...NEW_GAMES_LIST];
 
+/** Estimated length of one round in minutes [min, max], shown on the game cards. */
+export const PLAY_TIME: Record<string, [number, number]> = {
+  bumper: [3, 5], kart: [3, 6], reaction: [2, 3], potato: [3, 5], rush: [3, 5], soccer: [2, 3], hockey: [2, 4], board: [8, 12], kitchen: [3, 4], trapbuilders: [4, 6], vanish: [2, 4],
+  basketball: [1, 2], bowling: [3, 5], boat: [3, 6], bike: [3, 6], tank: [2, 3], wizard: [2, 3], survival: [3, 5], defense: [4, 6], tag: [1, 2], maze: [3, 5], rescue: [2, 2], evac: [2, 2],
+  treasure: [2, 2], tower: [2, 2], spacerace: [1, 2], balloon: [1, 2], puzzle: [3, 5], draw: [4, 8], trivia: [3, 6],
+};
+
 export const getMeta = (id: string) => CATALOG.find((g) => g.id === id);
 
 export function defaultOptions(meta: GameMeta): Record<string, number> {

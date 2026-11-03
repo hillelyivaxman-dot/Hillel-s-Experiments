@@ -26,6 +26,17 @@ export interface ResultRow {
   detail?: string;
 }
 
+/** Party tournament (in-memory, per room): a series of games with points per place; the next game starts by itself. */
+export interface TourState {
+  total: number;
+  idx: number; // index of the current (or just finished) game
+  games: string[];
+  points: Record<string, number>; // playerId -> tournament points
+  nextAt: number | null; // server epoch ms when the next game starts (only while in results)
+  done: boolean;
+  champion: string | null;
+}
+
 export interface RoomState {
   code: string;
   phase: RoomPhase;
@@ -40,6 +51,7 @@ export interface RoomState {
   countdownEndsAt: number | null; // server epoch ms
   results: ResultRow[] | null;
   hostConnected: boolean;
+  tour: TourState | null;
 }
 
 export type AdminAction =
@@ -51,6 +63,9 @@ export type AdminAction =
   | { a: 'end' }
   | { a: 'lobby' }
   | { a: 'again' }
+  | { a: 'tournament'; count?: number; games?: string[] }
+  | { a: 'tour_skip' }
+  | { a: 'tour_cancel' }
   | { a: 'kick'; playerId: string }
   | { a: 'leader'; playerId: string }
   | { a: 'room'; maxPlayers?: number; password?: string | null };
@@ -68,6 +83,7 @@ export type C2S =
   | { t: 'admin'; act: AdminAction }
   | { t: 'report'; playerId: string }
   | { t: 'leave' }
+  | { t: 'god'; power: string; target?: string } // owner crown powers (verified server-side)
   | { t: 'ping'; c: number; rtt?: number };
 
 // ---------- server -> client ----------
@@ -81,9 +97,11 @@ export type S2C =
   | { t: 'buzz'; ms: number }
   | { t: 'kicked' }
   | { t: 'error'; code: ErrorCode; msg?: string }
+  | { t: 'owner'; v: boolean } // this socket belongs to the verified site owner
   | { t: 'pong'; c: number; s: number };
 
 export type ErrorCode =
+  | 'competitive'
   | 'no_room'
   | 'bad_password'
   | 'room_full'
@@ -103,3 +121,7 @@ export const PLAYER_COLORS = [
   '#a3e635', '#f97316', '#60a5fa', '#f472b6',
 ];
 export const AVATAR_COUNT = 12;
+
+/** The crown ("GOD ADMIN") powers. Executed by the server, only for the verified OWNER and only outside tournaments. */
+export const GOD_POWERS = ['confetti', 'quake', 'flash', 'announce', 'freeze', 'slowmo', 'turbo', 'mirror', 'bonus', 'steal', 'leader', 'end'] as const;
+export type GodPower = (typeof GOD_POWERS)[number];

@@ -37,6 +37,7 @@ create table if not exists plays (
   at timestamptz not null default now()
 );
 create index if not exists plays_user on plays(user_id, at desc);
+alter table users add column if not exists role text not null default 'PLAYER';
 `;
 
 /**

@@ -1,5 +1,6 @@
 import { CATALOG, defaultOptions, getMeta } from '../shared/catalog';
 import {
+  type TourState, GOD_POWERS, type GodPower,
   AVATAR_COUNT, PLAYER_COLORS,
   type AdminAction, type C2S, type ErrorCode, type PlayerInfo, type ResultRow, type RoomPhase, type RoomState, type S2C,
 } from '../shared/protocol';
@@ -17,6 +18,8 @@ export interface Client {
   rtt: number;
   /** Signed-in website account behind this socket (from the session cookie), if any. */
   userId?: number | null;
+  /** Verified site owner (role OWNER in the accounts database). Set by the server, never by the client. */
+  owner?: boolean;
 }
 
 interface PlayerRec {
@@ -35,6 +38,7 @@ interface PlayerRec {
 export const TIMING = {
   TICK_MS: 1000 / 30,
   COUNTDOWN_MS: 3500,
+  TOUR_PAUSE_MS: 12_000, // results screen time between tournament games
   DROP_AFTER_MS: 90_000, // remove disconnected players (outside of a running game)
 };
 const STARS = [3, 2, 1];
@@ -60,6 +64,9 @@ export class Room {
   participants: string[] = [];
   countdownEndsAt: number | null = null;
   results: ResultRow[] | null = null;
+  tour: TourState | null = null;
+  private god = { freezeUntil: 0, scaleUntil: 0, scale: 1, mirrorUntil: 0 };
+  godLog: { at: number; userId: number | null; power: string }[] = [];
   private fx: { k: string; [key: string]: unknown }[] = [];
   private frameNo = 0;
   private dirty = false;
@@ -232,6 +239,8 @@ export class Room {
           c.room = null;
         }
         return;
+      case 'god':
+        return this.godPower(c, String(m.power), m.target);
       case 'ping':
         if (typeof m.rtt === 'number') c.rtt = clamp(m.rtt, 0, 2000);
         c.send({ t: 'pong', c: num(m.c), s: this.clock() });
@@ -269,8 +278,18 @@ export class Room {
       case 'again':
       case 'start': {
         if (this.phase !== 'lobby' && this.phase !== 'results') return 'in_game';
+        if (this.tour && !this.tour.done && this.phase === 'results') return this.advanceTour(); // "play again" during a tournament = next game now
+        if (this.tour?.done) this.tour = null;
         return this.startGame();
       }
+      case 'tournament': return this.startTour(act.count, act.games);
+      case 'tour_skip':
+        if (!this.tour || this.tour.done || this.phase !== 'results') return 'not_allowed';
+        return this.advanceTour();
+      case 'tour_cancel':
+        if (!this.tour) return 'not_allowed';
+        this.tour = null; this.dirty = true;
+        break;
       case 'pause':
         if (this.phase !== 'playing') return 'not_allowed';
         this.phase = 'paused';
@@ -284,6 +303,7 @@ export class Room {
         this.finishGame();
         return null;
       case 'lobby':
+        this.tour = null;
         this.game = null;
         this.gameId = null;
         this.phase = 'lobby';
@@ -329,6 +349,93 @@ export class Room {
     this.dirty = true;
   }
 
+  // ---------- GOD ADMIN (crown) ----------
+
+  /** Executes a crown power. Authorised ONLY by the server-verified `c.owner`; refused during tournaments (competitive). */
+  private godPower(c: Client, power: string, target?: string) {
+    if (!c.owner) return c.send({ t: 'error', code: 'not_allowed' });
+    if (this.tour && !this.tour.done) return c.send({ t: 'error', code: 'competitive' });
+    if (!(GOD_POWERS as readonly string[]).includes(power)) return c.send({ t: 'error', code: 'bad_message' });
+    const now = this.clock();
+    const live = this.phase === 'playing' || this.phase === 'paused';
+    const need = ['freeze', 'slowmo', 'turbo', 'mirror', 'end'];
+    if (need.includes(power) && !live) return c.send({ t: 'error', code: 'not_allowed' });
+    const ids = [...this.players.values()].filter((p) => p.info.connected).map((p) => p.info.id);
+    const pick = () => (target && this.players.has(target) ? target : ids[Math.floor(rng(this.seed++)() * ids.length)]);
+    switch (power as GodPower) {
+      case 'confetti': case 'quake': case 'flash': this.fxPush(`god_${power}`); break;
+      case 'announce': this.fxPush('god_announce'); break;
+      case 'freeze': if (this.phase === 'playing') { this.phase = 'paused'; this.god.freezeUntil = now + 3000; this.dirty = true; } break;
+      case 'slowmo': this.god.scale = 0.5; this.god.scaleUntil = now + 6000; break;
+      case 'turbo': this.god.scale = 1.5; this.god.scaleUntil = now + 6000; break;
+      case 'mirror': this.god.mirrorUntil = now + 6000; break;
+      case 'bonus': { const id = pick(); const p = id ? this.players.get(id) : null; if (p) { p.info.stars += 3; this.dirty = true; } break; }
+      case 'steal': {
+        const ps = [...this.players.values()].sort((a, b) => b.info.stars - a.info.stars);
+        if (ps.length > 1 && ps[0].info.stars > 0) { const n = Math.min(2, ps[0].info.stars); ps[0].info.stars -= n; ps[ps.length - 1].info.stars += n; this.dirty = true; }
+        break;
+      }
+      case 'leader': { const id = pick(); if (id) { this.leaderId = id; this.dirty = true; } break; }
+      case 'end': if (this.game) this.finishGame(); break;
+    }
+    this.godLog.push({ at: now, userId: c.userId ?? null, power });
+    if (this.godLog.length > 200) this.godLog.shift();
+    console.log(`GOD power=${power} user=${c.userId ?? '?'} room=${this.code}`);
+  }
+
+  // ---------- party tournament ----------
+
+  private startTour(count?: number, games?: string[]): ErrorCode | null {
+    if (this.phase !== 'lobby' && this.phase !== 'results') return 'in_game';
+    const n = [...this.players.values()].filter((p) => p.info.connected).length;
+    let list: string[];
+    if (games?.length) {
+      list = games.filter((g) => { const m = getMeta(g); return m && m.status === 'playable' && GAMES[g] && n >= m.minPlayers; }).slice(0, 12);
+    } else {
+      const pool = CATALOG.filter((g) => g.status === 'playable' && GAMES[g.id] && n >= g.minPlayers).map((g) => g.id);
+      const want = Math.max(2, Math.min(10, Math.floor(num(count, 5))));
+      list = [];
+      const rand = rng(this.seed++);
+      while (list.length < want && pool.length) {
+        const bag = pool.filter((g) => g !== list[list.length - 1]);
+        const from = bag.length ? bag : pool;
+        list.push(from[Math.floor(rand() * from.length)]);
+      }
+    }
+    if (list.length < 1) return 'not_allowed';
+    this.tour = { total: list.length, idx: 0, games: list, points: Object.fromEntries([...this.players.keys()].map((id) => [id, 0])), nextAt: null, done: false, champion: null };
+    this.selectGame(list[0]);
+    const err = this.startGame();
+    if (err) this.tour = null;
+    return err;
+  }
+
+  private selectGame(id: string) {
+    const meta = getMeta(id)!;
+    this.selectedGame = meta.id;
+    this.options = defaultOptions(meta);
+  }
+
+  private advanceTour(): ErrorCode | null {
+    const t = this.tour;
+    if (!t || t.done) return 'not_allowed';
+    while (t.idx + 1 < t.total) {
+      t.idx++; t.nextAt = null;
+      this.selectGame(t.games[t.idx]);
+      if (!this.startGame()) return null;
+    }
+    this.endTour();
+    return null;
+  }
+
+  private endTour() {
+    const t = this.tour!;
+    t.done = true; t.nextAt = null;
+    const best = Object.entries(t.points).sort((a, b) => b[1] - a[1])[0];
+    t.champion = best && this.players.has(best[0]) ? best[0] : null;
+    this.dirty = true;
+  }
+
   // ---------- game lifecycle ----------
 
   startGame(): ErrorCode | null {
@@ -347,7 +454,8 @@ export class Room {
       rand,
       input: (id) => {
         const p = room.players.get(id);
-        return p && p.info.connected ? p.input : { x: 0, y: 0, b: 0 };
+        if (!p || !p.info.connected) return { x: 0, y: 0, b: 0 };
+        return room.god.mirrorUntil > room.clock() ? { x: -p.input.x, y: -p.input.y, b: p.input.b } : p.input;
       },
       connected: (id) => !!room.players.get(id)?.info.connected,
       rtt: (id) => room.players.get(id)?.client?.rtt ?? 0,
@@ -401,6 +509,12 @@ export class Room {
       });
       if (saved.length) this.onPlays(saved);
     }
+    if (this.tour && !this.tour.done) {
+      const PTS = [10, 7, 5, 3, 2, 1];
+      for (const r of results) this.tour.points[r.playerId] = (this.tour.points[r.playerId] ?? 0) + (PTS[r.place - 1] ?? 1);
+      if (this.tour.idx + 1 < this.tour.total) this.tour.nextAt = this.clock() + TIMING.TOUR_PAUSE_MS;
+      else this.endTour();
+    }
     this.phase = 'results';
     this.game = null;
     this.countdownEndsAt = null;
@@ -428,7 +542,11 @@ export class Room {
       this.countdownEndsAt = null;
       this.dirty = true;
     }
+    if (this.tour?.nextAt && this.phase === 'results' && now >= this.tour.nextAt) this.advanceTour();
+    if (this.god.freezeUntil && now >= this.god.freezeUntil) { this.god.freezeUntil = 0; if (this.phase === 'paused') { this.phase = 'playing'; this.dirty = true; } }
+    if (this.god.scaleUntil && now >= this.god.scaleUntil) { this.god.scaleUntil = 0; this.god.scale = 1; }
     if (this.game && this.phase === 'playing') {
+      dt *= this.god.scale;
       this.game.tick(dt);
       if (this.game.isOver()) this.finishGame();
     }
@@ -457,6 +575,7 @@ export class Room {
       countdownEndsAt: this.countdownEndsAt,
       results: this.results,
       hostConnected: this.hosts.size > 0,
+      tour: this.tour ? { ...this.tour, points: { ...this.tour.points } } : null,
     };
   }
 

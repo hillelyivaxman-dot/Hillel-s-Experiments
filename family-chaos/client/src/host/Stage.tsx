@@ -41,7 +41,17 @@ export function Stage({ room, conn, act, watch }: { room: RoomState; conn: Conn;
       cur = m.f;
       curAt = performance.now();
       (window as unknown as { __fcFrame: unknown }).__fcFrame = m.f;
-      for (const e of (m.f as { ev?: unknown[] }).ev ?? []) renderer.event?.(e, m.f, info());
+      for (const e of (m.f as { ev?: any[] }).ev ?? []) {
+        if (typeof e.k === 'string' && e.k.startsWith('god_')) { // crown powers (server-verified owner): generic visual + sound
+          const w = renderer.world, cx = w.x + w.w / 2, cy = w.y + w.h / 2;
+          if (e.k === 'god_confetti') { for (let i = 0; i < 6; i++) fx.burst(w.x + Math.random() * w.w, w.y + Math.random() * w.h * 0.5, ['#ff4d6d', '#3ec1ff', '#ffd23f', '#5dfc8d'][i % 4], 30, 500, 8, 400); sfx.win(); }
+          else if (e.k === 'god_quake') { fx.kick(24); sfx.boom(); }
+          else if (e.k === 'god_flash') { fx.blink('#ffffff', 0.9); sfx.power(); }
+          else { fx.text(cx, cy, '👑', '#ffd23f', 160); fx.burst(cx, cy, '#ffd23f', 40, 450, 8); sfx.win(); }
+          continue;
+        }
+        renderer.event?.(e, m.f, info());
+      }
     });
 
     const draw = () => {

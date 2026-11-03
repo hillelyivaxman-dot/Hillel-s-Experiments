@@ -165,10 +165,20 @@ export function Lobby({ room, act, watch }: { room: RoomState; act: (a: AdminAct
             </div>
           </div>
           {!watch && (
-            <button className="btn btn--primary btn--xl start-btn" disabled={!canStart} data-testid="start-btn"
-              onClick={() => { sfx.go(); act({ a: 'start' }); }}>
-              {canStart ? `▶ ${t('start')}` : t('needPlayers', { n: meta.minPlayers })}
-            </button>
+            <div className="start-col">
+              <button className="btn btn--primary btn--xl start-btn" disabled={!canStart} data-testid="start-btn"
+                onClick={() => { sfx.go(); act({ a: 'start' }); }}>
+                {canStart ? `▶ ${t('start')}` : t('needPlayers', { n: meta.minPlayers })}
+              </button>
+              <div className="tour-pick" data-testid="tour-pick">
+                <span>🏆 {l({ he: 'טורניר מסיבה', en: 'Party tournament' })}</span>
+                {[3, 5, 8].map((n) => (
+                  <button key={n} className="chip" disabled={connected < 2} data-testid={`tour-${n}`} onClick={() => { sfx.go(); act({ a: 'tournament', count: n }); }}>
+                    {n} {l({ he: 'משחקים', en: 'games' })}
+                  </button>
+                ))}
+              </div>
+            </div>
           )}
         </div>
       </section>

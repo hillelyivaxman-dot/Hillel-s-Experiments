@@ -122,6 +122,7 @@ openDb()
   .then((db) => {
     if (!db) { console.log('Accounts: OFF (no DATABASE_URL on this host; games work without accounts)'); return; }
     accounts = new Accounts(db);
+    accounts.ownerSetupCode().then((c) => { if (c) console.log(`OWNER SETUP CODE (sign in on /account, open "Owner setup", enter it once): ${c}`); }).catch(() => {});
     rooms.onPlays = (rows) => { accounts?.recordPlays(rows).catch((e) => console.error('save results', e)); };
     console.log(`Accounts database: ${db.kind}${db.persistent ? '' : ' (NOT persistent: set DATABASE_URL to keep accounts)'}`);
   })
@@ -171,6 +172,7 @@ wss.on('connection', (ws: WebSocket & { alive?: boolean }, req) => {
     accounts.userFromToken(sessionTok).then((u) => {
       if (!u) return;
       client.userId = u.id;
+      if (u.role === 'OWNER') { client.owner = true; client.send({ t: 'owner', v: true }); }
       if (client.room && client.playerId) client.room.setUser(client.playerId, u.id);
     }).catch(() => {});
   }

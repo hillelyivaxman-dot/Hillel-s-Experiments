@@ -7,7 +7,7 @@ export function bbZone(x: number) {
   const w = Math.max(0.05, 0.15 - d / 9000);
   return { tg, w, three: d > 520 };
 }
-export const BOWL = { LANE_W: 300, PIN_R: 14, BALL_R: 20, ROLL_T: 1.6, AIM_T: 8, POWER_T: 4 } as const;
+export const BOWL = { LANE_W: 300, PIN_R: 14, BALL_R: 20, ROLL_T: 1.6, AIM_T: 6, POWER_T: 3 } as const;
 /** Pin positions (x across the lane, y down it: larger y = closer to the foul line). Triangle with the head pin nearest. */
 export const PINS: { x: number; y: number }[] = (() => {
   const out: { x: number; y: number }[] = [];

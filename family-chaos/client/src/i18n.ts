@@ -75,6 +75,7 @@ const S = {
   errors_bad_name: { he: 'הכינוי לא תקין. נסו כינוי אחר.', en: 'That nickname is not allowed. Try another.' },
   errors_not_allowed: { he: 'הפעולה אינה מורשית.', en: 'Not allowed.' },
   errors_rate_limited: { he: 'יותר מדי ניסיונות. חכו רגע.', en: 'Too many attempts. Wait a moment.' },
+  errors_competitive: { he: 'במצב תחרותי (טורניר) אי אפשר להשתמש בכוחות הכתר.', en: 'Crown powers are disabled in competitive tournaments.' },
   errors_in_game: { he: 'משחק כבר רץ.', en: 'A game is already running.' },
   errors_too_many_rooms: { he: 'השרת עמוס. נסו שוב בעוד רגע.', en: 'Server is busy. Try again shortly.' },
   errors_bad_message: { he: 'שגיאה.', en: 'Error.' },

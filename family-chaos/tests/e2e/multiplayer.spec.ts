@@ -194,3 +194,20 @@ test('wrong room code and offensive names are rejected', async ({ browser }) => 
   await p.getByTestId('join-btn').click();
   await expect(p.locator('.error')).toContainText('not allowed');
 });
+
+test('party tournament: 3 games in a row, points panel, skip to the next game, champion at the end', async ({ browser }) => {
+  test.setTimeout(120_000);
+  const { h, code } = await hostPage(browser);
+  for (const n of ['One', 'Two', 'Three']) await phone(browser, code, n);
+  await h.getByTestId('tour-3').click();
+  for (let g = 0; g < 3; g++) {
+    await waitPlaying(h);
+    await h.getByRole('button', { name: /End round/ }).click();
+    await expect(h.getByTestId('tour-panel')).toBeVisible();
+    if (g < 2) await h.getByTestId('tour-skip').click();
+  }
+  await expect(h.getByTestId('tour-champion')).toBeVisible();
+  await h.getByTestId('lobby-btn').click();
+  await expect(h.getByTestId('start-btn')).toBeVisible();
+  await expect(h.getByTestId('tour-panel')).toHaveCount(0);
+});

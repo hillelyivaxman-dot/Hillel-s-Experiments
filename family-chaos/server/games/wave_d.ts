@@ -12,7 +12,7 @@ export const spaceRaceGame: GameModule = {
   id: 'spacerace',
   create(ctx: GameContext) {
     const rocks: { x: number; y: number; r: number }[] = [];
-    for (let y = 700; y < SPACE.LEN - 300; y += 130 + ctx.rand() * 90) for (let k = 0; k < 2; k++) rocks.push({ x: 60 + ctx.rand() * (SPACE.W - 120), y: y + ctx.rand() * 80, r: 26 + ctx.rand() * 30 });
+    for (let y = 700; y < SPACE.LEN - 300; y += 150 + ctx.rand() * 90) for (let k = 0; k < 2; k++) rocks.push({ x: 60 + ctx.rand() * (SPACE.W - 120), y: y + ctx.rand() * 80, r: 26 + ctx.rand() * 30 });
     const orbs: { x: number; y: number; got: boolean }[] = [];
     for (let y = 500; y < SPACE.LEN - 300; y += 600) orbs.push({ x: 100 + ctx.rand() * (SPACE.W - 200), y, got: false });
     const ps = ctx.players.map((p, i) => ({ id: p.id, x: 200 + (i * SPACE.W - 400) / Math.max(1, ctx.players.length) * 0.9 + 60, y: 0, vx: 0, hit: 0, boost: 0, energy: 60, fin: -1, spd: 0 }));
@@ -46,8 +46,8 @@ export const spaceRaceGame: GameModule = {
       snapshot: () => ({
         t: r1(time), len: SPACE.LEN, cam: Math.round(Math.max(...ps.map((p) => p.y))),
         p: ps.map((p) => ({ id: p.id, x: Math.round(p.x), y: Math.round(p.y), h: p.hit > 0 ? 1 : 0, b: p.boost, f: p.fin >= 0 ? 1 : 0 })),
-        r: rocks.filter((r) => r.y > Math.min(...ps.map((p) => p.y)) - 800 && r.y < Math.max(...ps.map((p) => p.y)) + 1200).map((r) => [Math.round(r.x), Math.round(r.y), Math.round(r.r)]),
-        o: orbs.filter((o) => !o.got).map((o) => [Math.round(o.x), Math.round(o.y)]),
+        r: rocks.filter((r) => r.y > Math.max(...ps.map((p) => p.y)) - 220 && r.y < Math.max(...ps.map((p) => p.y)) + 860).map((r) => [Math.round(r.x), Math.round(r.y), Math.round(r.r)]),
+        o: orbs.filter((o) => !o.got && o.y > Math.max(...ps.map((p) => p.y)) - 100 && o.y < Math.max(...ps.map((p) => p.y)) + 800).map((o) => [Math.round(o.x), Math.round(o.y)]),
       }),
       isOver: () => ps.every((p) => p.fin >= 0) || time >= endAt || time > 180,
       standings: (): StandingRow[] => [...ps].sort((a, b) => (a.fin >= 0 && b.fin >= 0 ? a.fin - b.fin : a.fin >= 0 ? -1 : b.fin >= 0 ? 1 : b.y - a.y)).map((p) => ({ playerId: p.id, score: p.fin >= 0 ? r1(p.fin) : Math.round(p.y), detail: p.fin >= 0 ? `${p.fin.toFixed(1)}s` : `${Math.round((p.y / SPACE.LEN) * 100)}%`, tie: p.fin >= 0 ? Math.round(p.fin * 10) : -Math.round(p.y) })),

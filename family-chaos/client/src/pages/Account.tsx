@@ -83,6 +83,7 @@ function SignedIn({ me, reload }: { me: Me; reload: () => void }) {
   const color = PLAYER_COLORS[u.avatar % PLAYER_COLORS.length];
   const fmt = new Intl.DateTimeFormat(lang === 'he' ? 'he-IL' : 'en-GB', { dateStyle: 'short', timeStyle: 'short' });
 
+  const [ownerCode, setOwnerCode] = useState('');
   const saveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     const r = await api('/api/me', { nickname, avatar });
@@ -149,6 +150,23 @@ function SignedIn({ me, reload }: { me: Me; reload: () => void }) {
             <button className="btn btn--secondary">{t('save')}</button>
             {msg && <p className="muted" role="status">{msg}</p>}
           </form>
+          {u.role === 'OWNER'
+            ? <p className="muted" data-testid="owner-badge">👑 {l({ he: 'את/ה בעלי האתר: כפתור הכתר מופיע במסך המארח.', en: 'You are the site owner: the crown button shows on the host screen.' })}</p>
+            : (
+              <details className="owner-setup">
+                <summary>👑 {l({ he: 'הגדרת בעלים (פעם אחת)', en: 'Owner setup (one time)' })}</summary>
+                <form className="stack" onSubmit={async (e) => {
+                  e.preventDefault();
+                  const r = await api('/api/me/owner', { code: ownerCode });
+                  setMsg(r.ok ? l({ he: 'הוגדרת כבעלים!', en: 'You are now the owner!' }) : l({ he: 'הקוד שגוי או שכבר יש בעלים.', en: 'Wrong code, or an owner already exists.' }));
+                  if (r.ok) reload();
+                }}>
+                  <p className="muted small">{l({ he: 'הקוד מופיע בלוגים של Render (שורה שמתחילה ב־OWNER SETUP CODE), או במשתנה OWNER_SETUP_CODE שהגדרת.', en: 'The code is in the Render logs (line starting with OWNER SETUP CODE), or the OWNER_SETUP_CODE variable you set.' })}</p>
+                  <input value={ownerCode} onChange={(e) => setOwnerCode(e.target.value)} autoComplete="off" dir="ltr" data-testid="owner-code" />
+                  <button className="btn btn--secondary" data-testid="owner-claim">{l({ he: 'אישור', en: 'Claim' })}</button>
+                </form>
+              </details>
+            )}
           <h2>{t('changePassword')}</h2>
           <form className="stack" onSubmit={async (e) => {
             e.preventDefault();

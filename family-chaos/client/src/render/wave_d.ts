@@ -100,14 +100,14 @@ export const drawRenderer: Renderer = {
     if (f.ph === 'draw') { circle(g, MX(f.cur.x), MY(f.cur.y), f.pen ? 8 : 12, f.pen ? (dr?.color ?? '#f00') : 'rgba(0,0,0,0)', dr?.color ?? '#f00', 3); }
     // answer options (guessers tilt the stick: up / right / down / left)
     const label = (w: { he: string; en: string }) => (lang === 'he' ? w.he : w.en);
-    const spots = [[600, 36], [1040, 340], [600, 660], [160, 340]];
+    const spots = [[600, 36], [1040, 340], [600, 652], [160, 340]];
     f.opts.forEach((o: any, i: number) => { const ok = f.word && o.en === f.word.en; hudText(g, `${['↑', '→', '↓', '←'][i]} ${label(o)}`, spots[i][0], spots[i][1], 30, ok ? '#5dfc8d' : '#fff'); });
     if (f.word) hudText(g, label(f.word), 600, 340, 90, '#5dfc8d');
-    if (dr) who(g, dr, 100, 100, 24, t, { tag: false });
+    void t;
   },
   hud(g, f, { players, lang }, Wd) {
     const dr = players.get(f.dr);
-    if (dr) hudText(g, `✏️ ${dr.name} · ${lang === 'he' ? 'סבב' : 'Round'} ${f.round}/${f.rounds}`, Wd / 2, 690, 26, dr.color);
+    if (dr) hudText(g, `✏️ ${dr.name} · ${lang === 'he' ? 'סבב' : 'Round'} ${f.round}/${f.rounds}`, Wd - 24, 692, 24, dr.color, 'right');
     scoreboard(g, [...f.p].sort((a: any, b: any) => b.s - a.s).map((p: any) => ({ id: p.id, v: `${p.s}${p.g ? ' ✓' : ''}` })), players, Wd, hudText, false);
   },
   event(e, _f, { fx }) { if (e.k === 'correct') { sfx.coin(); fx.text(600, 340, '✔', '#5dfc8d', 90); } else if (e.k === 'nope') sfx.bad(); else if (e.k === 'clear') sfx.click(); },
@@ -125,7 +125,7 @@ export const triviaRenderer: Renderer = {
       const x = 80 + (i % 2) * 530, y = 270 + Math.floor(i / 2) * 120;
       const dim = f.c >= 0 && f.c !== i;
       g.globalAlpha = dim ? 0.3 : 1; g.fillStyle = COL[i]; g.strokeStyle = f.c === i ? '#fff' : '#120a2a'; g.lineWidth = f.c === i ? 8 : 4; g.beginPath(); g.roundRect(x, y, 510, 100, 22); g.fill(); g.stroke(); g.globalAlpha = dim ? 0.3 : 1;
-      hudText(g, SHAPE[i], x + 50, y + 50, 56, '#120a2a'); hudText(g, lab(a), x + 290, y + 50, lab(a).length > 22 ? 28 : 38, '#120a2a'); g.globalAlpha = 1;
+      hudText(g, SHAPE[i], x + 50, y + 50, 56, '#fff'); hudText(g, lab(a), x + 290, y + 50, lab(a).length > 22 ? 28 : 38, '#fff'); g.globalAlpha = 1;
     });
     bar(g, 80, 530, 1040, 14, f.ph === 'ask' ? 1 - f.pt / f.lim : 0, '#5dfc8d');
     f.p.forEach((p: any, i: number) => { const info = players.get(p.id); if (!info) return; const x = 80 + (i % 6) * 175, y = 585 + Math.floor(i / 6) * 70; who(g, info, x + 20, y, 16, t, { tag: false, alpha: 1 }); hudText(g, `${p.s}${p.an && f.ph === 'ask' ? ' ✔' : ''}${f.ph === 'reveal' ? (p.ok ? ' ✔' : ' ✖') : ''}`, x + 50, y, 24, p.ok && f.ph === 'reveal' ? '#5dfc8d' : info.color, 'left'); });

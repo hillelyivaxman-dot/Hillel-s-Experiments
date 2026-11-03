@@ -1,1 +1,1 @@
-export const SPACE = { LEN: 7000, W: 1100 } as const;
+export const SPACE = { LEN: 15000, W: 1100 } as const;

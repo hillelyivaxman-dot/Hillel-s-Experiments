@@ -181,7 +181,7 @@ function coopWaves(id: 'survival' | 'defense'): GameModule {
         const side = Math.floor(ctx.rand() * 4);
         const x = side === 0 ? -20 : side === 1 ? W + 20 : ctx.rand() * W, y = side === 2 ? -20 : side === 3 ? H + 20 : ctx.rand() * H;
         const tough = wave >= 4 && ctx.rand() < 0.3;
-        foes.push({ id: fid++, x, y, hp: tough ? 3 : 1, sp: (tough ? 70 : 95) + wave * 8 + ctx.rand() * 20, r: tough ? 28 : 20, t: tough ? 1 : 0, hit: 0 });
+        foes.push({ id: fid++, x, y, hp: tough ? 3 : 1, sp: (tough ? 65 : 80) + wave * 8 + ctx.rand() * 20, r: tough ? 28 : 20, t: tough ? 1 : 0, hit: 0 });
       }
       function kill(fo: Foe, by: string) {
         const f = fs.find((q) => q.id === by); if (f) { f.kills++; coins.set(by, (coins.get(by) ?? 0) + 1); }
@@ -220,7 +220,7 @@ function coopWaves(id: 'survival' | 'defense'): GameModule {
             }
           }
           // waves
-          if (!foes.length && toSpawn <= 0 && !over) { nextWave -= dt; if (nextWave <= 0) { if (wave >= WAVES) { over = true; won = true; } else { wave++; toSpawn = 4 + wave * 3 + fs.length * 2; nextWave = 3; ctx.fx('wave', { n: wave }); hudAll(); } } }
+          if (!foes.length && toSpawn <= 0 && !over) { nextWave -= dt; if (nextWave <= 0) { if (wave >= WAVES) { over = true; won = true; } else { wave++; toSpawn = 3 + wave * 2 + fs.length; nextWave = 3; ctx.fx('wave', { n: wave }); hudAll(); } } }
           if (toSpawn > 0) { spawnT -= dt; if (spawnT <= 0) { spawnFoe(); toSpawn--; spawnT = Math.max(0.35, 1.3 - wave * 0.1); } }
           for (const fo of foes) {
             fo.hit = Math.max(0, fo.hit - dt);

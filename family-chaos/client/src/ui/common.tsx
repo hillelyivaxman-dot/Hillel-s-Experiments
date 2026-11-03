@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { GameMeta } from '../../../shared/catalog';
-import { CATEGORY_NAMES } from '../../../shared/catalog';
+import { CATEGORY_NAMES, PLAY_TIME } from '../../../shared/catalog';
 import { useContext } from 'react';
 import { LangCtx, useT } from '../i18n';
 import { prefs, setReducedMotion, setSound } from '../prefs';
@@ -79,7 +79,7 @@ export function GameCard({ g, selected, onClick, compact = false }: { g: GameMet
     >
       <span className="game-card__art"><GameIcon id={g.id} /></span>
       <span className="game-card__body">
-        <span className="game-card__cat">{compact && soon ? t('soon') : `${l(CATEGORY_NAMES[g.category])} · ${g.minPlayers}–${g.maxPlayers} ${t('players')}`}</span>
+        <span className="game-card__cat">{compact && soon ? t('soon') : `${l(CATEGORY_NAMES[g.category])} · ${g.minPlayers}–${g.maxPlayers} ${t('players')}${PLAY_TIME[g.id] ? ` · ⏱ ${PLAY_TIME[g.id][0] === PLAY_TIME[g.id][1] ? PLAY_TIME[g.id][0] : PLAY_TIME[g.id].join('–')}′` : ''}`}</span>
         <span className="game-card__name">{l(g.name)}</span>
         {!compact && <span className="game-card__tag">{soon ? t('soon') : l(g.tagline)}</span>}
       </span>

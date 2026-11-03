@@ -1,6 +1,6 @@
 import { useGSAP } from '@gsap/react';
 import gsap from 'gsap';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { getMeta } from '../../../shared/catalog';
 import type { AdminAction, RoomState } from '../../../shared/protocol';
 import { useT } from '../i18n';
@@ -53,6 +53,18 @@ export function Results({ room, act, watch }: { room: RoomState; act: (a: AdminA
   const order = [podium[1], podium[0], podium[2]].filter(Boolean);
   const meta = room.gameId ? getMeta(room.gameId) : undefined;
   const leaderboard = [...room.players].sort((a, b) => b.stars - a.stars);
+  const tour = room.tour;
+  const tourRank = tour ? [...room.players].sort((a, b) => (tour.points[b.id] ?? 0) - (tour.points[a.id] ?? 0)) : [];
+  const nextMeta = tour && !tour.done ? getMeta(tour.games[tour.idx + 1] ?? '') : undefined;
+  const [left, setLeft] = useState(0);
+  useEffect(() => {
+    if (!tour?.nextAt) { setLeft(0); return; }
+    const end = performance.now() + 12000;
+    setLeft(12);
+    const id = setInterval(() => setLeft(Math.max(0, Math.ceil((end - performance.now()) / 1000))), 250);
+    return () => clearInterval(id);
+  }, [tour?.nextAt]);
+  const champ = tour?.done && tour.champion ? byId.get(tour.champion) : undefined;
 
   useEffect(() => { sfx.win(); }, []);
   useGSAP(() => {
@@ -89,6 +101,22 @@ export function Results({ room, act, watch }: { room: RoomState; act: (a: AdminA
                 return p ? <li key={r.playerId} style={{ color: p.color }}>#{r.place} {p.name} <span className="muted">{r.detail}</span></li> : null;
               })}
             </ol>
+          )}
+          {tour && (
+            <div className="tour-panel" data-testid="tour-panel">
+              <h3>🏆 {l({ he: 'טורניר', en: 'Tournament' })} {Math.min(tour.idx + 1, tour.total)}/{tour.total}</h3>
+              {champ && <p className="tour-champ" data-testid="tour-champion">👑 {l({ he: 'האלוף/ה', en: 'Champion' })}: <b style={{ color: champ.color }}>{champ.name}</b></p>}
+              <ol className="leaderboard">
+                {tourRank.map((p) => <li key={p.id} style={{ color: p.color }}><span>{p.name}</span><b>{tour.points[p.id] ?? 0}</b></li>)}
+              </ol>
+              {nextMeta && <p className="muted">{l({ he: 'הבא', en: 'Next' })}: <b>{l(nextMeta.name)}</b>{left > 0 ? ` · ${left}` : ''}</p>}
+              {!watch && !tour.done && (
+                <div className="results__actions">
+                  <button className="btn btn--secondary" onClick={() => act({ a: 'tour_skip' })} data-testid="tour-skip">⏭ {l({ he: 'המשחק הבא עכשיו', en: 'Next game now' })}</button>
+                  <button className="chip" onClick={() => act({ a: 'tour_cancel' })}>✖ {l({ he: 'בטל טורניר', en: 'Cancel' })}</button>
+                </div>
+              )}
+            </div>
           )}
           <h3>⭐ {t('sessionStars')}</h3>
           <ol className="leaderboard">

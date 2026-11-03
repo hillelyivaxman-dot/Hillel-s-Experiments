@@ -8,7 +8,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import { ACHIEVEMENTS, type PlayerStats } from '../shared/achievements';
 import { AVATAR_COUNT } from '../shared/protocol';
 import type { Db } from './db';
-import { Bucket, clamp, cleanName } from './util';
+import { Bucket, clamp, cleanName, safeEqual, token } from './util';
 
 const scrypt = (pw: string, salt: Buffer, len: number, o: ScryptOptions) =>
   new Promise<Buffer>((res, rej) => scryptCb(pw, salt, len, o, (e, k) => (e ? rej(e) : res(k))));
@@ -34,7 +34,8 @@ export async function verifyPassword(pw: string, stored: string): Promise<boolea
 const sha = (s: string) => createHash('sha256').update(s).digest('hex');
 const EMAIL_RE = /^[^\s@]{1,64}@[^\s@]{1,190}\.[^\s@]{2,}$/;
 
-export interface PublicUser { id: number; email: string; nickname: string; avatar: number }
+export type Role = 'OWNER' | 'ADMIN' | 'HOST' | 'PLAYER';
+export interface PublicUser { id: number; email: string; nickname: string; avatar: number; role: Role }
 export interface PlayRecord { userId: number; game: string; place: number; players: number; stars: number }
 
 export class AccountError extends Error {
@@ -100,10 +101,27 @@ export class Accounts {
   async userFromToken(tok: string | undefined | null): Promise<PublicUser | null> {
     if (!tok || tok.length > 100) return null;
     const rows = await this.db.query<PublicUser & { id: number }>(
-      'select u.id, u.email, u.nickname, u.avatar from sessions s join users u on u.id = s.user_id where s.token_hash = $1 and s.expires_at > $2',
+      'select u.id, u.email, u.nickname, u.avatar, u.role from sessions s join users u on u.id = s.user_id where s.token_hash = $1 and s.expires_at > $2',
       [sha(tok), new Date(this.clock())],
     );
     return rows[0] ? { ...rows[0], id: Number(rows[0].id) } : null;
+  }
+
+  /**
+   * First-run owner setup: whoever is signed in and knows the one-time setup code becomes OWNER (only while no owner exists).
+   * The code is OWNER_SETUP_CODE (a Render environment variable) or, if unset, a random code printed once in the server log.
+   */
+  private ownerCode: string | null = null;
+  async ownerSetupCode(): Promise<string | null> {
+    const has = (await this.db.query<{ n: number }>("select count(*)::int as n from users where role = 'OWNER'"))[0]?.n > 0;
+    if (has) return null;
+    return (this.ownerCode ??= process.env.OWNER_SETUP_CODE || token(9));
+  }
+  async claimOwner(userId: number, code: unknown) {
+    const real = await this.ownerSetupCode();
+    if (!real) throw new AccountError('owner_exists', 409);
+    if (typeof code !== 'string' || !safeEqual(code.trim(), real)) throw new AccountError('bad_code', 403);
+    await this.db.query("update users set role = 'OWNER' where id = $1 and not exists (select 1 from users where role = 'OWNER')", [userId]);
   }
 
   async logout(tok: string | undefined | null) {
@@ -159,7 +177,7 @@ export class Accounts {
       'select game, place, players, stars, at from plays where user_id = $1 order by at desc, id desc limit 20', [user.id]);
     const favorites = Object.entries(stats.perGame).sort((a, b) => b[1].plays - a[1].plays).slice(0, 3).map(([g]) => g);
     return {
-      user: { nickname: user.nickname, avatar: user.avatar, email: user.email },
+      user: { nickname: user.nickname, avatar: user.avatar, email: user.email, role: user.role },
       stats,
       achievements: ACHIEVEMENTS.map((a) => ({ id: a.id, done: a.test(stats) })),
       favorites,
@@ -251,6 +269,11 @@ export async function handleAccountApi(
       const b = await readJson(req);
       const s = await acc.changePassword(user.id, b.current, b.next);
       return send(res, 200, { ok: true }, { 'Set-Cookie': sessionCookie(s.token, secure) }), true;
+    }
+    if (path === '/api/me/owner' && req.method === 'POST') {
+      const b = await readJson(req);
+      await acc.claimOwner(user.id, b.code);
+      return send(res, 200, { ok: true }), true;
     }
     if (path === '/api/me/delete' && req.method === 'POST') {
       const b = await readJson(req);
