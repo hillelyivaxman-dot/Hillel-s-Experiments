@@ -15,11 +15,17 @@ export interface ControllerButton {
   label: L10n;
   color: string;
   big?: boolean;
+  /** Small icon id drawn on the button (see client/src/controller/icons.tsx). */
+  icon?: string;
 }
 
 /** Declarative phone controller layout; each game picks one. */
+/** Controller profiles: decide how buttons are arranged around the right thumb. */
+export type PadStyle = 'racing' | 'fighter' | 'platform' | 'party';
+
 export type ControllerLayout =
-  | { kind: 'stick'; buttons: ControllerButton[]; landscape?: boolean }
+  // buttons are ordered by importance: [0] is the primary button under the resting thumb
+  | { kind: 'stick'; style: PadStyle; buttons: ControllerButton[]; landscape?: boolean }
   | { kind: 'tap'; button: ControllerButton } // one giant button
   | { kind: 'choices'; count: 2 | 3 | 4 };
 
@@ -45,8 +51,8 @@ export interface GameMeta {
   options: GameOption[];
 }
 
-const stickPad = (buttons: ControllerButton[], landscape = true): ControllerLayout =>
-  ({ kind: 'stick', buttons, landscape });
+const stickPad = (style: PadStyle, buttons: ControllerButton[], landscape = true): ControllerLayout =>
+  ({ kind: 'stick', style, buttons, landscape });
 
 export const CATALOG: GameMeta[] = [
   {
@@ -54,12 +60,16 @@ export const CATALOG: GameMeta[] = [
     name: { he: 'קרב מתנגשים', en: 'Bumper Battle' },
     tagline: { he: 'דחפו את כולם מהזירה!', en: 'Shove everyone off the arena!' },
     howTo: {
-      he: 'ג׳ויסטיק לתנועה, DASH להסתערות. הזירה מתכווצת. מי שנופל מאבד חיים.',
-      en: 'Stick to move, DASH to charge. The arena shrinks. Fall off and lose a life.',
+      he: 'ג׳ויסטיק לתנועה, הסתערות לדחיפה, התחמקות לצד. אספו כוחות והפעילו אותם בזמן הנכון. הזירה מתכווצת!',
+      en: 'Stick to move, DASH to shove, DODGE to sidestep. Grab powers and fire them with POWER. The arena shrinks!',
     },
     category: 'action', minPlayers: 2, maxPlayers: 8, status: 'playable',
     accent: ['#ff4d6d', '#ff9a3c'],
-    controller: stickPad([{ key: 'A', label: { he: 'הסתערות', en: 'DASH' }, color: '#ff4d6d', big: true }]),
+    controller: stickPad('fighter', [
+      { key: 'A', label: { he: 'הסתערות', en: 'DASH' }, color: '#ff4d6d', big: true, icon: 'dash' },
+      { key: 'B', label: { he: 'כוח', en: 'POWER' }, color: '#b26bff', icon: 'star' },
+      { key: 'C', label: { he: 'התחמקות', en: 'DODGE' }, color: '#3ec1ff', icon: 'dodge' },
+    ]),
     options: [{ key: 'lives', label: { he: 'חיים', en: 'Lives' }, values: [1, 2, 3, 4, 5], default: 3 }],
   },
   {
@@ -67,15 +77,16 @@ export const CATALOG: GameMeta[] = [
     name: { he: 'כאוס קארטינג', en: 'Kart Chaos' },
     tagline: { he: 'מרוץ קטן, בלגן גדול', en: 'Tiny cars, huge mess' },
     howTo: {
-      he: 'ג׳ויסטיק להיגוי. גז, בלם ופריט. אספו קופסאות ? וטסו על חצי טורבו.',
-      en: 'Stick steers. Gas, brake and item. Grab ? boxes and hit the turbo arrows.',
+      he: 'ג׳ויסטיק להיגוי, גז ובלם בימין. מד הטורבו מתמלא — לחצו טורבו. קופסאות ? נותנות פריטים.',
+      en: 'Stick steers, GAS and BRAKE on the right. Fill the turbo meter and hit TURBO. ? boxes give items.',
     },
     category: 'racing', minPlayers: 1, maxPlayers: 8, status: 'playable',
     accent: ['#3ec1ff', '#5d5dff'],
-    controller: stickPad([
-      { key: 'A', label: { he: 'גז', en: 'GAS' }, color: '#5dfc8d', big: true },
-      { key: 'B', label: { he: 'בלם', en: 'BRAKE' }, color: '#ff8c42' },
-      { key: 'C', label: { he: 'פריט', en: 'ITEM' }, color: '#b26bff' },
+    controller: stickPad('racing', [
+      { key: 'A', label: { he: 'גז', en: 'GAS' }, color: '#5dfc8d', big: true, icon: 'gas' },
+      { key: 'B', label: { he: 'בלם', en: 'BRAKE' }, color: '#ff8c42', icon: 'brake' },
+      { key: 'D', label: { he: 'טורבו', en: 'TURBO' }, color: '#3ec1ff', icon: 'turbo' },
+      { key: 'C', label: { he: 'פריט', en: 'ITEM' }, color: '#b26bff', icon: 'item' },
     ]),
     options: [
       { key: 'laps', label: { he: 'הקפות', en: 'Laps' }, values: [1, 2, 3, 4, 5], default: 3 },
@@ -103,12 +114,15 @@ export const CATALOG: GameMeta[] = [
     name: { he: 'תפוח אדמה לוהט', en: 'Hot Potato' },
     tagline: { he: 'תעבירו את הפצצה. מהר!', en: 'Pass the bomb. Fast!' },
     howTo: {
-      he: 'מי שמחזיק את הפצצה רודף ונוגע במישהו כדי להעביר אותה. כשהפתיל נגמר — בום.',
-      en: 'Holding the bomb? Chase and touch someone to pass it. When the fuse ends: boom.',
+      he: 'מחזיקים את הפצצה? געו במישהו או זרקו אליו (כוונו עם הג׳ויסטיק). כשהפתיל נגמר — בום.',
+      en: 'Holding the bomb? Touch someone or THROW it (aim with the stick). When the fuse ends: boom.',
     },
     category: 'party', minPlayers: 3, maxPlayers: 8, status: 'playable',
     accent: ['#ffd23f', '#ff6b3c'],
-    controller: stickPad([{ key: 'A', label: { he: 'ספרינט', en: 'SPRINT' }, color: '#ffd23f', big: true }]),
+    controller: stickPad('party', [
+      { key: 'A', label: { he: 'ספרינט', en: 'SPRINT' }, color: '#ffd23f', big: true, icon: 'dash' },
+      { key: 'B', label: { he: 'זריקה', en: 'THROW' }, color: '#ff4d6d', icon: 'throw' },
+    ]),
     options: [],
   },
   soon('soccer', 'מיני כדורגל', 'Mini Soccer', 'sports', ['#22c55e', '#15803d']),

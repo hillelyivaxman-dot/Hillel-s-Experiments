@@ -22,16 +22,27 @@ export async function newHost(browser: Browser, base = HTTP) {
   return { h, ctx, code, errors, sockets };
 }
 
-export async function newPhone(browser: Browser, url: string, name: string): Promise<{ p: Page; ctx: BrowserContext; sockets: string[] }> {
-  const ctx = await browser.newContext({ viewport: { width: 412, height: 860 }, hasTouch: true, isMobile: true, locale: 'en-US', ignoreHTTPSErrors: true });
+export interface SentInput { x: number; y: number; b: number }
+
+export async function newPhone(browser: Browser, url: string, name: string, opts: object = {}): Promise<{ p: Page; ctx: BrowserContext; sockets: string[]; inputs: SentInput[] }> {
+  const ctx = await browser.newContext({ viewport: { width: 412, height: 860 }, hasTouch: true, isMobile: true, locale: 'en-US', ignoreHTTPSErrors: true, ...opts });
   const p = await ctx.newPage();
   const sockets: string[] = [];
-  p.on('websocket', (ws) => sockets.push(ws.url()));
+  const inputs: SentInput[] = []; // every controller message the phone actually sent
+  p.on('websocket', (ws) => {
+    sockets.push(ws.url());
+    ws.on('framesent', (f) => {
+      try {
+        const m = JSON.parse(String(f.payload));
+        if (m.t === 'input') inputs.push({ x: m.x, y: m.y, b: m.b });
+      } catch { /* ignore */ }
+    });
+  });
   await p.goto(url);
   await p.locator('input[name="name"]').fill(name);
   await p.getByTestId('join-btn').click();
   await expect(p.getByTestId('ready-btn')).toBeVisible({ timeout: 15_000 });
-  return { p, ctx, sockets };
+  return { p, ctx, sockets, inputs };
 }
 
 export const frame = (h: Page) => h.evaluate(() => (window as any).__fcFrame);
@@ -54,4 +65,28 @@ export async function playerIds(h: Page): Promise<Record<string, string>> {
 export function delta(f0: any, f1: any, key: string, id: string) {
   const a = f0[key].find((e: any) => e.id === id), b = f1[key].find((e: any) => e.id === id);
   return { dx: b.x - a.x, dy: b.y - a.y, da: (b.a ?? 0) - (a.a ?? 0), d: Math.hypot(b.x - a.x, b.y - a.y) };
+}
+
+/** Every pad button is on screen, >= 56px, not overlapping, and really tappable (nothing covers its centre). */
+export async function padProblems(p: Page) {
+  return p.evaluate(() => {
+    const vw = innerWidth, vh = innerHeight, out: string[] = [];
+    if (document.documentElement.scrollWidth > vw + 1) out.push(`horizontal scroll ${document.documentElement.scrollWidth}>${vw}`);
+    if (document.documentElement.scrollHeight > vh + 1 && document.querySelector('.phone-game')) out.push('vertical scroll on controller');
+    const btns = [...document.querySelectorAll<HTMLElement>('.pad-btn')];
+    if (document.querySelector('.pad--stick') && !document.querySelector('.stick-zone')) out.push('stick missing');
+    for (const e of btns) {
+      const r = e.getBoundingClientRect(), k = e.dataset.btn;
+      if (r.left < -1 || r.top < -1 || r.right > vw + 1 || r.bottom > vh + 1) out.push(`button ${k} off-screen`);
+      if (Math.min(r.width, r.height) < 56) out.push(`button ${k} too small (${Math.round(r.width)})`);
+      const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+      if (!hit || !e.contains(hit)) out.push(`button ${k} covered by ${hit?.className || hit?.tagName}`);
+    }
+    for (let i = 0; i < btns.length; i++) for (let j = i + 1; j < btns.length; j++) {
+      const a = btns[i].getBoundingClientRect(), b = btns[j].getBoundingClientRect();
+      const d = Math.hypot(a.x + a.width / 2 - b.x - b.width / 2, a.y + a.height / 2 - b.y - b.height / 2);
+      if (d < (a.width + b.width) / 2 - 1) out.push(`buttons ${btns[i].dataset.btn}/${btns[j].dataset.btn} overlap`);
+    }
+    return out;
+  });
 }

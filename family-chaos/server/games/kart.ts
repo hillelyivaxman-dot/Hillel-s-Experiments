@@ -25,6 +25,7 @@ interface Car {
   idx: number; s: number; // nearest sample, distance along track
   sector: number; mask: number; lap: number; cross: number;
   item: Item; boostT: number; spinT: number; shieldT: number;
+  turbo: number; // 0..100 turbo meter, TURBO button spends 50
   finished: number; // finish time, -1 if racing
   offTrack: boolean;
 }
@@ -68,7 +69,7 @@ export const kartGame: GameModule = {
       return {
         id: p.id, x, y, a: Math.atan2(pt.ty, pt.tx), v: 0, idx: nr.idx, s: tr.cum[nr.idx],
         sector: K.SECTORS - 1, mask: 1 << (K.SECTORS - 1), lap: 0, cross: -1,
-        item: '', boostT: 0, spinT: 0, shieldT: 0, finished: -1, offTrack: false,
+        item: '', boostT: 0, spinT: 0, shieldT: 0, turbo: 50, finished: -1, offTrack: false,
       };
     });
     const byId = new Map(cars.map((c) => [c.id, c]));
@@ -91,7 +92,7 @@ export const kartGame: GameModule = {
     function sendHud() {
       const o = order();
       o.forEach((c, i) => ctx.hud(c.id, {
-        place: i + 1, of: cars.length, lap: Math.min(c.lap + 1, laps), laps, item: c.item,
+        place: i + 1, of: cars.length, lap: Math.min(c.lap + 1, laps), laps, item: c.item, turbo: Math.floor(c.turbo),
         done: c.finished >= 0 ? 1 : 0,
       }));
     }
@@ -113,7 +114,15 @@ export const kartGame: GameModule = {
     return {
       onPress(pid, btn) {
         const c = byId.get(pid);
-        if (c && btn === BTN.C) useItem(c);
+        if (!c) return;
+        if (btn === BTN.C) useItem(c);
+        if (btn === BTN.D && c.turbo >= 50 && c.finished < 0) { // TURBO from the meter
+          c.turbo -= 50;
+          c.boostT = Math.max(c.boostT, 1.2);
+          ctx.fx('boost', { id: c.id });
+          ctx.buzz(c.id, 60);
+          sendHud();
+        }
       },
 
       tick(dt) {
@@ -138,6 +147,7 @@ export const kartGame: GameModule = {
           c.a += steer * K.TURN * dt * grip;
           if (c.spinT > 0) { c.a += 10 * dt; c.v *= Math.pow(0.15, dt); c.spinT -= dt; }
           c.boostT = Math.max(0, c.boostT - dt);
+          if (racing) c.turbo = Math.min(100, c.turbo + 3 * dt); // slow regen
           c.shieldT = Math.max(0, c.shieldT - dt);
 
           c.x += Math.cos(c.a) * c.v * dt;
@@ -195,9 +205,10 @@ export const kartGame: GameModule = {
           for (const b of boxes) {
             if (b.cd > 0 || Math.hypot(c.x - b.x, c.y - b.y) > 30) continue;
             b.cd = 4;
+            if (racing) c.turbo = Math.min(100, c.turbo + 25); // every box also tops up the turbo meter
             if (!c.item && racing) {
               const r = ctx.rand();
-              c.item = r < 0.45 ? 'turbo' : r < 0.75 ? 'oil' : 'shield';
+              c.item = r < 0.3 ? 'turbo' : r < 0.65 ? 'oil' : 'shield';
               ctx.buzz(c.id, 50);
               sendHud();
             }

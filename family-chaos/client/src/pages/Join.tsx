@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { CATALOG, getMeta } from '../../../shared/catalog';
 import { AVATAR_COUNT, PLAYER_COLORS, type AdminAction, type RoomState } from '../../../shared/protocol';
+import { PadIcon } from '../controller/icons';
 import { Pad } from '../controller/Pad';
+import { usePadSettings } from '../controller/settings';
 import { useMe } from '../account';
 import { keepScreenOn } from '../compat';
 import { useT, type Key } from '../i18n';
@@ -20,6 +22,11 @@ export function Join({ initialCode }: { initialCode: string }) {
   const [password, setPassword] = useState('');
   const [needPw, setNeedPw] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    if (!error) return;
+    const id = setTimeout(() => setError(null), 4000); // never leave a message over the controls
+    return () => clearTimeout(id);
+  }, [error]);
   const [conn, setConn] = useState<Conn | null>(null);
   const [room, setRoom] = useState<RoomState | null>(null);
   const [me, setMe] = useState<string | null>(null);
@@ -226,40 +233,85 @@ function PhoneLobby({ room, me, conn, act, isLeader }: { room: RoomState; me: st
   );
 }
 
-function hudLine(game: string, h: Hud, t: ReturnType<typeof useT>['t']): { text: string; tone: string } {
+interface HudView { text: string; tone: 'normal' | 'hot' | 'bad' | 'good'; meter?: number; meterLabel?: string; chips?: { icon: string; on: boolean; label: string }[] }
+
+function hudView(game: string, h: Hud, t: ReturnType<typeof useT>['t'], he: boolean): HudView {
+  const L = (a: string, b: string) => (he ? a : b);
+  const POW: Record<string, string> = { mega: '⬆', shield: '⛨', speed: '⚡' };
   switch (game) {
     case 'bumper':
-      return { text: `${'❤'.repeat(Number(h.lives ?? 0))}  ${h.ko ?? 0} KO  ${h.dash ? '⚡' : '…'}${h.power ? ` · ${h.power}` : ''}`, tone: Number(h.lives) === 0 ? 'bad' : 'normal' };
+      return {
+        text: `${'♥'.repeat(Number(h.lives ?? 0))}  ${h.ko ?? 0} KO`,
+        tone: Number(h.lives) === 0 ? 'bad' : 'normal',
+        chips: [
+          { icon: 'dash', on: !!h.dash, label: L('הסתערות', 'DASH') },
+          { icon: 'dodge', on: !!h.dodge, label: L('התחמקות', 'DODGE') },
+          { icon: 'star', on: !!h.held, label: h.held ? POW[String(h.held)] ?? '★' : '—' },
+        ],
+      };
     case 'kart':
-      if (h.done) return { text: `🏁 ${t('finished')} #${h.place}`, tone: 'good' };
-      return { text: `#${h.place ?? '-'}/${h.of ?? '-'} · ${t('lap')} ${h.lap ?? 1}/${h.laps ?? '-'}${h.item ? ` · ${{ turbo: '🚀', oil: '🛢', shield: '🛡' }[String(h.item)] ?? ''}` : ''}`, tone: 'normal' };
+      if (h.done) return { text: `${t('finished')} #${h.place}`, tone: 'good' };
+      return {
+        text: `#${h.place ?? '-'}/${h.of ?? '-'} · ${t('lap')} ${h.lap ?? 1}/${h.laps ?? '-'}`,
+        tone: 'normal',
+        meter: Number(h.turbo ?? 0) / 100,
+        meterLabel: L('טורבו', 'TURBO'),
+        chips: [{ icon: 'item', on: !!h.item, label: { turbo: '🚀', oil: '🛢', shield: '🛡' }[String(h.item)] ?? '—' }],
+      };
     case 'reaction':
       if (h.msg === 'early') return { text: t('early'), tone: 'bad' };
       if (h.msg === 'tapped') return { text: `${h.ms} ms`, tone: 'good' };
       return { text: `${t('round')} ${h.round ?? 1}/${h.rounds ?? '-'} · ${t('score')} ${h.score ?? 0}`, tone: 'normal' };
     case 'potato':
       if (h.out) return { text: t('youreOut'), tone: 'bad' };
-      if (h.hot) return { text: `💣 ${t('youHaveBomb')}`, tone: 'hot' };
-      return { text: `${t('round')} ${h.round ?? 1}`, tone: 'normal' };
+      if (h.hot) return { text: t('youHaveBomb'), tone: 'hot', chips: [{ icon: 'throw', on: !!h.throw, label: L('זריקה', 'THROW') }] };
+      return { text: `${t('round')} ${h.round ?? 1}`, tone: 'normal', chips: [{ icon: 'dash', on: !!h.sprint, label: L('ספרינט', 'SPRINT') }] };
   }
   return { text: '', tone: 'normal' };
 }
 
 function PhoneGame({ room, conn, hud, isLeader, act }: { room: RoomState; conn: Conn; hud: Hud; isLeader: boolean; act: (a: AdminAction) => void }) {
-  const { t, l } = useT();
+  const { t, l, lang } = useT();
   const meta = getMeta(room.gameId!)!;
-  const line = hudLine(meta.id, hud, t);
+  const v = hudView(meta.id, hud, t, lang === 'he');
+  const [settings, setSettings] = usePadSettings();
+  const [open, setOpen] = useState(false);
   return (
-    <div className={`phone-game tone-${line.tone}`}>
+    <div className={`phone-game tone-${v.tone}`}>
       <div className="phone-game__hud">
         <span className="phone-game__title">{l(meta.name)}</span>
-        <span className="phone-game__line" data-testid="hud">{room.phase === 'countdown' ? '3…2…1…' : line.text}</span>
+        <span className="phone-game__line" data-testid="hud">{room.phase === 'countdown' ? '3 · 2 · 1' : room.phase === 'paused' ? `⏸ ${t('paused')}` : v.text}</span>
+        {v.meter !== undefined && (
+          <span className="hud-meter" aria-label={v.meterLabel} data-testid="hud-meter"><i style={{ width: `${Math.round(v.meter * 100)}%` }} /><b>{v.meterLabel}</b></span>
+        )}
+        {v.chips?.map((c) => <span key={c.icon} className={`hud-chip ${c.on ? 'is-on' : ''}`} title={c.label}><PadIcon id={c.icon} /><span className="hud-chip__label">{c.label}</span></span>)}
         {isLeader && (room.phase === 'paused'
-          ? <button className="mini" onClick={() => act({ a: 'resume' })}>▶</button>
-          : <button className="mini" onClick={() => act({ a: 'pause' })}>⏸</button>)}
+          ? <button className="hud-btn" onClick={() => act({ a: 'resume' })} aria-label={t('resume')}>▶</button>
+          : <button className="hud-btn" onClick={() => act({ a: 'pause' })} aria-label={t('pause')}>❚❚</button>)}
+        <button className="hud-btn" onClick={() => setOpen((x) => !x)} aria-label={t('padSettings')} data-testid="pad-settings">⚙</button>
       </div>
-      {meta.controller.kind === 'stick' && meta.controller.landscape && <p className="rotate-hint">{t('tiltHint')}</p>}
-      <Pad layout={meta.controller} conn={conn} />
+      <div className="phone-game__pad">
+        <Pad layout={meta.controller} conn={conn} settings={settings} />
+      </div>
+      {open && (
+        <div className="pad-sheet" role="dialog" aria-label={t('padSettings')}>
+          <b>{t('padSettings')}</b>
+          <div className="pad-sheet__row">
+            <span>{t('buttonSize')}</span>
+            {(['s', 'm', 'l'] as const).map((sz) => (
+              <button key={sz} className={`chip ${settings.size === sz ? 'is-on' : ''}`} data-size={sz} onClick={() => setSettings({ size: sz })}>{sz.toUpperCase()}</button>
+            ))}
+          </div>
+          <div className="pad-sheet__row">
+            <span>{t('swapSides')}</span>
+            <button className={`chip ${settings.mirrored ? 'is-on' : ''}`} data-testid="mirror" onClick={() => setSettings({ mirrored: !settings.mirrored })}>
+              {settings.mirrored ? t('on') : t('off')}
+            </button>
+          </div>
+          {meta.controller.kind === 'stick' && <p className="muted small">{t('tiltHint')}</p>}
+          <button className="btn btn--secondary" onClick={() => setOpen(false)}>✓</button>
+        </div>
+      )}
     </div>
   );
 }

@@ -23,6 +23,16 @@ export function installCompat() {
       this.closePath();
     } as CanvasRenderingContext2D['roundRect'];
   }
+  // --app-h = the height that is really visible right now (mobile browser bars come and go;
+  // 100vh is the *largest* possible height, which pushes controls under the bottom toolbar).
+  const setH = () => {
+    const h = window.visualViewport?.height ?? window.innerHeight;
+    document.documentElement.style.setProperty('--app-h', `${Math.round(h)}px`);
+  };
+  setH();
+  window.addEventListener('resize', setH);
+  window.addEventListener('orientationchange', () => setTimeout(setH, 250));
+  window.visualViewport?.addEventListener('resize', setH);
   // iOS Safari ignores user-scalable=no; block pinch-zoom gestures so two-finger play doesn't zoom the page.
   for (const ev of ['gesturestart', 'gesturechange']) {
     document.addEventListener(ev, (e) => e.preventDefault(), { passive: false });

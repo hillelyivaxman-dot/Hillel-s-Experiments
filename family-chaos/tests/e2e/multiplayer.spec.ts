@@ -62,7 +62,7 @@ test('two phones control two different characters on one screen, then reconnect,
   await b.mouse.move(zone!.x + zone!.width / 2, zone!.y + zone!.height / 2);
   await b.mouse.down();
   await b.mouse.move(zone!.x + zone!.width / 2, zone!.y + zone!.height / 2 - 70, { steps: 4 });
-  await h.waitForTimeout(700);
+  await h.waitForTimeout(350); // short window: avoids collisions / falling off the arena
   const f1 = await frame(h);
   await a.keyboard.up('ArrowRight');
   await b.mouse.up();
@@ -72,8 +72,8 @@ test('two phones control two different characters on one screen, then reconnect,
     const o = f0.p.find((q: any) => q.id === p.id);
     return { id: p.id, dx: p.x - o.x, dy: p.y - o.y };
   });
-  const right = moved.find((m: any) => m.dx > 60 && Math.abs(m.dy) < Math.abs(m.dx) / 2);
-  const up = moved.find((m: any) => m.dy < -60 && Math.abs(m.dx) < Math.abs(m.dy) / 2);
+  const right = moved.find((m: any) => m.dx > 25 && Math.abs(m.dy) < Math.abs(m.dx) / 2);
+  const up = moved.find((m: any) => m.dy < -25 && Math.abs(m.dx) < Math.abs(m.dy) / 2);
   expect(right, JSON.stringify(moved)).toBeTruthy();
   expect(up, JSON.stringify(moved)).toBeTruthy();
   expect(right.id).not.toBe(up.id);

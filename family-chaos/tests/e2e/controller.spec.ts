@@ -1,0 +1,186 @@
+import { expect, test, type Page } from '@playwright/test';
+import { BTN } from '../../shared/protocol';
+import { delta, frame, HTTP, HTTPS, newHost, newPhone, padProblems, playerIds, waitPlaying, type SentInput } from './util';
+
+// Regression tests for the controller bugs found in the review (see docs/CONTROLLER.md).
+// Touch input is real CDP touch emulation in Chromium (not a physical phone).
+
+type Pt = { x: number; y: number; id: number };
+async function touch(page: Page) {
+  const cdp = await page.context().newCDPSession(page);
+  return (type: 'touchStart' | 'touchMove' | 'touchEnd' | 'touchCancel', touchPoints: Pt[]) =>
+    cdp.send('Input.dispatchTouchEvent', { type, touchPoints: touchPoints.map((p) => ({ ...p, radiusX: 8, radiusY: 8, force: 1 })) });
+}
+const center = async (p: Page, sel: string) => {
+  const b = (await p.locator(sel).first().boundingBox())!;
+  return { x: b.x + b.width / 2, y: b.y + b.height / 2 };
+};
+const last = (inputs: SentInput[]) => inputs[inputs.length - 1];
+
+async function startGame(game: string, phoneOpts: object = {}) {
+  return async (browser: import('@playwright/test').Browser) => {
+    const { h, code } = await newHost(browser);
+    const a = await newPhone(browser, `${HTTP}/join/${code}`, 'Pad', phoneOpts);
+    const b = await newPhone(browser, `${HTTP}/join/${code}`, 'Other');
+    const extra = game === 'potato' ? await newPhone(browser, `${HTTP}/join/${code}`, 'Third') : null;
+    const ids = await playerIds(h);
+    await h.locator(`.lobby__games [data-game="${game}"]`).click();
+    await h.getByTestId('start-btn').click();
+    await waitPlaying(h);
+    return { h, a, b, extra, ids };
+  };
+}
+
+test('stick: dead zone sends exactly zero, small pushes are proportional, full push = 1', async ({ browser }) => {
+  const { a } = await (await startGame('bumper'))(browser);
+  const t = await touch(a.p);
+  const s = await center(a.p, '.stick-zone');
+  await t('touchStart', [{ ...s, id: 1 }]);
+  await t('touchMove', [{ x: s.x + 4, y: s.y + 3, id: 1 }]); // inside the dead zone
+  await a.p.waitForTimeout(80);
+  expect(last(a.inputs)).toMatchObject({ x: 0, y: 0 });
+  await t('touchMove', [{ x: s.x + 30, y: s.y, id: 1 }]);
+  await expect.poll(() => last(a.inputs).x).toBeGreaterThan(0.2);
+  expect(last(a.inputs).x).toBeLessThan(0.75);
+  await t('touchMove', [{ x: s.x + 150, y: s.y, id: 1 }]);
+  await expect.poll(() => last(a.inputs).x).toBe(1);
+  await t('touchEnd', []);
+  await expect.poll(() => last(a.inputs)).toMatchObject({ x: 0, y: 0 });
+});
+
+test('stick: finger slides off the stick area and the screen side — still steering; lifting it anywhere stops', async ({ browser }) => {
+  const { h, a, ids } = await (await startGame('bumper'))(browser);
+  const t = await touch(a.p);
+  const s = await center(a.p, '.stick-zone');
+  await t('touchStart', [{ ...s, id: 1 }]);
+  // drag far to the right: across the buttons and off the stick region
+  for (let i = 1; i <= 8; i++) await t('touchMove', [{ x: s.x + i * 40, y: s.y - i * 2, id: 1 }]);
+  await expect.poll(() => last(a.inputs).x).toBeGreaterThan(0.9);
+  const f0 = await frame(h);
+  await h.waitForTimeout(300); // short window: the critter must not reach the arena edge meanwhile
+  const f1 = await frame(h);
+  expect(delta(f0, f1, 'p', ids.Pad).dx).toBeGreaterThan(20);
+  // no button got pressed by the sliding stick finger
+  expect(a.inputs.every((i) => i.b === 0)).toBe(true);
+  await t('touchEnd', []);
+  await expect.poll(() => last(a.inputs)).toMatchObject({ x: 0, y: 0, b: 0 });
+});
+
+test('touch cancel (system gesture / incoming call) releases stick and buttons', async ({ browser }) => {
+  const { a } = await (await startGame('kart'))(browser);
+  const t = await touch(a.p);
+  const s = await center(a.p, '.stick-zone');
+  const gas = await center(a.p, '[data-btn="A"]');
+  await t('touchStart', [{ ...s, id: 1 }]);
+  await t('touchMove', [{ x: s.x + 60, y: s.y, id: 1 }]);
+  await t('touchStart', [{ x: s.x + 60, y: s.y, id: 1 }, { ...gas, id: 2 }]);
+  await expect.poll(() => last(a.inputs).b).toBe(BTN.A);
+  await t('touchCancel', []);
+  await expect.poll(() => last(a.inputs)).toMatchObject({ x: 0, y: 0, b: 0 });
+  await expect(a.p.locator('[data-btn="A"]')).not.toHaveClass(/is-down/);
+});
+
+test('screen lock / app switch while holding GAS and steering: everything is released (no runaway car)', async ({ browser }) => {
+  const { a } = await (await startGame('kart'))(browser);
+  const t = await touch(a.p);
+  const s = await center(a.p, '.stick-zone');
+  const gas = await center(a.p, '[data-btn="A"]');
+  await t('touchStart', [{ ...s, id: 1 }]);
+  await t('touchMove', [{ x: s.x - 60, y: s.y, id: 1 }]);
+  await t('touchStart', [{ x: s.x - 60, y: s.y, id: 1 }, { ...gas, id: 2 }]);
+  await expect.poll(() => last(a.inputs)).toMatchObject({ b: BTN.A });
+  await expect.poll(() => last(a.inputs).x).toBeLessThan(-0.5);
+  // the phone goes to sleep: the browser fires visibilitychange, and no pointerup will ever arrive
+  await a.p.evaluate(() => {
+    Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'hidden' });
+    document.dispatchEvent(new Event('visibilitychange'));
+  });
+  await expect.poll(() => last(a.inputs)).toMatchObject({ x: 0, y: 0, b: 0 });
+});
+
+test('three fingers at once: steer + GAS + TURBO (Kart) all reach the server', async ({ browser }) => {
+  const { h, a, ids } = await (await startGame('kart'))(browser);
+  const t = await touch(a.p);
+  const s = await center(a.p, '.stick-zone');
+  const gas = await center(a.p, '[data-btn="A"]');
+  const turbo = await center(a.p, '[data-btn="D"]');
+  const f0 = await frame(h);
+  await t('touchStart', [{ ...s, id: 1 }]);
+  await t('touchStart', [{ ...s, id: 1 }, { ...gas, id: 2 }]);
+  await t('touchStart', [{ ...s, id: 1 }, { ...gas, id: 2 }, { ...turbo, id: 3 }]);
+  await t('touchMove', [{ x: s.x + 50, y: s.y, id: 1 }, { ...gas, id: 2 }, { ...turbo, id: 3 }]);
+  await expect.poll(() => last(a.inputs).b).toBe(BTN.A | BTN.D);
+  await expect.poll(() => last(a.inputs).x).toBeGreaterThan(0.4); // stick moves are coalesced (~16 ms)
+  await expect(a.p.locator('.pad-btn.is-down')).toHaveCount(2);
+  await h.waitForTimeout(900);
+  const f1 = await frame(h);
+  expect(delta(f0, f1, 'c', ids.Pad).d).toBeGreaterThan(150); // turbo-boosted acceleration
+  // lift only the TURBO finger (CDP: touchEnd lists the finger(s) that lift): gas + steering keep working
+  await t('touchEnd', [{ ...turbo, id: 3 }]);
+  await expect.poll(() => last(a.inputs).b).toBe(BTN.A);
+  await expect.poll(() => last(a.inputs).x).toBeGreaterThan(0.4);
+  await t('touchEnd', []);
+  await expect.poll(() => last(a.inputs)).toMatchObject({ x: 0, y: 0, b: 0 });
+});
+
+test('controls stay visible and tappable when the browser bar shows/hides and when the phone rotates', async ({ browser }) => {
+  const { a } = await (await startGame('kart'))(browser);
+  for (const vp of [{ width: 412, height: 860 }, { width: 412, height: 760 }, { width: 860, height: 412 }, { width: 860, height: 330 }, { width: 412, height: 915 }]) {
+    await a.p.setViewportSize(vp);
+    await a.p.waitForTimeout(150);
+    expect(await padProblems(a.p), `${vp.width}x${vp.height}`).toEqual([]);
+    await expect(a.p.locator('.pad-btn')).toHaveCount(4);
+  }
+});
+
+test('controller settings: L buttons + swapped sides still fit; stick moves to the right', async ({ browser }) => {
+  const { a } = await (await startGame('bumper'))(browser);
+  const before = await center(a.p, '.stick-zone');
+  await a.p.getByTestId('pad-settings').click();
+  await a.p.locator('[data-size="l"]').click();
+  await a.p.getByTestId('mirror').click();
+  await a.p.locator('.pad-sheet .btn').click();
+  const after = await center(a.p, '.stick-zone');
+  expect(after.x).toBeGreaterThan(before.x + 100);
+  expect(await padProblems(a.p)).toEqual([]);
+  // preference survives a reload
+  await a.p.reload();
+  await expect(a.p.locator('.pad')).toBeVisible();
+  expect((await center(a.p, '.stick-zone')).x).toBeGreaterThan(before.x + 100);
+});
+
+test('after a network drop the controller comes back complete and working', async ({ browser, request }) => {
+  const { h, code } = await newHost(browser);
+  const a = await newPhone(browser, `${HTTPS}/join/${code}`, 'Dropper');
+  await newPhone(browser, `${HTTP}/join/${code}`, 'Stable');
+  await h.locator('.lobby__games [data-game="kart"]').click();
+  await h.getByTestId('start-btn').click();
+  await waitPlaying(h);
+  await request.get(`${HTTPS}/__proxy/drop`, { ignoreHTTPSErrors: true });
+  await expect(a.p.locator('.conn-banner')).toBeHidden({ timeout: 15_000 });
+  await expect(a.p.locator('.pad-btn')).toHaveCount(4);
+  expect(await padProblems(a.p)).toEqual([]);
+  await a.p.locator('[data-btn="A"]').hover();
+  await a.p.mouse.down();
+  await expect.poll(() => last(a.inputs).b).toBe(BTN.A);
+  await a.p.mouse.up();
+});
+
+test('the controller updates for each game in the same lobby (buttons appear/disappear correctly)', async ({ browser }) => {
+  test.setTimeout(90_000);
+  const { h, code } = await newHost(browser);
+  const a = await newPhone(browser, `${HTTP}/join/${code}`, 'Switcher');
+  await newPhone(browser, `${HTTP}/join/${code}`, 'B');
+  await newPhone(browser, `${HTTP}/join/${code}`, 'C');
+  const expected: Record<string, string[]> = { bumper: ['A', 'B', 'C'], kart: ['A', 'B', 'D', 'C'], reaction: ['A'], potato: ['A', 'B'], };
+  for (const [g, keys] of Object.entries(expected)) {
+    await h.locator(`.lobby__games [data-game="${g}"]`).click();
+    await h.getByTestId('start-btn').click();
+    await waitPlaying(h);
+    await expect(a.p.locator('.pad-btn')).toHaveCount(keys.length);
+    expect(await a.p.locator('.pad-btn').evaluateAll((els) => els.map((e) => (e as HTMLElement).dataset.btn))).toEqual(keys);
+    expect(await padProblems(a.p), g).toEqual([]);
+    await h.getByRole('button', { name: /End round/ }).click();
+    await h.getByTestId('lobby-btn').click();
+  }
+});

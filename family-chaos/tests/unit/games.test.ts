@@ -112,3 +112,37 @@ describe('hot potato', () => {
     expect(r.fx.filter((k) => k === 'boom')).toHaveLength(3);
   });
 });
+
+describe('new controller actions', () => {
+  it('bumper: power-ups are stored, then fired with POWER (B); DODGE (C) has a cooldown', () => {
+    let fired = false, dodged = 0;
+    const r = runGame(bumperGame, 2, { lives: 3 }, (id, snap, t) => {
+      const me = snap.p.find((p: any) => p.id === id);
+      const u = snap.u[0];
+      if (id === 'p1' && me.h) { fired = true; return { x: 0, y: 0, b: BTN.B }; } // stored -> fire
+      if (id === 'p1' && u) { const dx = u.x - me.x, dy = u.y - me.y, d = Math.hypot(dx, dy) || 1; return { x: dx / d, y: dy / d, b: 0 }; }
+      if (id === 'p2') { if (me.g) dodged++; return { x: 0, y: 0, b: Math.floor(t * 4) % 2 ? BTN.C : 0 }; }
+      return { x: 0, y: 0, b: 0 };
+    }, 40);
+    expect(r.fx).toContain('pickup');
+    expect(fired).toBe(true);
+    expect(r.fx).toContain('power');
+    // DODGE pressed twice per second for 40 s, but the 2 s cooldown allows at most ~20 dodges
+    const dodges = r.fx.filter((k) => k === 'dodge').length;
+    expect(dodges).toBeGreaterThan(5);
+    expect(dodges).toBeLessThanOrEqual(21);
+    expect(dodged).toBeGreaterThan(0);
+  });
+
+  it('kart: TURBO (D) spends the meter and boosts; it cannot be spammed', () => {
+    const r = runGame(kartGame, 1, { laps: 1, track: 0 }, (_id, _snap, t) => ({ x: 0, y: 0, b: BTN.A | (Math.floor(t * 10) % 2 ? BTN.D : 0) }), 6);
+    const boosts = r.fx.filter((k) => k === 'boost').length;
+    expect(boosts).toBeGreaterThanOrEqual(1); // starts with 50 = one boost
+    expect(boosts).toBeLessThanOrEqual(2); // regen is slow (3/s)
+  });
+
+  it('potato: THROW (B) passes the bomb to someone in range', () => {
+    const r = runGame(potatoGame, 3, {}, (id, snap, t) => ({ x: 0, y: 0, b: snap.h === id && Math.floor(t * 4) % 2 ? BTN.B : 0 }), 6);
+    expect(r.fx).toContain('throw');
+  });
+});

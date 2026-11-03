@@ -129,6 +129,9 @@ const S = {
   acc_signed_out: { he: 'צריך להתחבר מחדש.', en: 'Please sign in again.' },
   acc_accounts_unavailable: { he: 'מערכת החשבונות לא זמינה כרגע. אפשר לשחק כאורחים.', en: 'Accounts are unavailable right now. You can still play as a guest.' },
   acc_generic: { he: 'משהו השתבש. נסו שוב.', en: 'Something went wrong. Try again.' },
+  padSettings: { he: 'הגדרות שלט', en: 'Controller settings' },
+  buttonSize: { he: 'גודל כפתורים', en: 'Button size' },
+  swapSides: { he: 'החלפת צדדים (שמאליים)', en: 'Swap sides (left-handed)' },
 };
 
 export type Key = keyof typeof S;

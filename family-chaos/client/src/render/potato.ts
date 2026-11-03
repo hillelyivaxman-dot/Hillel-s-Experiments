@@ -57,7 +57,15 @@ export const potatoRenderer: Renderer = {
       const hot = f.h === p.id;
       drawCritter(g, p.x, p.y, 30, info.color, info.avatar, { t, squash: p.s ? 0.4 : 0, look: hot ? -Math.PI / 2 : Math.PI / 2 });
       nameTag(g, p.x, p.y + 48, info.name, info.color, 15);
-      if (hot) bomb(g, p.x, p.y - 58, f.heat, t);
+      if (hot && !(f.fl && f.fl.k < 1)) bomb(g, p.x, p.y - 58, f.heat, t);
+    }
+    if (f.fl && f.fl.k < 1) { // bomb flying in an arc from thrower to target
+      const a = f.p.find((q: any) => q.id === f.fl.f), b = f.p.find((q: any) => q.id === f.fl.t);
+      if (a && b) {
+        const k = f.fl.k;
+        const x = a.x + (b.x - a.x) * k, y = a.y - 58 + (b.y - a.y) * k - Math.sin(k * Math.PI) * 140;
+        bomb(g, x, y, f.heat, t);
+      }
     }
     fx.draw(g);
   },
@@ -90,6 +98,8 @@ export const potatoRenderer: Renderer = {
         break;
       case 'round': sfx.tick(); break;
       case 'sprint': sfx.dash(); break;
+      case 'throw': sfx.pass(); break;
+      case 'miss': sfx.bad(); break;
     }
   },
 };

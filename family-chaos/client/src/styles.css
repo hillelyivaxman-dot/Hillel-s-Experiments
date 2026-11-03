@@ -246,6 +246,7 @@ input:focus, select:focus { border-color: var(--yellow); outline: none; }
 /* ---------- phone ---------- */
 .phone { min-height: 100%; max-width: 640px; margin: 0 auto; }
 .phone.phone--pad { max-width: none; height: 100%; overflow: hidden; }
+html:has(.phone--pad), body:has(.phone--pad) { overflow: hidden; overscroll-behavior: none; }
 .join__form { margin: 0 14px 24px; display: grid; gap: 1rem; }
 .join__form h1 { font-size: 2rem; font-weight: 900; margin: 0; }
 .avatar-pick { border: 0; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; }
@@ -269,41 +270,82 @@ input:focus, select:focus { border-color: var(--yellow); outline: none; }
 .phone-results { gap: 0.6rem; }
 .stars { font-size: 2rem; margin: 0; }
 
-/* controller */
-.phone-game { position: fixed; inset: 0; display: grid; grid-template-rows: auto 1fr; background: radial-gradient(circle at 50% 120%, color-mix(in srgb, var(--pc) 35%, transparent), transparent 70%), var(--bg-0); user-select: none; -webkit-user-select: none; }
+/* controller — sized from the measured viewport (--app-h, set in compat.ts), never from vh */
+.phone-game {
+  /* inset:0 follows the *visible* viewport (browser bars, rotation) natively, with no JS lag */
+  position: fixed; inset: 0;
+  display: flex; flex-direction: column; overflow: hidden;
+  background: radial-gradient(circle at 50% 120%, color-mix(in srgb, var(--pc) 30%, transparent), transparent 70%), var(--bg-0);
+  user-select: none; -webkit-user-select: none;
+}
 .phone-game.tone-hot { animation: hot 0.5s steps(2) infinite; }
-.phone-game.tone-bad { filter: grayscale(0.6); }
-.phone-game__hud { display: flex; align-items: center; gap: 10px; padding: 8px 14px; padding-top: max(8px, env(safe-area-inset-top)); background: rgba(0,0,0,.35); border-bottom: 3px solid var(--pc); }
-.phone-game__title { font-weight: 900; color: var(--pc); }
-.phone-game__line { flex: 1; font-weight: 900; font-size: 1.15rem; text-align: center; }
-.rotate-hint { display: none; }
-@media (orientation: portrait) and (max-width: 700px) {
-  .rotate-hint { display: block; position: absolute; top: 56px; inset-inline: 0; text-align: center; color: var(--muted); font-size: 0.85rem; margin: 0; pointer-events: none; }
+.phone-game.tone-bad .phone-game__pad { filter: grayscale(0.7); }
+.phone-game__hud {
+  flex: none; display: flex; align-items: center; gap: 8px; min-height: 44px;
+  padding: 4px max(10px, env(safe-area-inset-right)) 4px max(10px, env(safe-area-inset-left));
+  padding-top: max(4px, env(safe-area-inset-top));
+  background: rgba(7, 3, 26, 0.75); border-bottom: 3px solid var(--pc); position: relative; z-index: 3;
 }
-.pad { position: relative; display: grid; touch-action: none; overscroll-behavior: none; min-height: 0; }
-.pad--stick { grid-template-columns: 1fr 1fr; direction: ltr; }
-.stick-zone { position: relative; touch-action: none; overflow: hidden; }
-.stick-base { position: absolute; top: 0; left: 0; width: 128px; height: 128px; border-radius: 50%; background: radial-gradient(circle, rgba(255,255,255,.08), rgba(255,255,255,.18)); border: 3px solid rgba(255,255,255,.35); display: grid; place-items: center; opacity: 0.6; transition: opacity 0.15s; pointer-events: none; }
-.stick-base.is-active { opacity: 1; }
-.stick-knob { width: 64px; height: 64px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff, var(--pc)); box-shadow: 0 6px 16px rgba(0,0,0,.5); }
-.pad__buttons { display: grid; gap: 14px; padding: 14px; align-content: center; justify-items: center; touch-action: none; }
-.pad__buttons--2, .pad__buttons--3 { grid-template-columns: 1fr 1fr; }
-.pad__buttons--3 .pad-btn--big { grid-column: span 2; }
+.phone-game__title { font-weight: 900; color: var(--pc); white-space: nowrap; max-width: 30%; overflow: hidden; text-overflow: ellipsis; }
+.phone-game__line { flex: 1; min-width: 0; font-weight: 900; font-size: 1.05rem; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hud-btn { flex: none; width: 36px; height: 36px; border-radius: 12px; border: 1px solid var(--line); background: rgba(255,255,255,.08); font-weight: 900; }
+.hud-chip { flex: none; display: inline-flex; align-items: center; gap: 3px; font-size: 0.75rem; font-weight: 900; padding: 3px 7px; border-radius: 999px; background: rgba(255,255,255,.06); color: var(--muted); }
+.hud-chip.is-on { background: var(--pc); color: var(--ink); }
+.hud-chip .pad-icon { width: 14px; height: 14px; }
+.hud-meter { flex: none; position: relative; width: 74px; height: 18px; border-radius: 9px; background: rgba(255,255,255,.1); overflow: hidden; }
+.hud-meter i { position: absolute; inset: 0 auto 0 0; background: linear-gradient(90deg, var(--cyan), #a5f3fc); transition: width .2s; }
+.hud-meter b { position: relative; display: block; text-align: center; font-size: 0.65rem; line-height: 18px; color: var(--ink); }
+.phone-game__pad {
+  position: relative; flex: 1; min-height: 0;
+  padding: 0 env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+.pad { position: relative; width: 100%; height: 100%; touch-action: none; overscroll-behavior: none; direction: ltr; }
+.pad--stick { display: block; }
+.stick-zone { position: absolute; touch-action: none; }
+.stick-zone::after { content: ''; position: absolute; inset: 12px; border-radius: 28px; border: 2px dashed rgba(255,255,255,.07); pointer-events: none; }
+.stick-base {
+  --mag: 0; position: absolute; top: 0; left: 0; border-radius: 50%; display: grid; place-items: center; pointer-events: none;
+  background: radial-gradient(circle, rgba(255,255,255,.05) 40%, rgba(255,255,255,.14));
+  border: 3px solid rgba(255,255,255,.28); opacity: 0.55;
+  box-shadow: 0 0 calc(var(--mag) * 28px) color-mix(in srgb, var(--pc) 70%, transparent);
+  transition: opacity .12s, transform .14s ease-out;
+}
+.stick-base.is-active { opacity: 1; transition: opacity .12s; border-color: var(--pc); }
+.stick-base__arrow {
+  position: absolute; inset: -3px; border-radius: 50%; opacity: calc(var(--mag) * 1.4);
+  background: conic-gradient(from calc(var(--ang, 0rad) + 90deg - 30deg), var(--pc) 0 60deg, transparent 60deg);
+  -webkit-mask: radial-gradient(circle, transparent 62%, #000 63%); mask: radial-gradient(circle, transparent 62%, #000 63%);
+}
+.stick-knob { border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff, var(--pc) 70%); box-shadow: 0 6px 16px rgba(0,0,0,.5), inset 0 -4px 0 rgba(0,0,0,.2); }
+.stick-base:not(.is-active) .stick-knob { transition: transform .12s ease-out; }
 .pad-btn {
-  --bc: var(--pink);
-  width: 100%; max-width: 220px; aspect-ratio: 1; border-radius: 50%; border: 0;
-  font-weight: 900; font-size: clamp(1rem, 4.5vw, 1.5rem); color: var(--ink);
-  background: radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--bc) 40%, #fff), var(--bc) 60%, color-mix(in srgb, var(--bc) 60%, #000));
-  box-shadow: 0 8px 0 color-mix(in srgb, var(--bc) 45%, #000), 0 14px 26px rgba(0,0,0,.45);
-  touch-action: none; user-select: none; -webkit-user-select: none;
-  transition: transform 0.05s, box-shadow 0.05s;
+  --bc: var(--pink); --d: 100px;
+  position: absolute; border: 0; border-radius: 50%; padding: 0;
+  display: grid; place-items: center; align-content: center; gap: 2px;
+  font-weight: 900; color: var(--ink); line-height: 1;
+  background: radial-gradient(circle at 35% 28%, color-mix(in srgb, var(--bc) 35%, #fff), var(--bc) 58%, color-mix(in srgb, var(--bc) 65%, #000));
+  box-shadow: 0 6px 0 color-mix(in srgb, var(--bc) 45%, #000), 0 12px 22px rgba(0,0,0,.45), inset 0 2px 0 rgba(255,255,255,.5);
+  touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
+  transition: transform .05s, box-shadow .05s, filter .05s;
 }
-.pad-btn--big { max-width: 240px; font-size: clamp(1.2rem, 6vw, 2rem); }
-.pad-btn.is-down { transform: translateY(6px) scale(0.97); box-shadow: 0 2px 0 color-mix(in srgb, var(--bc) 45%, #000), 0 4px 10px rgba(0,0,0,.45); filter: brightness(1.15); }
-.pad--tap { place-items: center; padding: 20px; }
-.pad-btn--huge { max-width: min(80vw, 70vh); font-size: clamp(2rem, 10vw, 4rem); }
-.pad__choices { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 12px; }
-.pad__choices .pad-btn { border-radius: 24px; aspect-ratio: auto; max-width: none; }
+.pad-btn__label { font-size: clamp(0.7rem, calc(var(--d) * 0.15), 1.4rem); letter-spacing: 0.02em; }
+.pad-btn .pad-icon { width: calc(var(--d) * 0.3); height: calc(var(--d) * 0.3); max-width: 44px; max-height: 44px; }
+.pad-btn--primary .pad-btn__label { font-size: clamp(0.85rem, calc(var(--d) * 0.17), 1.6rem); }
+.pad-btn.is-down { transform: translateY(5px) scale(0.96); box-shadow: 0 1px 0 color-mix(in srgb, var(--bc) 45%, #000), 0 3px 8px rgba(0,0,0,.45); filter: brightness(1.18); }
+.pad-btn--huge .pad-btn__label { font-size: clamp(2rem, calc(var(--d) * 0.16), 4.5rem); }
+.pad-btn--huge .pad-icon { max-width: 80px; max-height: 80px; }
+.pad--choices { display: grid; }
+.pad__choices { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 12px; height: 100%; }
+.pad__choices .pad-btn { position: relative; border-radius: 24px; width: auto; height: auto; }
+.pad-icon { display: block; }
+.pad-sheet {
+  position: absolute; z-index: 5; top: calc(48px + env(safe-area-inset-top)); inset-inline-end: max(10px, env(safe-area-inset-right));
+  width: min(320px, calc(100% - 20px)); display: grid; gap: 10px; padding: 14px;
+  background: rgba(18, 10, 42, 0.97); border: 1px solid var(--line); border-radius: 18px; box-shadow: 0 20px 50px rgba(0,0,0,.6);
+}
+.pad-sheet__row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.pad-sheet__row > span { flex: 1; font-weight: 700; }
+.phone .toast { top: calc(52px + env(safe-area-inset-top)); bottom: auto; pointer-events: none; z-index: 6; max-width: 90vw; }
 
 @keyframes pulse { 50% { transform: scale(0.85); opacity: 0.5; } }
 @keyframes hot { 50% { background-color: #5c0a1a; } }
@@ -364,8 +406,9 @@ input:focus, select:focus { border-color: var(--yellow); outline: none; }
   .selected-game { background: linear-gradient(140deg, var(--a1), var(--a2)); }
   .podium__block { background: var(--pc); }
   .phone-game { background: var(--bg-0); }
-  .pad-btn { background: radial-gradient(circle at 35% 30%, #fff, var(--bc) 55%); box-shadow: 0 8px 0 rgba(0,0,0,.45), 0 14px 26px rgba(0,0,0,.45); }
-  .pad-btn.is-down { box-shadow: 0 2px 0 rgba(0,0,0,.45), 0 4px 10px rgba(0,0,0,.45); }
+  .pad-btn { background: radial-gradient(circle at 35% 30%, #fff, var(--bc) 55%); box-shadow: 0 6px 0 rgba(0,0,0,.45), 0 12px 22px rgba(0,0,0,.45); }
+  .pad-btn.is-down { box-shadow: 0 1px 0 rgba(0,0,0,.45), 0 3px 8px rgba(0,0,0,.45); }
+  .stick-base { box-shadow: none; }
 }
 /* Controllers: no iOS long-press callout, text selection, double-tap zoom or rubber-band scrolling. */
 .phone-game, .phone-game * { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
@@ -374,14 +417,14 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 body { touch-action: manipulation; }
 .unsupported { max-width: 520px; margin: 15vh auto; padding: 24px; text-align: center; font-size: 1.2rem; }
 
-/* Controllers on short (landscape) phone screens: size buttons by height too, and put 3 buttons in one row. */
-.pad-btn { max-width: min(220px, 34vh); }
-.pad-btn--big { max-width: min(240px, 42vh); }
-.pad-btn--huge { max-width: min(80vw, 70vh); }
-@media (orientation: landscape) and (max-height: 520px) {
-  .pad__buttons { padding: 10px; gap: 10px; }
-  .pad__buttons--3 { grid-template-columns: repeat(3, 1fr); align-items: center; }
-  .pad__buttons--3 .pad-btn--big { grid-column: auto; order: 3; }
-  .pad__buttons--2 { align-items: center; }
-  .phone-game__hud { padding-top: 4px; padding-bottom: 4px; }
+
+/* narrow (portrait) controller HUD: keep the status line readable */
+@media (max-width: 560px) {
+  .phone-game__title { display: none; }
+  .hud-chip { padding: 4px; }
+  .hud-chip__label { display: none; }
+  .hud-chip .pad-icon { width: 16px; height: 16px; }
+  .hud-meter { width: 54px; }
+  .hud-meter b { font-size: 0.55rem; }
+  .phone-game__line { font-size: 0.95rem; }
 }

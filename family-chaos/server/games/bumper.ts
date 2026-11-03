@@ -29,8 +29,11 @@ interface Bumper extends Body {
   inv: number;
   dashCd: number;
   dashT: number;
-  pow: Power | null;
+  pow: Power | null; // active power
   powT: number;
+  held: Power | null; // stored power, fired with SPECIAL (B)
+  dodgeCd: number;
+  dodgeT: number; // >0 while dodging: passes through others
   hitBy: string | null;
   hitT: number;
   outAt: number; // elimination order (time); -1 while alive
@@ -50,7 +53,7 @@ export const bumperGame: GameModule = {
     const ring = spawnRing(ctx.players.length, 200);
     const bs: Bumper[] = ctx.players.map((p, i) => ({
       id: p.id, x: ring[i].x, y: ring[i].y, vx: 0, vy: 0, r: C.RADIUS, m: 1,
-      lives, ko: 0, falling: 0, inv: 0, dashCd: 0, dashT: 0, pow: null, powT: 0,
+      lives, ko: 0, falling: 0, inv: 0, dashCd: 0, dashT: 0, pow: null, powT: 0, held: null, dodgeCd: 0, dodgeT: 0,
       hitBy: null, hitT: -99, outAt: -1, face: Math.atan2(-ring[i].y, -ring[i].x),
     }));
     const byId = new Map(bs.map((b) => [b.id, b]));
@@ -62,14 +65,35 @@ export const bumperGame: GameModule = {
     }
 
     function hud(b: Bumper) {
-      ctx.hud(b.id, { lives: b.lives, ko: b.ko, dash: b.dashCd <= 0 ? 1 : 0, power: b.pow ?? '' });
+      ctx.hud(b.id, { lives: b.lives, ko: b.ko, dash: b.dashCd <= 0 ? 1 : 0, dodge: b.dodgeCd <= 0 ? 1 : 0, held: b.held ?? '', power: b.pow ?? '' });
     }
     bs.forEach(hud);
 
     const inst: GameInstance = {
       onPress(pid, btn) {
         const b = byId.get(pid);
-        if (!b || btn !== BTN.A || !active(b) || b.dashCd > 0) return;
+        if (!b || !active(b)) return;
+        if (btn === BTN.B) { // SPECIAL: fire the stored power-up
+          if (!b.held) return;
+          b.pow = b.held; b.powT = 5; b.held = null;
+          ctx.fx('power', { id: pid, k: b.pow });
+          ctx.buzz(pid, 80);
+          hud(b);
+          return;
+        }
+        if (btn === BTN.C) { // DODGE: quick sidestep (stick direction, else sideways), passes through others
+          if (b.dodgeCd > 0) return;
+          const inp = ctx.input(pid);
+          let dx = inp.x, dy = inp.y;
+          if (Math.hypot(dx, dy) < 0.2) { dx = -Math.sin(b.face); dy = Math.cos(b.face); }
+          const len = Math.hypot(dx, dy) || 1;
+          b.vx = (dx / len) * 560; b.vy = (dy / len) * 560;
+          b.dodgeT = 0.28; b.dodgeCd = 2;
+          ctx.fx('dodge', { id: pid });
+          hud(b);
+          return;
+        }
+        if (btn !== BTN.A || b.dashCd > 0) return;
         const inp = ctx.input(pid);
         let dx = inp.x, dy = inp.y;
         let len = Math.hypot(dx, dy);
@@ -107,7 +131,9 @@ export const bumperGame: GameModule = {
           if (Math.hypot(inp.x, inp.y) > 0.2) b.face = Math.atan2(inp.y, inp.x);
           damp(b, C.KEEP, dt);
           integrate(b, dt);
-          const wasReady = b.dashCd <= 0;
+          const wasReady = b.dashCd <= 0 && b.dodgeCd <= 0;
+          b.dodgeCd = Math.max(0, b.dodgeCd - dt);
+          b.dodgeT = Math.max(0, b.dodgeT - dt);
           b.dashCd = Math.max(0, b.dashCd - dt);
           b.dashT = Math.max(0, b.dashT - dt);
           b.inv = Math.max(0, b.inv - dt);
@@ -115,17 +141,18 @@ export const bumperGame: GameModule = {
             b.powT -= dt;
             if (b.powT <= 0) { b.pow = null; hud(b); }
           }
-          if (!wasReady && b.dashCd <= 0) hud(b);
+          if (!wasReady && b.dashCd <= 0 && b.dodgeCd <= 0) hud(b);
+          else if (!wasReady && (b.dashCd <= 0 || b.dodgeCd <= 0)) hud(b);
           updateMass(b);
         }
 
         // collisions
         for (let i = 0; i < bs.length; i++) {
           const a = bs[i];
-          if (!active(a)) continue;
+          if (!active(a) || a.dodgeT > 0) continue;
           for (let j = i + 1; j < bs.length; j++) {
             const b = bs[j];
-            if (!active(b)) continue;
+            if (!active(b) || b.dodgeT > 0) continue;
             const s = collide(a, b, 0.95, 140);
             if (s > 0) {
               a.hitBy = b.id; a.hitT = time;
@@ -168,11 +195,11 @@ export const bumperGame: GameModule = {
         for (let i = pows.length - 1; i >= 0; i--) {
           const p = pows[i];
           if (Math.hypot(p.x, p.y) > R) { pows.splice(i, 1); continue; }
-          const taker = bs.find((b) => active(b) && Math.hypot(b.x - p.x, b.y - p.y) < b.r + 22);
+          const taker = bs.find((b) => active(b) && !b.held && Math.hypot(b.x - p.x, b.y - p.y) < b.r + 22);
           if (taker) {
-            taker.pow = p.k; taker.powT = 6;
+            taker.held = p.k;
             pows.splice(i, 1);
-            ctx.fx('power', { id: taker.id, k: p.k });
+            ctx.fx('pickup', { id: taker.id, k: p.k });
             ctx.buzz(taker.id, 60);
             hud(taker);
           }
@@ -186,7 +213,7 @@ export const bumperGame: GameModule = {
           R: r1(R),
           p: bs.map((b) => ({
             id: b.id, x: Math.round(b.x), y: Math.round(b.y), r: b.r, a: r1(b.face), l: b.lives,
-            f: b.falling > 0 ? 1 : 0, d: b.dashT > 0 ? 1 : 0, i: b.inv > 0 ? 1 : 0, w: b.pow ?? '', k: b.ko,
+            f: b.falling > 0 ? 1 : 0, d: b.dashT > 0 ? 1 : 0, i: b.inv > 0 ? 1 : 0, w: b.pow ?? '', k: b.ko, h: b.held ?? '', g: b.dodgeT > 0 ? 1 : 0,
           })),
           u: pows.map((p) => ({ id: p.id, k: p.k, x: r1(p.x), y: r1(p.y) })),
         };

@@ -1,6 +1,6 @@
 import { devices, expect, test, type Page } from '@playwright/test';
 import { CATALOG } from '../../shared/catalog';
-import { HTTP, waitPlaying } from './util';
+import { HTTP, padProblems, waitPlaying } from './util';
 
 // Website-only check across screen sizes. These run in Chromium with each device's viewport,
 // touch, pixel ratio and user agent — this is NOT a real Safari/WebKit engine (see docs/BROWSERS.md).
@@ -98,7 +98,7 @@ test('every phone gets the right controller for every game, laid out on screen',
         await expect(p.locator('.stick-zone'), where).toHaveCount(0);
         await expect(p.locator('.pad-btn--huge'), where).toHaveText(c.button.label.en);
       }
-      expect(await layoutProblems(p), where).toEqual([]);
+      expect(await padProblems(p), where).toEqual([]);
     }
     await h.getByRole('button', { name: /End round/ }).click();
     await h.getByTestId('lobby-btn').click();

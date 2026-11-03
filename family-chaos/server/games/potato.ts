@@ -28,6 +28,8 @@ export const potatoGame: GameModule = {
     let holder = '';
     let prevHolder = '';
     let passCd = 0;
+    let throwCd = 0; // holder's THROW cooldown
+    let flight: { f: string; t: string; at: number } | null = null; // bomb in the air (visual)
     let boom: { x: number; y: number; id: string } | null = null;
     const ring = spawnRing(ctx.players.length, 260);
     const rs: Runner[] = ctx.players.map((p, i) => ({
@@ -38,7 +40,7 @@ export const potatoGame: GameModule = {
     const alive = () => rs.filter((r) => !r.out);
 
     function hud() {
-      for (const r of rs) ctx.hud(r.id, { hot: r.id === holder ? 1 : 0, out: r.out ? 1 : 0, round, sprint: r.sprintCd <= 0 ? 1 : 0 });
+      for (const r of rs) ctx.hud(r.id, { hot: r.id === holder ? 1 : 0, out: r.out ? 1 : 0, round, sprint: r.sprintCd <= 0 ? 1 : 0, throw: r.id === holder && throwCd <= 0 ? 1 : 0 });
     }
 
     function newRound() {
@@ -47,6 +49,8 @@ export const potatoGame: GameModule = {
       holder = al[Math.floor(ctx.rand() * al.length)].id;
       prevHolder = '';
       passCd = 1;
+      throwCd = 1.5;
+      flight = null;
       fuseMax = fuse = 9 + ctx.rand() * 10 - Math.min(4, round * 0.5);
       ph = 'play';
       boom = null;
@@ -59,7 +63,33 @@ export const potatoGame: GameModule = {
     return {
       onPress(pid, btn) {
         const r = byId.get(pid);
-        if (!r || r.out || btn !== BTN.A || r.sprintCd > 0) return;
+        if (!r || r.out) return;
+        if (btn === BTN.B) { // THROW: lob the bomb to the closest player in the stick direction (or closest overall)
+          if (ph !== 'play' || pid !== holder || throwCd > 0) return;
+          const inp = ctx.input(pid);
+          const aim = Math.hypot(inp.x, inp.y) > 0.3 ? Math.atan2(inp.y, inp.x) : null;
+          const cands = alive().filter((o) => o.id !== pid && Math.hypot(o.x - r.x, o.y - r.y) < 520);
+          const score = (o: Runner) => {
+            const d = Math.hypot(o.x - r.x, o.y - r.y);
+            if (aim === null) return d;
+            let da = Math.abs(Math.atan2(o.y - r.y, o.x - r.x) - aim);
+            if (da > Math.PI) da = 2 * Math.PI - da;
+            return da < 0.8 ? d : d + 1000;
+          };
+          const target = cands.sort((a, b) => score(a) - score(b))[0];
+          if (!target) { ctx.fx('miss', { id: pid }); return; }
+          prevHolder = holder;
+          holder = target.id;
+          r.passes++;
+          throwCd = 2.5;
+          passCd = 0.6;
+          flight = { f: pid, t: target.id, at: time };
+          ctx.fx('throw', { from: pid, to: target.id });
+          ctx.buzz(target.id, 220);
+          hud();
+          return;
+        }
+        if (btn !== BTN.A || r.sprintCd > 0) return;
         r.sprintT = P.SPRINT_T;
         r.sprintCd = P.SPRINT_CD;
         ctx.fx('sprint', { id: pid });
@@ -98,6 +128,10 @@ export const potatoGame: GameModule = {
 
         if (ph !== 'play') return;
         passCd = Math.max(0, passCd - dt);
+        const hadThrow = throwCd > 0;
+        throwCd = Math.max(0, throwCd - dt);
+        if (hadThrow && throwCd <= 0) hud();
+        if (flight && time - flight.at > 0.4) flight = null;
         const h = byId.get(holder)!;
         if (passCd <= 0) {
           const target = al.find((o) => o.id !== holder && (o.id !== prevHolder || al.length === 2) &&
@@ -107,6 +141,7 @@ export const potatoGame: GameModule = {
             holder = target.id;
             h.passes++;
             passCd = 0.5;
+            throwCd = Math.max(throwCd, 0.8);
             ctx.fx('pass', { from: h.id, to: target.id });
             ctx.buzz(target.id, 200);
             hud();
@@ -136,6 +171,7 @@ export const potatoGame: GameModule = {
           heat: ph === 'play' ? r1(1 - fuse / fuseMax) : 1,
           p: rs.map((r) => ({ id: r.id, x: Math.round(r.x), y: Math.round(r.y), o: r.out ? 1 : 0, s: r.sprintT > 0 ? 1 : 0 })),
           b: boom,
+          fl: flight ? { f: flight.f, t: flight.t, k: r1(Math.min(1, (time - flight.at) / 0.4)) } : null,
         };
       },
 
