@@ -104,15 +104,16 @@ export function Results({ room, act, watch }: { room: RoomState; act: (a: AdminA
           )}
           {tour && (
             <div className="tour-panel" data-testid="tour-panel">
-              <h3>🏆 {l({ he: 'טורניר', en: 'Tournament' })} {Math.min(tour.idx + 1, tour.total)}/{tour.total}</h3>
+              <h3>{tour.mode === 'knockout' ? '⚔' : '🏆'} {tour.mode === 'knockout' ? l({ he: 'נוק־אאוט', en: 'Knockout' }) : l({ he: 'טורניר', en: 'Tournament' })} {Math.min(tour.idx + 1, tour.total)}/{tour.total}</h3>
               {champ && <p className="tour-champ" data-testid="tour-champion">👑 {l({ he: 'האלוף/ה', en: 'Champion' })}: <b style={{ color: champ.color }}>{champ.name}</b></p>}
               <ol className="leaderboard">
-                {tourRank.map((p) => <li key={p.id} style={{ color: p.color }}><span>{p.name}</span><b>{tour.points[p.id] ?? 0}</b></li>)}
+                {tourRank.map((p) => { const out = tour.mode === 'knockout' && !tour.alive.includes(p.id); return <li key={p.id} style={{ color: p.color, opacity: out ? 0.4 : 1 }}><span>{out ? '✖ ' : ''}{p.name}</span><b>{tour.points[p.id] ?? 0}</b></li>; })}
               </ol>
-              {nextMeta && <p className="muted">{l({ he: 'הבא', en: 'Next' })}: <b>{l(nextMeta.name)}</b>{left > 0 ? ` · ${left}` : ''}</p>}
+              {nextMeta && <p className="muted">{l({ he: 'הבא', en: 'Next' })}: <b>{l(nextMeta.name)}</b>{tour.held ? ` · ⏸` : left > 0 ? ` · ${left}` : ''}</p>}
               {!watch && !tour.done && (
                 <div className="results__actions">
                   <button className="btn btn--secondary" onClick={() => act({ a: 'tour_skip' })} data-testid="tour-skip">⏭ {l({ he: 'המשחק הבא עכשיו', en: 'Next game now' })}</button>
+                  <button className="chip" data-testid="tour-hold" onClick={() => act({ a: 'tour_hold', hold: !tour.held })}>{tour.held ? '▶' : '⏸'} {tour.held ? l({ he: 'המשך', en: 'Resume' }) : l({ he: 'עצור כאן', en: 'Hold here' })}</button>
                   <button className="chip" onClick={() => act({ a: 'tour_cancel' })}>✖ {l({ he: 'בטל טורניר', en: 'Cancel' })}</button>
                 </div>
               )}

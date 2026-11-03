@@ -177,7 +177,7 @@ const BASE_GAMES: GameMeta[] = [
   {
     id: 'vanish',
     name: { he: 'רצפה נעלמת', en: 'Vanishing Floor' },
-    tagline: { he: 'הרצפה נסדקת — מי יישאר עומד?', en: 'The floor cracks — who is left standing?' },
+    tagline: { he: 'הרצפה לבה! מי יישאר עומד?', en: 'The floor is lava! Who is left standing?' },
     howTo: {
       he: 'הרצפה חלקלקה ומתפוררת! אריחים שאתם עומדים עליהם נסדקים ונעלמים. קפיצה (A) עוברת על חורים ובטוחה באוויר, חבטה (B) דוחפת יריבים אל החורים. האחרון שנשאר מנצח.',
       en: 'The floor is slippery and crumbling! Tiles you stand on crack and vanish. JUMP (A) clears holes and is safe in the air, SHOVE (B) pushes rivals toward the holes. Last one standing wins.',

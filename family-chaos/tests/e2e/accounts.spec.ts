@@ -68,3 +68,38 @@ test('account API rejects cross-site posts and non-JSON bodies (CSRF)', async ({
   const form = await request.post(`${HTTP}/api/auth/login`, { form: { email: 'a@b.co', password: 'x' } });
   expect(form.status()).toBe(400);
 });
+
+test('owner setup: the setup code makes a signed-in user OWNER; only that browser gets the crown, and its powers run through the server', async ({ browser }) => {
+  test.setTimeout(90_000);
+  const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 }, locale: 'en-US' });
+  const p = await ctx.newPage();
+  await p.goto(`${HTTP}/account`);
+  await p.getByTestId('tab-register').click();
+  await p.locator('input[name="email"]').fill(`owner${Date.now()}@example.com`);
+  await p.locator('input[name="password"]').fill('family chaos 1');
+  await p.locator('input[name="nickname"]').fill('Boss');
+  await p.getByTestId('auth-submit').click();
+  await expect(p.getByTestId('profile-name')).toHaveText('Boss');
+  // a wrong code does nothing
+  await p.locator('summary', { hasText: 'Owner setup' }).click();
+  await p.getByTestId('owner-code').fill('nope');
+  await p.getByTestId('owner-claim').click();
+  await expect(p.getByTestId('owner-badge')).toHaveCount(0);
+  await p.getByTestId('owner-code').fill('e2e-owner-code-123');
+  await p.getByTestId('owner-claim').click();
+  await expect(p.getByTestId('owner-badge')).toBeVisible();
+
+  // host screen in the same browser: crown button + working powers (players in the room)
+  const host = await ctx.newPage();
+  await host.goto(`${HTTP}/host`);
+  await expect(host.getByTestId('crown-btn')).toBeVisible();
+  const code = (await host.getByTestId('room-code').innerText()).replace(/\s/g, '');
+  for (const n of ['One', 'Two']) await newPhone(browser, `${HTTP}/join/${code}`, n);
+  await host.getByTestId('crown-btn').click();
+  await host.locator('[data-power="bonus"]').click();
+  await expect(host.locator('.player-tile__meta', { hasText: '⭐3' })).toHaveCount(1);
+
+  // an anonymous host never sees the crown
+  const { h: anon } = await newHost(browser);
+  await expect(anon.getByTestId('crown')).toHaveCount(0);
+});

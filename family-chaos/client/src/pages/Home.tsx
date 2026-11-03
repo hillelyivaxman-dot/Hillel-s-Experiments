@@ -32,7 +32,7 @@ export function Home() {
   const q = query.trim().toLowerCase();
   const games = CATALOG
     .filter((g) => (cat === 'all' || g.category === cat) && (!onlyFavs || favs.includes(g.id)) &&
-      (!q || g.name.he.toLowerCase().includes(q) || g.name.en.toLowerCase().includes(q) || l(CATEGORY_NAMES[g.category]).toLowerCase().includes(q)))
+      (!q || g.name.he.toLowerCase().includes(q) || g.name.en.toLowerCase().includes(q) || g.tagline.en.toLowerCase().includes(q) || g.tagline.he.includes(q) || l(CATEGORY_NAMES[g.category]).toLowerCase().includes(q)))
     .sort((a, b) => (favs.includes(b.id) ? 1 : 0) - (favs.includes(a.id) ? 1 : 0) || (a.status === b.status ? 0 : a.status === 'playable' ? -1 : 1));
 
   useGSAP(() => {

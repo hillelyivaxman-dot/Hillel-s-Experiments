@@ -151,3 +151,15 @@ describe('game rules (scripted players)', () => {
     expect(bad.game.standings()[0].stars).toBeLessThan(3);
   });
 });
+
+describe('catalog quality', () => {
+  it('every playable game has Hebrew and English texts, a valid default for each option, and a play-time estimate', async () => {
+    const { PLAY_TIME } = await import('../../shared/catalog');
+    for (const g of CATALOG.filter((x) => x.status === 'playable')) {
+      for (const f of [g.name, g.tagline, g.howTo]) { expect(f.he.length, g.id).toBeGreaterThan(2); expect(f.en.length, g.id).toBeGreaterThan(2); }
+      for (const o of g.options) { expect(o.values, `${g.id}.${o.key}`).toContain(o.default); if (o.names) expect(o.names.length).toBe(o.values.length); }
+      expect(g.minPlayers).toBeLessThanOrEqual(g.maxPlayers);
+      expect(PLAY_TIME[g.id], g.id).toBeTruthy();
+    }
+  });
+});

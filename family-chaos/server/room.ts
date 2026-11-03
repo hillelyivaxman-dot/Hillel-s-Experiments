@@ -282,10 +282,16 @@ export class Room {
         if (this.tour?.done) this.tour = null;
         return this.startGame();
       }
-      case 'tournament': return this.startTour(act.count, act.games);
+      case 'tournament': return this.startTour(act.count, act.games, act.mode);
       case 'tour_skip':
         if (!this.tour || this.tour.done || this.phase !== 'results') return 'not_allowed';
         return this.advanceTour();
+      case 'tour_hold':
+        if (!this.tour || this.tour.done) return 'not_allowed';
+        this.tour.held = !!act.hold;
+        if (!this.tour.held && this.phase === 'results' && this.tour.nextAt) this.tour.nextAt = this.clock() + 3000;
+        this.dirty = true;
+        break;
       case 'tour_cancel':
         if (!this.tour) return 'not_allowed';
         this.tour = null; this.dirty = true;
@@ -385,9 +391,29 @@ export class Room {
 
   // ---------- party tournament ----------
 
-  private startTour(count?: number, games?: string[]): ErrorCode | null {
+  /** Knockout picks individual-ranking games only (co-op games have no loser). */
+  private koPool: string[] | null = null;
+  private pickKnockoutGame(alive: number, last?: string): string | null {
+    const COOP = new Set(['survival', 'defense', 'rescue', 'evac', 'puzzle', 'kitchen']);
+    const pool = CATALOG.filter((g) => g.status === 'playable' && GAMES[g.id] && !COOP.has(g.id) && alive >= g.minPlayers && (g.id !== last || this.koPool?.length === 1) && (!this.koPool || this.koPool.includes(g.id))).map((g) => g.id);
+    return pool.length ? pool[Math.floor(rng(this.seed++)() * pool.length)] : null;
+  }
+
+  private startTour(count?: number, games?: string[], mode: 'party' | 'knockout' = 'party'): ErrorCode | null {
     if (this.phase !== 'lobby' && this.phase !== 'results') return 'in_game';
     const n = [...this.players.values()].filter((p) => p.info.connected).length;
+    if (mode === 'knockout') {
+      if (n < 2) return 'not_allowed';
+      this.koPool = games?.length ? games : null;
+      const first = this.pickKnockoutGame(n);
+      if (!first) return 'not_allowed';
+      const alive = [...this.players.values()].filter((p) => p.info.connected).map((p) => p.info.id);
+      this.tour = { mode, alive, total: alive.length - 1, idx: 0, games: [first], points: Object.fromEntries([...this.players.keys()].map((id) => [id, 0])), nextAt: null, held: false, done: false, champion: null };
+      this.selectGame(first);
+      const err = this.startGame();
+      if (err) this.tour = null;
+      return err;
+    }
     let list: string[];
     if (games?.length) {
       list = games.filter((g) => { const m = getMeta(g); return m && m.status === 'playable' && GAMES[g] && n >= m.minPlayers; }).slice(0, 12);
@@ -403,7 +429,7 @@ export class Room {
       }
     }
     if (list.length < 1) return 'not_allowed';
-    this.tour = { total: list.length, idx: 0, games: list, points: Object.fromEntries([...this.players.keys()].map((id) => [id, 0])), nextAt: null, done: false, champion: null };
+    this.tour = { mode: 'party', alive: [], total: list.length, idx: 0, games: list, points: Object.fromEntries([...this.players.keys()].map((id) => [id, 0])), nextAt: null, held: false, done: false, champion: null };
     this.selectGame(list[0]);
     const err = this.startGame();
     if (err) this.tour = null;
@@ -419,6 +445,16 @@ export class Room {
   private advanceTour(): ErrorCode | null {
     const t = this.tour;
     if (!t || t.done) return 'not_allowed';
+    if (t.mode === 'knockout') {
+      if (t.alive.length <= 1) { this.endTour(); return null; }
+      const g = this.pickKnockoutGame(t.alive.length, t.games[t.idx]);
+      if (!g) { this.endTour(); return null; }
+      t.idx++; t.nextAt = null; t.games.push(g);
+      this.selectGame(g);
+      const err = this.startGame();
+      if (err) this.endTour();
+      return null;
+    }
     while (t.idx + 1 < t.total) {
       t.idx++; t.nextAt = null;
       this.selectGame(t.games[t.idx]);
@@ -432,7 +468,7 @@ export class Room {
     const t = this.tour!;
     t.done = true; t.nextAt = null;
     const best = Object.entries(t.points).sort((a, b) => b[1] - a[1])[0];
-    t.champion = best && this.players.has(best[0]) ? best[0] : null;
+    t.champion = t.mode === 'knockout' && t.alive.length === 1 ? t.alive[0] : best && this.players.has(best[0]) ? best[0] : null;
     this.dirty = true;
   }
 
@@ -442,7 +478,8 @@ export class Room {
     const meta = getMeta(this.selectedGame);
     const mod = meta && GAMES[meta.id];
     if (!meta || !mod || meta.status !== 'playable') return 'not_allowed';
-    const ready = [...this.players.values()].filter((p) => p.info.connected).slice(0, meta.maxPlayers);
+    const ko = this.tour && !this.tour.done && this.tour.mode === 'knockout' ? this.tour.alive : null;
+    const ready = [...this.players.values()].filter((p) => p.info.connected && (!ko || ko.includes(p.info.id))).slice(0, meta.maxPlayers);
     if (ready.length < meta.minPlayers) return 'not_allowed';
     this.participants = ready.map((p) => p.info.id);
     for (const p of ready) { p.seq = -1; p.input = { x: 0, y: 0, b: 0 }; }
@@ -512,7 +549,16 @@ export class Room {
     if (this.tour && !this.tour.done) {
       const PTS = [10, 7, 5, 3, 2, 1];
       for (const r of results) this.tour.points[r.playerId] = (this.tour.points[r.playerId] ?? 0) + (PTS[r.place - 1] ?? 1);
-      if (this.tour.idx + 1 < this.tour.total) this.tour.nextAt = this.clock() + TIMING.TOUR_PAUSE_MS;
+      if (this.tour.mode === 'knockout') {
+        const t = this.tour, played = new Set(this.participants);
+        const last = Math.max(...results.map((r) => r.place));
+        const losers = new Set(results.filter((r) => r.place === last).map((r) => r.playerId));
+        if (losers.size >= results.length) losers.clear(); // everybody tied: nobody is out, play another game
+        for (const id of t.alive) if (!played.has(id)) losers.add(id); // no-shows forfeit
+        t.alive = t.alive.filter((id) => !losers.has(id) && this.players.has(id));
+        t.total = t.idx + 1 + Math.max(0, t.alive.length - 1);
+        if (t.alive.length <= 1) this.endTour(); else t.nextAt = this.clock() + TIMING.TOUR_PAUSE_MS;
+      } else if (this.tour.idx + 1 < this.tour.total) this.tour.nextAt = this.clock() + TIMING.TOUR_PAUSE_MS;
       else this.endTour();
     }
     this.phase = 'results';
@@ -542,7 +588,7 @@ export class Room {
       this.countdownEndsAt = null;
       this.dirty = true;
     }
-    if (this.tour?.nextAt && this.phase === 'results' && now >= this.tour.nextAt) this.advanceTour();
+    if (this.tour?.nextAt && !this.tour.held && this.phase === 'results' && now >= this.tour.nextAt) this.advanceTour();
     if (this.god.freezeUntil && now >= this.god.freezeUntil) { this.god.freezeUntil = 0; if (this.phase === 'paused') { this.phase = 'playing'; this.dirty = true; } }
     if (this.god.scaleUntil && now >= this.god.scaleUntil) { this.god.scaleUntil = 0; this.god.scale = 1; }
     if (this.game && this.phase === 'playing') {
@@ -575,7 +621,7 @@ export class Room {
       countdownEndsAt: this.countdownEndsAt,
       results: this.results,
       hostConnected: this.hosts.size > 0,
-      tour: this.tour ? { ...this.tour, points: { ...this.tour.points } } : null,
+      tour: this.tour ? { ...this.tour, points: { ...this.tour.points }, alive: [...this.tour.alive] } : null,
     };
   }
 

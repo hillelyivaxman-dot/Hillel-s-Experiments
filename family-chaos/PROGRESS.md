@@ -46,9 +46,9 @@ Legend: every game below is `status: 'playable'` in `shared/catalog.ts`, has ser
 | 29 | **Draw & Guess** | stick draws (pen button), guessers tilt the stick toward one of 4 words and lock; HE/EN word bank |
 | 30 | **Party Trivia** | 26 bilingual questions, 4 coloured answers, speed + streak scoring |
 
-## Party tournament (new, in-memory)
-Lobby → "🏆 Party tournament" (3 / 5 / 8 games): random games the current player count can play, points per place (10/7/5/3/2/1), the next game starts by itself after 12 s (or "Next game now"), champion screen with crown. Covered by `tests/unit/tournament.test.ts`.
-**Not built yet:** Knockout / League / Multi-day formats, persistence across Render restarts (needs `DATABASE_URL`), pause/resume of a tournament, tournament profile card. See NEXT_STEPS.md.
+## Tournaments (in-memory, per room)
+Lobby → "🏆 Party tournament": **3 / 5 / 8 random games**, **✎ Pick games** (tap games in the rail in order, then start), or **⚔ Knockout** (the last place of each individual-ranking game is out until one player is left; no-shows forfeit). Points per place 10/7/5/3/2/1, next game starts by itself after 12 s, **Next game now / ⏸ Hold here / Cancel** on the results screen, champion + crown at the end. Ties share a place. Crown powers are refused while a tournament runs. Tests: `tests/unit/tournament.test.ts` (series, skip, cancel, hold, player-count filter, knockout) and a browser test in `tests/e2e/multiplayer.spec.ts`.
+**Not built yet:** League and Multi-day formats, persistence across Render restarts (needs `DATABASE_URL`), tournament profile card, bracket screen.
 
 ## Honest status of the rest of the master prompt
 - **GOD ADMIN crown — built (server-side), needs the database to be usable on Render.** `users.role` column; one-time owner claim in `/account` ("Owner setup") with a setup code from `OWNER_SETUP_CODE` or printed in the server log; the WebSocket connection is marked `owner` only when the session cookie belongs to an OWNER user (verified in `server/index.ts`, never trusted from the client); 12 powers (confetti, earthquake, flash, fanfare, freeze 3 s, slow-mo, turbo, mirror controls, +3 stars, rob the leader, new leader, end game) run inside `Room.godPower`; refused for non-owners and during a running tournament (`competitive`); every use is logged. Tests: `tests/unit/god.test.ts`. Roles ADMIN/HOST are reserved values in the schema but have no behaviour yet. Accounts are OFF on Render until `DATABASE_URL` is set, so the crown only appears after that (docs/DEPLOY.md, Hebrew section).

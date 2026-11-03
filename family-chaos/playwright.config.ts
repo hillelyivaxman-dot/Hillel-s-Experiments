@@ -15,7 +15,7 @@ export default defineConfig({
   webServer: [
     {
       // tests open many rooms from one address; accounts use an in-memory database
-      command: 'PORT=8790 ROOMS_PER_MIN=600 DATA_DIR=memory node dist/server/index.js',
+      command: 'PORT=8790 ROOMS_PER_MIN=600 DATA_DIR=memory OWNER_SETUP_CODE=e2e-owner-code-123 node dist/server/index.js',
       url: 'http://localhost:8790/health',
       reuseExistingServer: false,
       timeout: 20_000,

@@ -11,7 +11,7 @@ Read PROGRESS.md first. State at the last update: **30/30 games playable, party 
 ## Build next (priority order from the master prompt)
 1. **Accounts + persistence** — connect Neon (`DATABASE_URL`, see docs/DEPLOY.md; this is what switches accounts, the owner claim and the crown on). Then: password reset (needs an email provider — free tier only), optional Google login, XP / cosmetics / profile card.
 2. **GOD ADMIN crown** — DONE server-side + host UI + tests (see PROGRESS.md). Left: real-browser e2e of the owner claim, ADMIN/HOST role behaviour, per-power polish in each game (e.g. a game-specific effect instead of the generic ones), a visible audit log for the owner.
-3. **Tournaments v2** — Knockout / League / Multi-day formats, manual game list UI, pause/resume/cancel, no-shows and ties, persistence in Postgres so a Render restart does not lose it, profile card.
+3. **Tournaments v2** — party / pick-games / knockout / hold / cancel / no-shows / ties are DONE (in-memory). Left: League and Multi-day formats, a bracket screen, persistence in Postgres so a Render restart does not lose it, profile card.
 4. **Console-style redesign** — hero + card carousel, estimated play time per game, GSAP page transitions (skills installed: gsap-core/react/performance, frontend-design).
 5. **Game polish** — custom SVG art per game instead of emoji icons, sounds per game, intro/rules screen per game, balance passes from real play, tilt/wheel verification on real phones.
 

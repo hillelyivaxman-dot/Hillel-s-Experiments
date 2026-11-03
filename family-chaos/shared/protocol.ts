@@ -28,11 +28,14 @@ export interface ResultRow {
 
 /** Party tournament (in-memory, per room): a series of games with points per place; the next game starts by itself. */
 export interface TourState {
+  mode: 'party' | 'knockout'; // knockout: the last place of every game is out until one player is left
+  alive: string[]; // knockout: players still in
   total: number;
   idx: number; // index of the current (or just finished) game
   games: string[];
   points: Record<string, number>; // playerId -> tournament points
   nextAt: number | null; // server epoch ms when the next game starts (only while in results)
+  held: boolean; // organiser paused the series: the next game waits until resumed or skipped
   done: boolean;
   champion: string | null;
 }
@@ -63,8 +66,9 @@ export type AdminAction =
   | { a: 'end' }
   | { a: 'lobby' }
   | { a: 'again' }
-  | { a: 'tournament'; count?: number; games?: string[] }
+  | { a: 'tournament'; count?: number; games?: string[]; mode?: 'party' | 'knockout' }
   | { a: 'tour_skip' }
+  | { a: 'tour_hold'; hold: boolean }
   | { a: 'tour_cancel' }
   | { a: 'kick'; playerId: string }
   | { a: 'leader'; playerId: string }

@@ -82,7 +82,8 @@ test('every phone gets the right controller for every game, laid out on screen',
     phones.push({ name, p });
   }
 
-  for (const meta of CATALOG.filter((g) => g.status === 'playable')) {
+  const only = process.env.DEV_GAMES?.split(',');
+  for (const meta of CATALOG.filter((g) => g.status === 'playable' && (!only || only.includes(g.id)))) {
     await h.locator(`.lobby__games [data-game="${meta.id}"]`).click();
     await h.getByTestId('start-btn').click();
     await waitPlaying(h);

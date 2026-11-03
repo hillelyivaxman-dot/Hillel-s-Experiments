@@ -66,6 +66,7 @@ export function Lobby({ room, act, watch }: { room: RoomState; act: (a: AdminAct
   const root = useRef<HTMLDivElement>(null);
   const meta = getMeta(room.selectedGame)!;
   const connected = room.players.filter((p) => p.connected).length;
+  const [custom, setCustom] = useState<string[] | null>(null);
   const canStart = connected >= meta.minPlayers;
 
   useEffect(() => {
@@ -144,6 +145,18 @@ export function Lobby({ room, act, watch }: { room: RoomState; act: (a: AdminAct
                     {n} {l({ he: 'משחקים', en: 'games' })}
                   </button>
                 ))}
+                <button className="chip" disabled={connected < 2} data-testid="tour-knockout" onClick={() => { sfx.go(); act({ a: 'tournament', mode: 'knockout' }); }}>
+                  ⚔ {l({ he: 'נוק־אאוט', en: 'Knockout' })}
+                </button>
+                <button className={`chip ${custom ? 'is-on' : ''}`} disabled={connected < 2} data-testid="tour-custom" onClick={() => setCustom(custom ? null : [])}>
+                  ✎ {l({ he: 'בחירה ידנית', en: 'Pick games' })}
+                </button>
+                {custom && (
+                  <button className="btn btn--primary" disabled={!custom.length} data-testid="tour-custom-go" onClick={() => { sfx.go(); act({ a: 'tournament', games: custom }); setCustom(null); }}>
+                    ▶ {l({ he: 'התחל טורניר', en: 'Start tournament' })} ({custom.length})
+                  </button>
+                )}
+                {custom && <span className="muted small">{l({ he: 'לחצו על משחקים בסרגל למטה לפי הסדר', en: 'Tap games in the rail below, in order' })}</span>}
               </div>
           )}
         </section>
@@ -152,7 +165,7 @@ export function Lobby({ room, act, watch }: { room: RoomState; act: (a: AdminAct
       <section className="lobby__bottom">
         <div className="lobby__games">
           {CATALOG.filter((g) => g.status === 'playable').map((g) => (
-            <GameCard key={g.id} g={g} selected={g.id === room.selectedGame} onClick={() => { sfx.click(); act({ a: 'select', game: g.id }); }} />
+            <GameCard key={g.id} g={g} selected={custom ? custom.includes(g.id) : g.id === room.selectedGame} onClick={() => { sfx.click(); if (custom) setCustom(custom.includes(g.id) ? custom.filter((x) => x !== g.id) : [...custom, g.id]); else act({ a: 'select', game: g.id }); }} />
           ))}
           <div className="rail-soon" aria-hidden="true">+{CATALOG.filter((g) => g.status !== 'playable').length}<small>{t('soon')}</small></div>
         </div>
