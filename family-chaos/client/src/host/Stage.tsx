@@ -56,6 +56,7 @@ export function Stage({ room, conn, act, watch }: { room: RoomState; conn: Conn;
         cv.height = Math.round(H * dpr);
       }
       g.setTransform(dpr, 0, 0, dpr, 0, 0);
+      g.direction = 'ltr'; // resizing the canvas resets this; keep numbers/punctuation in the right order
       const i = info();
       renderer.background(g, W, H, i.t);
       if (!cur) return;

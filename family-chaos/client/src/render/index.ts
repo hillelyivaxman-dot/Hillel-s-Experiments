@@ -2,6 +2,7 @@ import { bumperRenderer } from './bumper';
 import { kartRenderer } from './kart';
 import { potatoRenderer } from './potato';
 import { reactionRenderer } from './reaction';
+import { rushRenderer } from './rush';
 import type { Renderer } from './types';
 
 // Register client renderers here (one per playable game id).
@@ -10,6 +11,7 @@ export const RENDERERS: Record<string, Renderer> = {
   kart: kartRenderer,
   reaction: reactionRenderer,
   potato: potatoRenderer,
+  rush: rushRenderer,
 };
 
 const LERP_KEYS = ['x', 'y', 'a'];

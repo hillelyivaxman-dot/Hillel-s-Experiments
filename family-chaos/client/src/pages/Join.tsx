@@ -262,6 +262,12 @@ function hudView(game: string, h: Hud, t: ReturnType<typeof useT>['t'], he: bool
       if (h.msg === 'early') return { text: t('early'), tone: 'bad' };
       if (h.msg === 'tapped') return { text: `${h.ms} ms`, tone: 'good' };
       return { text: `${t('round')} ${h.round ?? 1}/${h.rounds ?? '-'} · ${t('score')} ${h.score ?? 0}`, tone: 'normal' };
+    case 'rush':
+      if (h.done) return { text: `${t('finished')} #${h.place}`, tone: 'good' };
+      return {
+        text: `#${h.place ?? '-'}/${h.of ?? '-'} · ${h.pct ?? 0}%`, tone: 'normal',
+        chips: [{ icon: 'dash', on: !!h.dash, label: L('הסתערות', 'DASH') }, { icon: 'shove', on: !!h.shove, label: L('דחיפה', 'SHOVE') }],
+      };
     case 'potato':
       if (h.out) return { text: t('youreOut'), tone: 'bad' };
       if (h.hot) return { text: t('youHaveBomb'), tone: 'hot', chips: [{ icon: 'throw', on: !!h.throw, label: L('זריקה', 'THROW') }] };

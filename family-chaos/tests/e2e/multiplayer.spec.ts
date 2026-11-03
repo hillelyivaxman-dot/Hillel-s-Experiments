@@ -1,4 +1,5 @@
 import { expect, test, type Browser, type Page } from '@playwright/test';
+import { delta, playerIds } from './util'; // also registers the hook that closes every browser context after each test
 
 // End-to-end: one host screen + phones in separate browser contexts, real server, real WebSockets.
 
@@ -37,7 +38,7 @@ test('home page renders the library and host button', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByTestId('host-btn')).toBeVisible();
   await expect(page.locator('.library .game-card')).toHaveCount(12);
-  await expect(page.locator('.library .game-card.is-soon')).toHaveCount(8);
+  await expect(page.locator('.library .game-card.is-soon')).toHaveCount(7);
 });
 
 test('two phones control two different characters on one screen, then reconnect, results and game switch', async ({ browser }) => {
@@ -51,32 +52,33 @@ test('two phones control two different characters on one screen, then reconnect,
   await b.getByTestId('ready-btn').click();
   await expect(h.locator('[data-player="Yoni"].is-ready')).toBeVisible();
 
+  const ids = await playerIds(h); // (lobby tiles carry the player ids)
   await h.getByTestId('start-btn').click(); // Bumper Battle is the default game
   await expect(a.locator('.pad')).toBeVisible();
   await waitPlaying(h);
 
-  const f0 = await frame(h);
-  // Dana: keyboard right. Yoni: drag the on-screen joystick upwards with the mouse/pointer.
+  // One phone at a time, judged on the first frame that shows movement (robust when the host page lags):
+  // Dana (keyboard right) must move only her critter to the right; then Yoni (joystick up) only his, upwards.
+  const firstMove = async (who: string, f0: any) => {
+    let fm: any = null;
+    await expect.poll(async () => { fm = await frame(h); return delta(f0, fm, 'p', ids[who]).d; }, { timeout: 8000 }).toBeGreaterThan(20);
+    return fm;
+  };
+  const g0 = await frame(h);
   await a.keyboard.down('ArrowRight');
+  const g1 = await firstMove('Dana', g0);
+  await a.keyboard.up('ArrowRight');
+  expect(delta(g0, g1, 'p', ids.Dana).dx).toBeGreaterThan(15);
+  expect(delta(g0, g1, 'p', ids.Yoni).d).toBeLessThan(5);
+  await h.waitForTimeout(600); // let Dana's momentum die out
   const zone = await b.locator('.stick-zone').boundingBox();
   await b.mouse.move(zone!.x + zone!.width / 2, zone!.y + zone!.height / 2);
   await b.mouse.down();
   await b.mouse.move(zone!.x + zone!.width / 2, zone!.y + zone!.height / 2 - 70, { steps: 4 });
-  await h.waitForTimeout(350); // short window: avoids collisions / falling off the arena
-  const f1 = await frame(h);
-  await a.keyboard.up('ArrowRight');
+  const h0 = await frame(h);
+  const h1 = await firstMove('Yoni', h0);
   await b.mouse.up();
-
-  // match the two moving critters by direction
-  const moved = f1.p.map((p: any) => {
-    const o = f0.p.find((q: any) => q.id === p.id);
-    return { id: p.id, dx: p.x - o.x, dy: p.y - o.y };
-  });
-  const right = moved.find((m: any) => m.dx > 25 && Math.abs(m.dy) < Math.abs(m.dx) / 2);
-  const up = moved.find((m: any) => m.dy < -25 && Math.abs(m.dx) < Math.abs(m.dy) / 2);
-  expect(right, JSON.stringify(moved)).toBeTruthy();
-  expect(up, JSON.stringify(moved)).toBeTruthy();
-  expect(right.id).not.toBe(up.id);
+  expect(delta(h0, h1, 'p', ids.Yoni).dy).toBeLessThan(-8);
 
   // a dash button press is accepted
   await a.locator('[data-btn="A"]').dispatchEvent('pointerdown', { pointerId: 7, bubbles: true });

@@ -100,6 +100,8 @@ export function GameIcon({ id }: { id: string }) {
       return (<svg {...common}><circle cx="50" cy="50" r="38" fill="#16a34a" stroke="#120a2a" strokeWidth="4" /><path d="M54 18 36 54h14l-4 28 18-38H50z" fill="#ffd23f" stroke="#120a2a" strokeWidth="3" strokeLinejoin="round" /></svg>);
     case 'potato':
       return (<svg {...common}><circle cx="48" cy="58" r="28" fill="#1a1a2e" stroke="#000" strokeWidth="3" /><circle cx="38" cy="48" r="7" fill="rgba(255,255,255,.4)" /><path d="M62 34q12-14 4-22" stroke="#c8a26b" strokeWidth="5" fill="none" /><circle cx="66" cy="12" r="8" fill="#ffd23f" /><circle cx="66" cy="12" r="4" fill="#ff4d6d" /></svg>);
+    case 'rush':
+      return (<svg {...common}><path d="M0 74h38v10H0zM58 74h42v10H58z" fill="#5ee27a" stroke="#120a2a" strokeWidth="3" /><path d="M70 74l6-16 6 16zM82 74l6-16 6 16z" fill="#e9edf7" stroke="#120a2a" strokeWidth="2.5" /><circle cx="30" cy="52" r="15" fill="#f472b6" stroke="#120a2a" strokeWidth="3" /><circle cx="25" cy="49" r="3.5" fill="#fff" /><circle cx="35" cy="49" r="3.5" fill="#fff" /><path d="M46 38c8-14 22-14 28-4" stroke="#fff" strokeWidth="4" fill="none" strokeLinecap="round" strokeDasharray="2 8" /><path d="M76 24l8 4-8 6" fill="none" stroke="#ffd23f" strokeWidth="4" strokeLinecap="round" /></svg>);
     default:
       return (<svg {...common}><circle cx="50" cy="50" r="34" fill="rgba(255,255,255,.15)" /><text x="50" y="62" fontSize="36" textAnchor="middle" fill="#fff" fontWeight="900">?</text></svg>);
   }

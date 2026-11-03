@@ -9,6 +9,7 @@ const P: Record<string, string> = {
   item: 'M4 8l8-4 8 4v8l-8 4-8-4zM4 8l8 4 8-4M12 12v8',
   throw: 'M4 18c3-9 9-13 16-12M16 3l4 3-3 4',
   jump: 'M12 19V7M7 12l5-5 5 5M6 21h12',
+  shove: 'M4 12h11M10 6l6 6-6 6M19 5v14',
   tap: 'M12 2v4M4.9 4.9l2.8 2.8M2 12h4M19.1 4.9l-2.8 2.8M22 12h-4M12 22a6 6 0 100-12 6 6 0 000 12z',
 };
 

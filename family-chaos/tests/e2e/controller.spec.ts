@@ -56,10 +56,9 @@ test('stick: finger slides off the stick area and the screen side — still stee
   // drag far to the right: across the buttons and off the stick region
   for (let i = 1; i <= 8; i++) await t('touchMove', [{ x: s.x + i * 40, y: s.y - i * 2, id: 1 }]);
   await expect.poll(() => last(a.inputs).x).toBeGreaterThan(0.9);
+  // wait for the movement to show up on the big screen (poll instead of a fixed sleep: the host page can lag under load)
   const f0 = await frame(h);
-  await h.waitForTimeout(300); // short window: the critter must not reach the arena edge meanwhile
-  const f1 = await frame(h);
-  expect(delta(f0, f1, 'p', ids.Pad).dx).toBeGreaterThan(20);
+  await expect.poll(async () => delta(f0, await frame(h), 'p', ids.Pad).dx, { timeout: 6000 }).toBeGreaterThan(20);
   // no button got pressed by the sliding stick finger
   expect(a.inputs.every((i) => i.b === 0)).toBe(true);
   await t('touchEnd', []);
@@ -172,7 +171,7 @@ test('the controller updates for each game in the same lobby (buttons appear/dis
   const a = await newPhone(browser, `${HTTP}/join/${code}`, 'Switcher');
   await newPhone(browser, `${HTTP}/join/${code}`, 'B');
   await newPhone(browser, `${HTTP}/join/${code}`, 'C');
-  const expected: Record<string, string[]> = { bumper: ['A', 'B', 'C'], kart: ['A', 'B', 'D', 'C'], reaction: ['A'], potato: ['A', 'B'], };
+  const expected: Record<string, string[]> = { bumper: ['A', 'B', 'C'], kart: ['A', 'B', 'D', 'C'], reaction: ['A'], potato: ['A', 'B'], rush: ['A', 'B', 'C'] };
   for (const [g, keys] of Object.entries(expected)) {
     await h.locator(`.lobby__games [data-game="${g}"]`).click();
     await h.getByTestId('start-btn').click();
@@ -183,4 +182,35 @@ test('the controller updates for each game in the same lobby (buttons appear/dis
     await h.getByRole('button', { name: /End round/ }).click();
     await h.getByTestId('lobby-btn').click();
   }
+});
+
+test('Chaos Rush: run, jump with a real tap, dash and shove reach the server and move the right runner', async ({ browser }) => {
+  const { h, code } = await newHost(browser);
+  const a = await newPhone(browser, `${HTTP}/join/${code}`, 'Runner', { viewport: { width: 891, height: 412 } });
+  await newPhone(browser, `${HTTP}/join/${code}`, 'Rival');
+  const ids = await playerIds(h);
+  await h.locator('.lobby__games [data-game="rush"]').click();
+  await h.getByTestId('start-btn').click();
+  await waitPlaying(h);
+  expect(await padProblems(a.p)).toEqual([]);
+  const t = await touch(a.p);
+  const s = await center(a.p, '.stick-zone');
+  const jump = await center(a.p, '[data-btn="A"]');
+  const dash = await center(a.p, '[data-btn="B"]');
+  const f0 = await frame(h);
+  await t('touchStart', [{ ...s, id: 1 }]);
+  await t('touchMove', [{ x: s.x + 70, y: s.y, id: 1 }]); // run right
+  await h.waitForTimeout(500);
+  const f1 = await frame(h);
+  expect(delta(f0, f1, 'p', ids.Runner).dx).toBeGreaterThan(60);
+  expect(delta(f0, f1, 'p', ids.Rival).dx).toBeLessThan(5); // the other phone's runner stayed
+  // tap JUMP: the runner leaves the ground
+  await t('touchStart', [{ x: s.x + 70, y: s.y, id: 1 }, { ...jump, id: 2 }]);
+  await expect.poll(async () => (await frame(h)).p.find((p: any) => p.id === ids.Runner).g, { timeout: 2000 }).toBe(0);
+  await t('touchEnd', [{ ...jump, id: 2 }]);
+  // DASH sends bit B
+  await t('touchStart', [{ x: s.x + 70, y: s.y, id: 1 }, { ...dash, id: 3 }]);
+  await expect.poll(() => a.inputs.some((i) => (i.b & BTN.B) !== 0)).toBe(true);
+  await t('touchEnd', []);
+  await expect.poll(() => last(a.inputs)).toMatchObject({ x: 0, y: 0, b: 0 });
 });

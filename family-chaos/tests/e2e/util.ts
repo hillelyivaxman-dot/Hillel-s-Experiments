@@ -1,5 +1,23 @@
-import { expect, type Browser, type BrowserContext, type Page } from '@playwright/test';
+import { expect, test, type Browser, type BrowserContext, type Page } from '@playwright/test';
 import { networkInterfaces } from 'node:os';
+
+// Every context a test opens is closed after the test. Otherwise dozens of hidden host screens keep rendering
+// at full speed for the rest of the run, the machine lags, and timing-based assertions become flaky.
+const opened: BrowserContext[] = [];
+const patched = new WeakSet<Browser>();
+test.beforeEach(({ browser }) => {
+  if (patched.has(browser)) return;
+  patched.add(browser);
+  const orig = browser.newContext.bind(browser);
+  browser.newContext = (async (...args: Parameters<Browser['newContext']>) => {
+    const c = await orig(...args);
+    opened.push(c);
+    return c;
+  }) as Browser['newContext'];
+});
+test.afterEach(async () => {
+  await Promise.all(opened.splice(0).map((c) => c.close().catch(() => {})));
+});
 
 export const HTTP = 'http://localhost:8790';
 export const HTTPS = 'https://localhost:8443'; // TLS proxy with +50 ms latency each way (see playwright.config.ts)
