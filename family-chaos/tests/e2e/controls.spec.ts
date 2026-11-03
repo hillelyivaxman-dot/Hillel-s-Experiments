@@ -89,13 +89,13 @@ test('multi-touch: steering with one finger while holding GAS with another (Kart
   expect(delta(f0, f1, 'c', ids.Parked).d).toBeLessThan(5);
 });
 
-test('game switching: all ten games start, run and return to the lobby in one room', async ({ browser }) => {
+test('game switching: all eleven games start, run and return to the lobby in one room', async ({ browser }) => {
   test.setTimeout(300_000); // one match start/stop per game
   const { h, code, errors } = await newHost(browser);
   const players = [];
   for (const n of ['One', 'Two', 'Three']) players.push(await newPhone(browser, `${HTTP}/join/${code}`, n));
   const ids = await playerIds(h);
-  for (const g of ['bumper', 'kart', 'reaction', 'potato', 'rush', 'soccer', 'hockey', 'board', 'kitchen', 'trapbuilders']) {
+  for (const g of ['bumper', 'kart', 'reaction', 'potato', 'rush', 'soccer', 'hockey', 'board', 'kitchen', 'trapbuilders', 'vanish']) {
     await h.locator(`.lobby__games [data-game="${g}"]`).click();
     await expect(h.locator(`.lobby__games [data-game="${g}"].is-selected`)).toBeVisible();
     await h.getByTestId('start-btn').click();

@@ -6,6 +6,7 @@ import { kitchenRenderer } from './kitchen';
 import { potatoRenderer } from './potato';
 import { reactionRenderer } from './reaction';
 import { trapBuildersRenderer } from './trapbuilders';
+import { vanishRenderer } from './vanish';
 import { rushRenderer } from './rush';
 import { soccerRenderer } from './soccer';
 import type { Renderer } from './types';
@@ -22,6 +23,7 @@ export const RENDERERS: Record<string, Renderer> = {
   board: boardRenderer,
   kitchen: kitchenRenderer,
   trapbuilders: trapBuildersRenderer,
+  vanish: vanishRenderer,
 };
 
 const LERP_KEYS = ['x', 'y', 'a'];

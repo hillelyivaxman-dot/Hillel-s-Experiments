@@ -292,6 +292,8 @@ function hudView(game: string, h: Hud, t: ReturnType<typeof useT>['t'], he: bool
       if (ph === 'run') return h.done ? { text: L('סיימתם!', 'Finished!'), tone: 'good' } : { text: L('רוצו!', 'RUN!'), tone: 'normal', chips: [{ icon: 'dash', on: !!h.dash, label: L('הסתערות', 'DASH') }] };
       return { text: `${L('ניקוד', 'Score')} ${h.total ?? 0}`, tone: ph === 'done' ? 'good' : 'normal' };
     }
+    case 'vanish':
+      return h.alive ? { text: `${L('נותרו', 'LEFT')} ${h.left}`, tone: 'normal', chips: [{ icon: 'jump', on: !!h.jump, label: L('קפיצה', 'JUMP') }, { icon: 'shove', on: !!h.dash, label: L('חבטה', 'SHOVE') }] } : { text: L('נפלתם! צפו בסוף', 'You fell! Watch the end'), tone: 'bad' };
     case 'rush':
       if (h.done) return { text: `${t('finished')} #${h.place}`, tone: 'good' };
       return {

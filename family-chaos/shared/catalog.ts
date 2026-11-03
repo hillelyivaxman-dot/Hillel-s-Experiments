@@ -174,6 +174,22 @@ export const CATALOG: GameMeta[] = [
     ]),
     options: [{ key: 'time', label: { he: 'זמן', en: 'Time' }, values: [120, 180, 240], default: 180, names: [{ he: '2 דקות', en: '2 min' }, { he: '3 דקות', en: '3 min' }, { he: '4 דקות', en: '4 min' }] }],
   },
+  {
+    id: 'vanish',
+    name: { he: 'רצפה נעלמת', en: 'Vanishing Floor' },
+    tagline: { he: 'הרצפה נסדקת — מי יישאר עומד?', en: 'The floor cracks — who is left standing?' },
+    howTo: {
+      he: 'הרצפה חלקלקה ומתפוררת! אריחים שאתם עומדים עליהם נסדקים ונעלמים. קפיצה (A) עוברת על חורים ובטוחה באוויר, חבטה (B) דוחפת יריבים אל החורים. האחרון שנשאר מנצח.',
+      en: 'The floor is slippery and crumbling! Tiles you stand on crack and vanish. JUMP (A) clears holes and is safe in the air, SHOVE (B) pushes rivals toward the holes. Last one standing wins.',
+    },
+    category: 'party', minPlayers: 2, maxPlayers: 8, status: 'playable',
+    accent: ['#f97316', '#be123c'],
+    controller: stickPad('party', [
+      { key: 'A', label: { he: 'קפיצה', en: 'JUMP' }, color: '#5dfc8d', big: true, icon: 'jump' },
+      { key: 'B', label: { he: 'חבטה', en: 'SHOVE' }, color: '#ff4d6d', icon: 'shove' },
+    ]),
+    options: [],
+  },
   soon('treasure', 'ציד אוצרות', 'Treasure Hunt', 'arcade', ['#fbbf24', '#b45309']),
   {
     id: 'soccer',

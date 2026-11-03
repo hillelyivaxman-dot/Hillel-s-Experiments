@@ -11,7 +11,7 @@ Branch: `ccr-64ced051-a2t8s8` · folder: `family-chaos/` · live site: https://f
 
 ## Done
 - Platform: rooms, lobby, QR, accounts, controllers (measured layout engine), HTTPS/WSS tests, Render blueprint.
-- Playable (10): Bumper Battle, Kart Chaos, Reaction Duel, Hot Potato, Chaos Rush, **Soccer, Air Hockey, Crazy Kitchen, Family Board Party, Trap Builders**.
+- Playable (11): Bumper Battle, Kart Chaos, Reaction Duel, Hot Potato, Chaos Rush, **Soccer, Air Hockey, Crazy Kitchen, Family Board Party, Trap Builders, Vanishing Floor**.
 - **Task 1 — Kart steering (done):** virtual **steering wheel** you rotate with a finger (grab anywhere, relative rotation, ±115° lock,
   expo curve, snaps back on release), **arrow** steering (hold left/right, ramped on the server) and **tilt** steering
   (DeviceMotion, iPhone permission tap, calibration, invert option). GAS / BRAKE / TURBO / ITEM buttons.
@@ -27,14 +27,16 @@ Legend: [x] playable + tested, [ ] not started. A game is only marked playable i
 ### Wave 1
 - [x] Soccer · [x] Air hockey · [x] Crazy kitchen · [x] Family board party · [x] Trap builders  (wave 1 complete: each has server rules, renderer, phone controller, unit tests; all in the browser suite)
 ### Wave 2
-- [ ] Basketball · [ ] Bowling · [ ] Boat race · [ ] Bike race · [ ] Vanishing floor
-  - *Vanishing floor in progress:* server rules + 4 unit tests are written and passing (`server/games/vanish.ts`, `shared/vanish.ts`, `tests/unit/vanish.test.ts`) but it is **not registered/playable yet**: still needs the renderer (`client/src/render/vanish.ts`), catalog entry, phone HUD, icon and e2e coverage.
+- [ ] Basketball · [ ] Bowling · [ ] Boat race · [ ] Bike race · [x] Vanishing floor
 ### Wave 3
 - [ ] Tank battle · [ ] Wizard duel · [ ] Arena survival · [ ] Base defense · [ ] Tag
 ### Wave 4
 - [ ] Maze escape · [ ] Space rescue · [ ] Treasure evacuation · [ ] Treasure hunt · [ ] Wobbly tower
 ### Wave 5
 - [ ] Space race · [ ] Popping balloons · [ ] Team puzzle · [ ] Draw & guess · [ ] Party trivia
+
+## Next up (wave 2 remaining)
+Basketball, Bowling, Boat race, Bike race — then waves 3-5. Last green full run: 99 unit tests + 32 browser tests (1 retried flaky: first attempt of the two-phone movement test and the all-phones layout test under load). **11 of 30 games are playable; 14 of the 25 requested new games are still to build.**
 
 ## Library / website improvements (requested)
 - [x] categories filter · [x] search · [x] favourites (stored on the device) · [x] player count shown on every card · [x] original vector icon per game · [ ] estimated play time · [ ] page transitions · [ ] console-style redesign of home/lobby
