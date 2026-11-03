@@ -39,8 +39,14 @@ create table if not exists plays (
 create index if not exists plays_user on plays(user_id, at desc);
 `;
 
-export async function openDb(opts: { memory?: boolean } = {}): Promise<Db> {
+/**
+ * Returns null when accounts should be OFF: on a small free host (RENDER) without an external database, the in-process
+ * Postgres (PGlite, ~450-750 MB of RAM) would exceed the 512 MB limit and get the whole site killed (502).
+ * Games never need accounts. Set DATABASE_URL (free Neon Postgres) to turn accounts on there.
+ */
+export async function openDb(opts: { memory?: boolean } = {}): Promise<Db | null> {
   const url = process.env.DATABASE_URL;
+  if (!url && !opts.memory && process.env.RENDER && !process.env.DATA_DIR && process.env.ACCOUNTS_IN_MEMORY !== '1') return null;
   let db: Db;
   if (url && !opts.memory) {
     const { default: pg } = await import('pg');

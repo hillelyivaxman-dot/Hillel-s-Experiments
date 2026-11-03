@@ -41,6 +41,9 @@ Basketball, Bowling, Boat race, Bike race — then waves 3-5. Last green full ru
 ## Library / website improvements (requested)
 - [x] categories filter · [x] search · [x] favourites (stored on the device) · [x] player count shown on every card · [x] original vector icon per game · [ ] estimated play time · [ ] page transitions · [ ] console-style redesign of home/lobby
 
+## Incident (fixed)
+Live site returned **502 Bad Gateway**: the in-process Postgres (PGlite) added for accounts used 457 MB idle / 748 MB peak, over Render's 512 MB free limit, so the instance was OOM-killed. Fix: accounts are OFF on Render unless `DATABASE_URL` (Neon) is set; server peak is now ~85 MB. Regression test in `tests/unit/accounts.test.ts`.
+
 ## Known limits
 - No real-device testing (no physical phones / Safari / Firefox engines in the sandbox).
 - Render free plan: sleeps after 15 min idle, 5 GB/month bandwidth, rooms in memory.

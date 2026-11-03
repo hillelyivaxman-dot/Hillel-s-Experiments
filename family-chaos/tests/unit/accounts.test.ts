@@ -12,7 +12,7 @@ const ip = () => `10.0.0.${++ipN}`;
 const code = async (p: Promise<unknown>) => { try { await p; return 'ok'; } catch (e) { return (e as AccountError).code; } };
 
 beforeAll(async () => {
-  db = await openDb({ memory: true }); // real Postgres (PGlite) in memory
+  db = (await openDb({ memory: true }))!; // real Postgres (PGlite) in memory
   acc = new Accounts(db);
 }, 60_000);
 afterAll(async () => { await db.close(); });
@@ -115,5 +115,14 @@ describe('rooms save results for signed-in players only', () => {
     const p = await acc.profile((await acc.userFromToken(s.token))!);
     expect(p.stats.games).toBe(1);
     expect(p.history[0].game).toBe('bumper');
+  });
+});
+
+describe('small-host safety', () => {
+  it('on Render without DATABASE_URL accounts are OFF (no in-process Postgres: it needs ~450-750 MB and got the 512 MB free instance killed)', async () => {
+    const saved = { r: process.env.RENDER, d: process.env.DATABASE_URL, dd: process.env.DATA_DIR, m: process.env.ACCOUNTS_IN_MEMORY };
+    process.env.RENDER = 'true'; delete process.env.DATABASE_URL; delete process.env.DATA_DIR; delete process.env.ACCOUNTS_IN_MEMORY;
+    try { expect(await openDb()).toBeNull(); }
+    finally { for (const [k, v] of [['RENDER', saved.r], ['DATABASE_URL', saved.d], ['DATA_DIR', saved.dd], ['ACCOUNTS_IN_MEMORY', saved.m]] as const) { if (v === undefined) delete process.env[k]; else process.env[k] = v; } }
   });
 });
