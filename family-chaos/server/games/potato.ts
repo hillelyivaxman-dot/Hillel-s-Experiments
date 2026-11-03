@@ -134,7 +134,7 @@ export const potatoGame: GameModule = {
         return {
           t: r1(time), ph, round, h: holder,
           heat: ph === 'play' ? r1(1 - fuse / fuseMax) : 1,
-          p: rs.map((r) => ({ id: r.id, x: r1(r.x), y: r1(r.y), o: r.out ? 1 : 0, s: r.sprintT > 0 ? 1 : 0 })),
+          p: rs.map((r) => ({ id: r.id, x: Math.round(r.x), y: Math.round(r.y), o: r.out ? 1 : 0, s: r.sprintT > 0 ? 1 : 0 })),
           b: boom,
         };
       },

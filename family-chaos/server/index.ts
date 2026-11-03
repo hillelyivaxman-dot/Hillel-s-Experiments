@@ -1,8 +1,9 @@
-import { createReadStream, existsSync, statSync } from 'node:fs';
+import { createReadStream, existsSync, readFileSync, statSync } from 'node:fs';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { networkInterfaces } from 'node:os';
 import { dirname, extname, join, normalize, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { gzipSync } from 'node:zlib';
 import { WebSocketServer, type WebSocket } from 'ws';
 import type { C2S } from '../shared/protocol';
 import type { Client } from './room';
@@ -14,7 +15,12 @@ const PORT = Number(process.env.PORT ?? 8787);
 const HOST = process.env.HOST ?? '0.0.0.0';
 const here = dirname(fileURLToPath(import.meta.url));
 const WEB_ROOT = resolve(process.env.WEB_ROOT ?? join(here, '..', 'client'));
-const TRUST_PROXY = process.env.TRUST_PROXY === '1';
+// Render (and most PaaS) terminate TLS in front of us and set X-Forwarded-For.
+const ON_RENDER = !!process.env.RENDER;
+const TRUST_PROXY = process.env.TRUST_PROXY === '1' || ON_RENDER;
+// Public base URL for QR codes / join links. Render injects RENDER_EXTERNAL_URL automatically.
+const PUBLIC_URL = (process.env.PUBLIC_URL || process.env.RENDER_EXTERNAL_URL || '').replace(/\/+$/, '') || null;
+const stats = { startedAt: Date.now(), bytesOut: 0, wsOpen: 0, wsTotal: 0 };
 
 const MIME: Record<string, string> = {
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml',
@@ -51,6 +57,16 @@ function clientIp(req: IncomingMessage): string {
   return req.socket.remoteAddress ?? 'unknown';
 }
 
+const gzCache = new Map<string, { mtime: number; body: Buffer }>();
+function gzipped(file: string): Buffer {
+  const mtime = statSync(file).mtimeMs;
+  const hit = gzCache.get(file);
+  if (hit && hit.mtime === mtime) return hit.body;
+  const body = gzipSync(readFileSync(file), { level: 9 });
+  gzCache.set(file, { mtime, body });
+  return body;
+}
+
 function serveStatic(req: IncomingMessage, res: ServerResponse) {
   const url = new URL(req.url ?? '/', 'http://x');
   if (url.pathname === '/health') {
@@ -59,7 +75,14 @@ function serveStatic(req: IncomingMessage, res: ServerResponse) {
   }
   if (url.pathname === '/api/info') {
     res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
-    return res.end(JSON.stringify({ lan: lanUrls(), publicUrl: process.env.PUBLIC_URL ?? null, rooms: rooms.rooms.size }));
+    return res.end(JSON.stringify({
+      lan: ON_RENDER ? [] : lanUrls(),
+      publicUrl: PUBLIC_URL,
+      rooms: rooms.rooms.size,
+      sockets: stats.wsOpen,
+      mbOut: Math.round(stats.bytesOut / 1e5) / 10, // payload MB since start (before compression)
+      uptimeMin: Math.round((Date.now() - stats.startedAt) / 60000),
+    }));
   }
   let file = normalize(join(WEB_ROOT, decodeURIComponent(url.pathname)));
   if (!file.startsWith(WEB_ROOT)) {
@@ -72,17 +95,38 @@ function serveStatic(req: IncomingMessage, res: ServerResponse) {
     return res.end('Client not built. Run `npm run build` (or use `npm run dev`).');
   }
   const immutable = file.includes(`${join(WEB_ROOT, 'assets')}`);
-  res.writeHead(200, {
+  const type = MIME[extname(file)] ?? 'application/octet-stream';
+  const headers: Record<string, string> = {
     ...SECURITY_HEADERS,
-    'Content-Type': MIME[extname(file)] ?? 'application/octet-stream',
+    'Content-Type': type,
     'Cache-Control': immutable ? 'public, max-age=31536000, immutable' : 'no-cache',
-  });
+    Vary: 'Accept-Encoding',
+  };
+  // gzip text assets (cached in memory): ~3x less download per phone, saves free-plan bandwidth
+  if (/text|javascript|json|svg/.test(type) && /\bgzip\b/.test(String(req.headers['accept-encoding'] ?? ''))) {
+    const body = gzipped(file);
+    res.writeHead(200, { ...headers, 'Content-Encoding': 'gzip', 'Content-Length': String(body.length) });
+    return res.end(req.method === 'HEAD' ? undefined : body);
+  }
+  res.writeHead(200, headers);
   createReadStream(file).pipe(res);
 }
 
 const rooms = new Rooms();
 const server = createServer(serveStatic);
-const wss = new WebSocketServer({ server, path: '/ws', maxPayload: 8 * 1024, perMessageDeflate: false });
+const wss = new WebSocketServer({
+  server,
+  path: '/ws',
+  maxPayload: 8 * 1024,
+  // Compress messages (frames are repetitive JSON): ~3x less bandwidth, important on the 5 GB/month free plan.
+  // Small windows keep memory per socket low on a 512 MB instance.
+  perMessageDeflate: {
+    threshold: 200,
+    serverMaxWindowBits: 11,
+    clientMaxWindowBits: 11,
+    zlibDeflateOptions: { level: 4, memLevel: 6 },
+  },
+});
 
 wss.on('connection', (ws: WebSocket & { alive?: boolean }, req) => {
   const ip = clientIp(req);
@@ -90,10 +134,19 @@ wss.on('connection', (ws: WebSocket & { alive?: boolean }, req) => {
   let strikes = 0;
   const client: Client = {
     role: 'none', room: null, playerId: null, rtt: 0,
-    send: (m) => { if (ws.readyState === ws.OPEN) ws.send(JSON.stringify(m)); },
+    send: (m) => {
+      if (ws.readyState !== ws.OPEN) return;
+      // drop frames for screens whose connection is backed up (slow network) instead of queueing lag
+      if (m.t === 'frame' && ws.bufferedAmount > 64 * 1024) return;
+      const s = JSON.stringify(m);
+      stats.bytesOut += s.length;
+      ws.send(s);
+    },
     close: () => ws.close(4000, 'closed'),
   };
   ws.alive = true;
+  stats.wsOpen++;
+  stats.wsTotal++;
   ws.on('pong', () => { ws.alive = true; });
   ws.on('message', (data, isBinary) => {
     if (isBinary) return;
@@ -114,7 +167,7 @@ wss.on('connection', (ws: WebSocket & { alive?: boolean }, req) => {
       console.error('route error', e);
     }
   });
-  ws.on('close', () => rooms.disconnect(client));
+  ws.on('close', () => { stats.wsOpen--; rooms.disconnect(client); });
 });
 
 // heartbeat: drop dead sockets so reconnecting players get their slot back quickly
@@ -141,7 +194,16 @@ function loop() {
 }
 loop();
 
+// Graceful shutdown (Render sends SIGTERM on redeploy): phones auto-reconnect to the new instance.
+for (const sig of ['SIGTERM', 'SIGINT'] as const) {
+  process.on(sig, () => {
+    for (const ws of wss.clients) ws.close(1012, 'restart');
+    server.close(() => process.exit(0));
+    setTimeout(() => process.exit(0), 3000).unref();
+  });
+}
+
 server.listen(PORT, HOST, () => {
-  console.log(`FAMILY CHAOS server on http://localhost:${PORT}`);
+  console.log(`FAMILY CHAOS server on http://localhost:${PORT}${PUBLIC_URL ? `  public: ${PUBLIC_URL}` : ''}`);
   for (const u of lanUrls()) console.log(`  LAN: ${u}  (open /host on the TV/PC, phones scan the QR)`);
 });

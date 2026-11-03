@@ -69,6 +69,22 @@ export function getTrack(id: number): Track {
   return tr;
 }
 
+/** Item-box rows (3 boxes across the road) — static per track, so not sent in frames. */
+export function trackBoxes(tr: Track) {
+  return tr.boxesAt.flatMap((f, row) => {
+    const pt = pointAt(tr, f);
+    return [-38, 0, 38].map((o, k) => ({ id: row * 3 + k, x: pt.x - pt.ty * o, y: pt.y + pt.tx * o }));
+  });
+}
+
+/** Boost pads — static per track. */
+export function trackPads(tr: Track) {
+  return tr.padsAt.map((f) => {
+    const pt = pointAt(tr, f);
+    return { x: pt.x, y: pt.y, a: Math.atan2(pt.ty, pt.tx) };
+  });
+}
+
 /** Position + unit tangent at a fraction of track length. */
 export function pointAt(tr: Track, frac: number) {
   const target = (((frac % 1) + 1) % 1) * tr.length;

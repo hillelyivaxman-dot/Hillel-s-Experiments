@@ -18,9 +18,28 @@ export class Conn {
   offset = 0; // serverNow - Date.now()
   private synced = false;
 
+  private retryTimer = 0;
+  private lastPong = 0;
+
   constructor(private onOpen: (c: Conn) => void) {
     this.connect();
+    // Phones drop sockets when the screen locks or the browser is backgrounded:
+    // reconnect immediately when the page is visible / online again instead of waiting for backoff.
+    document.addEventListener('visibilitychange', this.wake);
+    window.addEventListener('online', this.wake);
   }
+
+  private wake = () => {
+    if (this.stopped || document.visibilityState !== 'visible') return;
+    const ws = this.ws;
+    if (!ws || ws.readyState === WebSocket.CLOSED || ws.readyState === WebSocket.CLOSING) {
+      clearTimeout(this.retryTimer);
+      this.retry = 0;
+      this.connect();
+    } else if (ws.readyState === WebSocket.OPEN) {
+      this.ping();
+    }
+  };
 
   private setStatus(s: ConnStatus) {
     this.status = s;
@@ -33,6 +52,7 @@ export class Conn {
     this.ws = ws;
     ws.onopen = () => {
       this.retry = 0;
+      this.lastPong = performance.now();
       this.setStatus('open');
       this.ping();
       this.onOpen(this);
@@ -42,6 +62,7 @@ export class Conn {
       try { m = JSON.parse(ev.data); } catch { return; }
       if (m.t === 'pong') {
         const now = performance.now();
+        this.lastPong = now;
         const rtt = now - m.c;
         this.rtt = this.rtt ? this.rtt * 0.7 + rtt * 0.3 : rtt;
         const off = m.s - (Date.now() - rtt / 2);
@@ -56,13 +77,24 @@ export class Conn {
       if (this.stopped || ev.code === 4000) { this.setStatus('closed'); return; }
       this.setStatus('reconnecting');
       const delay = Math.min(5000, 300 * 2 ** this.retry++);
-      setTimeout(() => !this.stopped && this.connect(), delay);
+      clearTimeout(this.retryTimer);
+      this.retryTimer = window.setTimeout(() => !this.stopped && this.connect(), delay);
     };
     clearInterval(this.pingTimer);
     this.pingTimer = window.setInterval(() => this.ping(), 2000);
   }
 
   private ping() {
+    // Mobile networks can leave a socket "open" but dead (e.g. Wi-Fi -> 4G switch).
+    // No pong for 7 s => abandon it and reconnect right away.
+    const ws = this.ws;
+    if (ws?.readyState === WebSocket.OPEN && this.lastPong && performance.now() - this.lastPong > 7000) {
+      this.ws = null;
+      ws.close();
+      this.setStatus('reconnecting');
+      this.connect();
+      return;
+    }
     this.send({ t: 'ping', c: performance.now(), rtt: Math.round(this.rtt) });
   }
 
@@ -86,6 +118,9 @@ export class Conn {
 
   close() {
     this.stopped = true;
+    clearTimeout(this.retryTimer);
+    document.removeEventListener('visibilitychange', this.wake);
+    window.removeEventListener('online', this.wake);
     clearInterval(this.pingTimer);
     this.ws?.close();
   }

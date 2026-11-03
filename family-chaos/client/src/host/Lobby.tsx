@@ -39,7 +39,7 @@ function PlayerTile({ p, leader, act, watch, stars }: { p: PlayerInfo; leader: b
     }
   }, []);
   return (
-    <div className={`player-tile ${p.connected ? '' : 'is-off'} ${p.ready ? 'is-ready' : ''}`} ref={ref} style={{ ['--pc' as string]: p.color }} data-player={p.name}>
+    <div className={`player-tile ${p.connected ? '' : 'is-off'} ${p.ready ? 'is-ready' : ''}`} ref={ref} style={{ ['--pc' as string]: p.color }} data-player={p.name} data-pid={p.id}>
       {leader && <span className="player-tile__crown" title={t('leader')}>👑</span>}
       <CritterCanvas color={p.color} variant={p.avatar} size={110} />
       <span className="player-tile__name">{p.name}</span>

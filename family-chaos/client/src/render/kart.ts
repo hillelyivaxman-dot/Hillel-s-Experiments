@@ -1,4 +1,4 @@
-import { getTrack, TRACK_WIDTH, WORLD_H, WORLD_W } from '../../../shared/tracks';
+import { getTrack, TRACK_WIDTH, trackBoxes, trackPads, WORLD_H, WORLD_W } from '../../../shared/tracks';
 import { sfx } from '../sound';
 import { drawCritter } from './critter';
 import { hudText, type Renderer } from './types';
@@ -67,7 +67,7 @@ export const kartRenderer: Renderer = {
     g.restore();
 
     // boost pads
-    for (const p of f.pd) {
+    for (const p of trackPads(tr)) {
       g.save();
       g.translate(p.x, p.y);
       g.rotate(p.a);
@@ -84,19 +84,19 @@ export const kartRenderer: Renderer = {
       g.restore();
     }
     // oil
-    for (const o of f.oil) {
+    for (const [ox, oy] of f.oil as [number, number][]) {
       g.fillStyle = 'rgba(15,10,25,0.85)';
       g.beginPath();
-      g.ellipse(o.x, o.y, 30, 22, 0.4, 0, Math.PI * 2);
+      g.ellipse(ox, oy, 30, 22, 0.4, 0, Math.PI * 2);
       g.fill();
       g.fillStyle = 'rgba(160,100,255,0.35)';
       g.beginPath();
-      g.ellipse(o.x - 6, o.y - 5, 10, 5, 0.4, 0, Math.PI * 2);
+      g.ellipse(ox - 6, oy - 5, 10, 5, 0.4, 0, Math.PI * 2);
       g.fill();
     }
     // item boxes
-    for (const b of f.bx) {
-      if (!b.on) continue;
+    for (const b of trackBoxes(tr)) {
+      if (f.bo[b.id] !== '1') continue;
       g.save();
       g.translate(b.x, b.y);
       g.rotate(t * 1.5 + b.id);

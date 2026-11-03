@@ -185,7 +185,7 @@ export const bumperGame: GameModule = {
           left: Math.max(0, Math.ceil(C.MAX_TIME - time)),
           R: r1(R),
           p: bs.map((b) => ({
-            id: b.id, x: r1(b.x), y: r1(b.y), r: b.r, a: r1(b.face), l: b.lives,
+            id: b.id, x: Math.round(b.x), y: Math.round(b.y), r: b.r, a: r1(b.face), l: b.lives,
             f: b.falling > 0 ? 1 : 0, d: b.dashT > 0 ? 1 : 0, i: b.inv > 0 ? 1 : 0, w: b.pow ?? '', k: b.ko,
           })),
           u: pows.map((p) => ({ id: p.id, k: p.k, x: r1(p.x), y: r1(p.y) })),

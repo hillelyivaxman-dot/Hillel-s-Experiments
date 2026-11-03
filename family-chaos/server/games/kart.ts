@@ -1,5 +1,5 @@
 import { BTN } from '../../shared/protocol';
-import { getTrack, pointAt, TRACK_WIDTH, type Track } from '../../shared/tracks';
+import { getTrack, pointAt, TRACK_WIDTH, trackBoxes, trackPads, type Track } from '../../shared/tracks';
 import { r1 } from '../util';
 import type { GameContext, GameInstance, GameModule, StandingRow } from './types';
 
@@ -73,14 +73,8 @@ export const kartGame: GameModule = {
     });
     const byId = new Map(cars.map((c) => [c.id, c]));
 
-    const boxes = tr.boxesAt.flatMap((f, row) => {
-      const pt = pointAt(tr, f);
-      return [-38, 0, 38].map((o, k) => ({ id: row * 3 + k, x: pt.x - pt.ty * o, y: pt.y + pt.tx * o, cd: 0 }));
-    });
-    const pads = tr.padsAt.map((f) => {
-      const pt = pointAt(tr, f);
-      return { x: pt.x, y: pt.y, a: Math.atan2(pt.ty, pt.tx) };
-    });
+    const boxes = trackBoxes(tr).map((b) => ({ ...b, cd: 0 }));
+    const pads = trackPads(tr);
     const oils: { x: number; y: number; owner: string; t: number; ttl: number }[] = [];
 
     const raceDist = (c: Car) => c.cross * tr.length + c.s;
@@ -251,14 +245,13 @@ export const kartGame: GameModule = {
           t: r1(time), tr: trackId, laps,
           end: endAt === Infinity ? -1 : Math.max(0, Math.ceil(endAt - time)),
           c: cars.map((c) => ({
-            id: c.id, x: r1(c.x), y: r1(c.y), a: Math.round(c.a * 100) / 100,
+            id: c.id, x: Math.round(c.x), y: Math.round(c.y), a: Math.round(c.a * 100) / 100,
             b: c.boostT > 0 ? 1 : 0, s: c.spinT > 0 ? 1 : 0, h: c.shieldT > 0 ? 1 : 0,
             lap: Math.min(c.lap + 1, laps), fin: c.finished >= 0 ? 1 : 0, it: c.item,
           })),
           ord: o.map((c) => c.id),
-          bx: boxes.map((b) => ({ id: b.id, x: r1(b.x), y: r1(b.y), on: b.cd <= 0 ? 1 : 0 })),
-          pd: pads.map((p) => ({ x: r1(p.x), y: r1(p.y), a: Math.round(p.a * 100) / 100 })),
-          oil: oils.map((o2, i) => ({ id: i, x: r1(o2.x), y: r1(o2.y) })),
+          bo: boxes.map((b) => (b.cd <= 0 ? 1 : 0)).join(''), // box on/off flags; positions come from the track
+          oil: oils.map((o2) => [Math.round(o2.x), Math.round(o2.y)]),
         };
       },
 
