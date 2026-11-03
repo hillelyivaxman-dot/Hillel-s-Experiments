@@ -9,8 +9,8 @@ Read PROGRESS.md first. State at the last update: **30/30 games playable, party 
 4. Tell me which games feel too hard / too easy / confusing — the balance numbers are constants at the top of each server file.
 
 ## Build next (priority order from the master prompt)
-1. **Accounts + persistence** — connect Neon (`DATABASE_URL`, see docs/DEPLOY.md). Then: `users.role` column (OWNER/ADMIN/HOST/PLAYER), owner claim flow in `/account` using a one-time setup code printed in the Render logs (no secrets in chat), password reset (needs an email provider — free tier only), optional Google login.
-2. **GOD ADMIN crown** — server-side only: `{t:'god', power}` accepted only when the verified `client.userId` has role OWNER, room in "party mode" (no tournament in `competitive` mode), 12 powers implemented as generic room effects (freeze, slow-mo, confetti, bonus stars, swap leader, …) + a log line per use. Tests: non-owner cannot, tournament mode cannot.
+1. **Accounts + persistence** — connect Neon (`DATABASE_URL`, see docs/DEPLOY.md; this is what switches accounts, the owner claim and the crown on). Then: password reset (needs an email provider — free tier only), optional Google login, XP / cosmetics / profile card.
+2. **GOD ADMIN crown** — DONE server-side + host UI + tests (see PROGRESS.md). Left: real-browser e2e of the owner claim, ADMIN/HOST role behaviour, per-power polish in each game (e.g. a game-specific effect instead of the generic ones), a visible audit log for the owner.
 3. **Tournaments v2** — Knockout / League / Multi-day formats, manual game list UI, pause/resume/cancel, no-shows and ties, persistence in Postgres so a Render restart does not lose it, profile card.
 4. **Console-style redesign** — hero + card carousel, estimated play time per game, GSAP page transitions (skills installed: gsap-core/react/performance, frontend-design).
 5. **Game polish** — custom SVG art per game instead of emoji icons, sounds per game, intro/rules screen per game, balance passes from real play, tilt/wheel verification on real phones.

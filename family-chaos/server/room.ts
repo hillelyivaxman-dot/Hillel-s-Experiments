@@ -37,7 +37,7 @@ interface PlayerRec {
 
 export const TIMING = {
   TICK_MS: 1000 / 30,
-  COUNTDOWN_MS: 3500,
+  COUNTDOWN_MS: 6000, // rules + 3-2-1 (the overlay shows the rules, the number appears for the last 3 s)
   TOUR_PAUSE_MS: 12_000, // results screen time between tournament games
   DROP_AFTER_MS: 90_000, // remove disconnected players (outside of a running game)
 };

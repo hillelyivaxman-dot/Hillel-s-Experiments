@@ -65,7 +65,7 @@ export function SettingsBar() {
   );
 }
 
-export function GameCard({ g, selected, onClick, compact = false }: { g: GameMeta; selected?: boolean; onClick?: () => void; compact?: boolean }) {
+export function GameCard({ g, selected, onClick, compact = false, showTime = false }: { g: GameMeta; selected?: boolean; onClick?: () => void; compact?: boolean; showTime?: boolean }) {
   const { l, t } = useT();
   const soon = g.status !== 'playable';
   return (
@@ -79,7 +79,7 @@ export function GameCard({ g, selected, onClick, compact = false }: { g: GameMet
     >
       <span className="game-card__art"><GameIcon id={g.id} /></span>
       <span className="game-card__body">
-        <span className="game-card__cat">{compact && soon ? t('soon') : `${l(CATEGORY_NAMES[g.category])} · ${g.minPlayers}–${g.maxPlayers} ${t('players')}${PLAY_TIME[g.id] ? ` · ⏱ ${PLAY_TIME[g.id][0] === PLAY_TIME[g.id][1] ? PLAY_TIME[g.id][0] : PLAY_TIME[g.id].join('–')}′` : ''}`}</span>
+        <span className="game-card__cat">{compact && soon ? t('soon') : `${l(CATEGORY_NAMES[g.category])} · ${g.minPlayers}–${g.maxPlayers} ${t('players')}${PLAY_TIME[g.id] && showTime ? ` · ⏱ ${PLAY_TIME[g.id][0] === PLAY_TIME[g.id][1] ? PLAY_TIME[g.id][0] : PLAY_TIME[g.id].join('–')}′` : ''}`}</span>
         <span className="game-card__name">{l(g.name)}</span>
         {!compact && <span className="game-card__tag">{soon ? t('soon') : l(g.tagline)}</span>}
       </span>

@@ -93,3 +93,61 @@ describe('tower', () => {
     expect(st[0].score).toBeGreaterThanOrEqual(1);
   });
 });
+
+describe('game rules (scripted players)', () => {
+  it('basketball: releasing the meter inside the green zone scores points', () => {
+    const r = runGame(GAMES.basketball, 2, { time: 45 }, (id, s: any, t) => {
+      const p = s.p.find((q: any) => q.id === id);
+      if (p.sh >= 0) return { x: 0, y: 0, b: 0 };
+      if (p.ch >= 0) return { x: 0, y: 0, b: Math.abs(p.ch - p.tg) < p.w * 0.4 ? 0 : 1 };
+      return { x: 0, y: 0, b: Math.floor(t * 8) % 2 }; // fresh presses
+    }, 80);
+    expect(r.game.standings()[0].score).toBeGreaterThanOrEqual(6);
+  });
+
+  it('bowling: a locked aim and well-timed power knocks pins down; turns rotate between players', () => {
+    const r = runGame(GAMES.bowling, 2, { frames: 2 }, (id, s: any) => {
+      if (s.turn !== id) return { x: 0, y: 0, b: 0 };
+      if (s.ph === 'aim') return { x: 0, y: 0, b: 1 };
+      if (s.ph === 'power') return { x: 0, y: 0, b: s.pw > 0.7 && s.pw < 0.9 ? 1 : 0 };
+      return { x: 0, y: 0, b: 0 };
+    }, 200);
+    const st = r.game.standings();
+    expect(st[0].score).toBeGreaterThan(0);
+    expect(st.every((x) => x.score > 0)).toBe(true);
+  });
+
+  it('trivia: with four players each choosing a different answer, exactly one is right per question', () => {
+    const r = runGame(GAMES.trivia, 4, { questions: 5 }, (id, s: any) => (s.ph === 'ask' ? { x: 0, y: 0, b: [1, 2, 4, 8][Number(id.slice(1)) - 1] } : { x: 0, y: 0, b: 0 }), 300);
+    const total = r.game.standings().reduce((a, x) => a + x.score, 0);
+    expect(total).toBeGreaterThanOrEqual(5 * 100);
+    expect(total).toBeLessThanOrEqual(5 * 260);
+  });
+
+  it('draw & guess: guessers choosing four different directions yields exactly one correct guess per round; the drawer is rewarded', () => {
+    const r = runGame(GAMES.draw, 5, { rounds: 1 }, (id, s: any) => {
+      if (s.ph !== 'draw') return { x: 0, y: 0, b: 0 };
+      if (id === s.dr) return { x: 1, y: 0, b: 1 }; // draws a line
+      const dir = [[0, -1], [1, 0], [0, 1], [-1, 0]][Number(id.slice(1)) % 4];
+      return { x: dir[0], y: dir[1], b: 1 };
+    }, 120);
+    const st = r.game.standings();
+    expect(st.filter((x) => x.playerId !== 'p1' && x.score > 0)).toHaveLength(1);
+    expect(st.find((x) => x.playerId === 'p1')!.score).toBe(3);
+  });
+
+  it('team puzzle: a team that remembers and presses its own colours clears every level (3 stars); a wrong colour costs a life', () => {
+    let memo: number[] = [];
+    const bot = (id: string, s: any) => {
+      if (s.seq.length) memo = s.seq;
+      if (s.ph !== 'enter') return { x: 0, y: 0, b: 0 };
+      const want = memo[s.pos], mine = s.own[want] === Number(id.slice(1)) - 1;
+      return { x: 0, y: 0, b: mine ? [1, 2, 4, 8][want] : 0 };
+    };
+    // players press on alternating ticks so held buttons produce fresh rising edges
+    const r = runGame(GAMES.puzzle, 2, { levels: 4 }, (id, s: any) => { const o = bot(id, s); return Math.floor(s.t * 15) % 2 ? o : { x: 0, y: 0, b: 0 }; }, 300);
+    expect(r.game.standings()[0].stars).toBe(3);
+    const bad = runGame(GAMES.puzzle, 2, { levels: 4 }, (_id, s: any) => (s.ph === 'enter' ? { x: 0, y: 0, b: Math.floor(s.t * 15) % 2 ? 1 : 0 } : { x: 0, y: 0, b: 0 }), 300);
+    expect(bad.game.standings()[0].stars).toBeLessThan(3);
+  });
+});

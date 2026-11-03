@@ -104,7 +104,7 @@ export function Home() {
         <div className="library__grid">
           {games.map((g) => (
             <div className="game-wrap" key={g.id}>
-              <GameCard g={g} onClick={() => go('/host')} />
+              <GameCard g={g} showTime onClick={() => go('/host')} />
               <button className={`fav-btn ${favs.includes(g.id) ? 'is-on' : ''}`} onClick={() => toggleFav(g.id)} aria-pressed={favs.includes(g.id)} aria-label={`${t('favorites')}: ${l(g.name)}`} data-fav={g.id}>★</button>
             </div>
           ))}

@@ -51,7 +51,7 @@ Lobby → "🏆 Party tournament" (3 / 5 / 8 games): random games the current pl
 **Not built yet:** Knockout / League / Multi-day formats, persistence across Render restarts (needs `DATABASE_URL`), pause/resume of a tournament, tournament profile card. See NEXT_STEPS.md.
 
 ## Honest status of the rest of the master prompt
-- Accounts + GOD ADMIN (OWNER/ADMIN/HOST/PLAYER roles, crown powers, owner claim): **not built** — needs the persistent database (`DATABASE_URL`, Neon) which the user must connect in the browser; accounts are OFF on Render until then.
+- **GOD ADMIN crown — built (server-side), needs the database to be usable on Render.** `users.role` column; one-time owner claim in `/account` ("Owner setup") with a setup code from `OWNER_SETUP_CODE` or printed in the server log; the WebSocket connection is marked `owner` only when the session cookie belongs to an OWNER user (verified in `server/index.ts`, never trusted from the client); 12 powers (confetti, earthquake, flash, fanfare, freeze 3 s, slow-mo, turbo, mirror controls, +3 stars, rob the leader, new leader, end game) run inside `Room.godPower`; refused for non-owners and during a running tournament (`competitive`); every use is logged. Tests: `tests/unit/god.test.ts`. Roles ADMIN/HOST are reserved values in the schema but have no behaviour yet. Accounts are OFF on Render until `DATABASE_URL` is set, so the crown only appears after that (docs/DEPLOY.md, Hebrew section).
 - Google login / password reset: not built.
 - XP / cosmetics / profile card: not built (basic stats + achievements exist).
 - Console-style redesign of home/library/lobby, estimated play time on cards, GSAP page transitions: not done (library already has search, favourites, categories, player counts).

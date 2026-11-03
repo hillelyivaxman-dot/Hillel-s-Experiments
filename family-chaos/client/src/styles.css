@@ -516,3 +516,6 @@ body { touch-action: manipulation; }
 .crown__menu { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; background: rgba(15,8,40,.94); border: 2px solid #ffd23f; border-radius: 18px; padding: 12px; max-width: min(92vw, 420px); }
 .crown__menu p { grid-column: 1 / -1; margin: 0; }
 .owner-setup { margin: 10px 0; }
+
+/* choices pads (trivia / puzzle / balloon): big readable symbols */
+.pad__choices--sym .pad-btn__label { font-size: clamp(2.2rem, 12vmin, 5rem); line-height: 1; }

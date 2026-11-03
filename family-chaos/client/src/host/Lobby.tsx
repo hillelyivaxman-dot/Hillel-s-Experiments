@@ -136,6 +136,16 @@ export function Lobby({ room, act, watch }: { room: RoomState; act: (a: AdminAct
               <div key={`s${i}`} className="player-tile is-empty"><span className="empty-dot" /><span className="muted">{i === 0 && !room.players.length ? t('waitingPlayers') : t('emptySlot')}</span></div>
             ))}
           </div>
+          {!watch && (
+            <div className="tour-pick" data-testid="tour-pick">
+                <span>🏆 {l({ he: 'טורניר מסיבה', en: 'Party tournament' })}</span>
+                {[3, 5, 8].map((n) => (
+                  <button key={n} className="chip" disabled={connected < 2} data-testid={`tour-${n}`} onClick={() => { sfx.go(); act({ a: 'tournament', count: n }); }}>
+                    {n} {l({ he: 'משחקים', en: 'games' })}
+                  </button>
+                ))}
+              </div>
+          )}
         </section>
       </main>
 
@@ -170,14 +180,6 @@ export function Lobby({ room, act, watch }: { room: RoomState; act: (a: AdminAct
                 onClick={() => { sfx.go(); act({ a: 'start' }); }}>
                 {canStart ? `▶ ${t('start')}` : t('needPlayers', { n: meta.minPlayers })}
               </button>
-              <div className="tour-pick" data-testid="tour-pick">
-                <span>🏆 {l({ he: 'טורניר מסיבה', en: 'Party tournament' })}</span>
-                {[3, 5, 8].map((n) => (
-                  <button key={n} className="chip" disabled={connected < 2} data-testid={`tour-${n}`} onClick={() => { sfx.go(); act({ a: 'tournament', count: n }); }}>
-                    {n} {l({ he: 'משחקים', en: 'games' })}
-                  </button>
-                ))}
-              </div>
             </div>
           )}
         </div>

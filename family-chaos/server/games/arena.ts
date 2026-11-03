@@ -275,6 +275,11 @@ export const tagGame: GameModule = {
     return {
       tick(dt) {
         time += dt; imm = Math.max(0, imm - dt); hudT += dt;
+        if (!ctx.connected(it)) { // the tagger left: hand the role to the nearest connected player
+          const from = fs.find((f) => f.id === it)!;
+          const next = fs.filter((f) => f.id !== it && ctx.connected(f.id)).sort((a, b) => Math.hypot(a.x - from.x, a.y - from.y) - Math.hypot(b.x - from.x, b.y - from.y))[0];
+          if (next) { it = next.id; imm = 1.2; ctx.fx('tag', { id: it }); hud(); }
+        }
         own.set(it, (own.get(it) ?? 0) + dt);
         for (const f of fs) {
           const i = ctx.input(f.id), isIt = f.id === it;
