@@ -16,7 +16,8 @@ Party games on the big screen, with phones as controllers. It runs in the browse
 | **Games playable:** Bumper Battle, Kart Chaos (3 tracks, items, laps), Reaction Duel, Hot Potato | ✅ 4 / 12 |
 | Mini Soccer, Obstacle Rush, Treasure Hunt, Air Hockey, Draw & Guess, Maze Escape, Tower Stack, Party Trivia | 🔜 shown as "coming soon", cannot start |
 | Accounts (Supabase Auth), profiles, achievements | ❌ not started (phase 4) |
-| Public deployment | ⏳ `render.yaml` ready; needs one-time Render connection (see below) |
+| Public deployment (HTTPS/WSS) | ⏳ ready & tested locally behind a TLS proxy; needs a one-time Render connection by the owner (`docs/DEPLOY.md`) |
+| Network robustness | ✅ tested: remote phone with latency, Wi-Fi drop, silent dead socket, server restart message |
 
 ## Run it
 
@@ -35,20 +36,20 @@ On a home network, open `http://localhost:8787/host` on the PC. The QR code auto
 ```bash
 npm run typecheck
 npm test            # unit: rooms, permissions, reconnect, each game simulated to the end with bots
-npm run test:e2e    # Playwright: host + 2 phone browsers over real WebSockets
+npm run test:e2e    # Playwright: host + phones over real WebSockets, incl. HTTPS/WSS proxy with latency,
+                    # QR decoding, Wi-Fi drop / dead socket, CDP multi-touch, switching all games
 npm run check       # all of the above + build
 ```
 
-## Deploy for free (Render) — once, from the phone browser
+## Deploy for free (Render)
 
-1. Sign in at render.com with GitHub (the free plan needs no card at the time of writing).
-2. **New → Blueprint**, then pick this repository. Render reads `render.yaml` (root) and creates `family-chaos` on the **free** plan.
-3. After the build you get `https://family-chaos-XXXX.onrender.com`. Open `/host` on a TV/PC and scan with phones.
-
-Limits: the free service sleeps after ~15 min idle (first load ~1 min), and rooms reset on restart. See `docs/ARCHITECTURE.md`.
+Step-by-step from a phone (Hebrew), free-plan limits and a first-game checklist: **`docs/DEPLOY.md`**.
+Short version: Render dashboard → New → Blueprint → this repo → branch `ccr-64ced051-a2t8s8` → Free → Deploy.
 
 ## Docs
 
 * `docs/ARCHITECTURE.md`: stack decisions, networking/security, hosting limits, Open Party Lab evaluation
 * `docs/ADDING_A_GAME.md`: the game module API + template (`server/games/_template.ts`)
+* `docs/DEPLOY.md`: publish on Render's free plan from a phone + first-game test
+* `docs/GAMES_PLAN.md`: plan from 4 to 12 quality games
 * `docs/ROADMAP.md`: what's next

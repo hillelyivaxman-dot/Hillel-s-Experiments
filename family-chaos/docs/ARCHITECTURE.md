@@ -31,7 +31,8 @@
 
 ## Hosting (free) — verified limits as of writing
 
-* **Render free web service** (blueprint `render.yaml` in the repo root): supports WebSockets. It **sleeps after ~15 min idle** (first visit takes ~1 min to wake). Free instance hours are limited per month. Rooms are in memory, so a restart ends running rooms. Good for family/friends use, **not** for unlimited users.
+* **Render free web service** (blueprint `render.yaml` in the repo root): supports WebSockets over HTTPS/WSS. It sleeps after 15 min without inbound traffic (waking takes up to ~1 min). It has 750 instance hours/month per workspace and **5 GB bandwidth/month** (reduced from 100 GB in 2026; overage is billed only if a card is on file, so don't add one). Rooms are in memory, so a restart ends running rooms. Good for family/friends use, **not** for unlimited users. Details: `DEPLOY.md`.
+* **Bandwidth measures:** permessage-deflate on WebSockets (frames compress to ~5–20%), static track data is not streamed, coordinates are integers, gzip for static assets, and frames are skipped for screens with a backed-up socket.
 * **LAN mode** (free, best latency): run `npm start` on a PC. Phones on the same Wi-Fi scan the QR, which automatically uses the PC's LAN IP.
 * **Not suitable:** Vercel/Netlify functions (no persistent WebSocket server).
 

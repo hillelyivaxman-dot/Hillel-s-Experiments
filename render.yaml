@@ -9,7 +9,7 @@ services:
     branch: ccr-64ced051-a2t8s8
     rootDir: family-chaos
     buildCommand: npm ci --include=dev && npm run build
-    startCommand: npm start
+    startCommand: node dist/server/index.js # node directly, so it gets SIGTERM on redeploy
     healthCheckPath: /health
     envVars:
       - key: NODE_VERSION

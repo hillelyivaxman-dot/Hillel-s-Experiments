@@ -205,5 +205,5 @@ for (const sig of ['SIGTERM', 'SIGINT'] as const) {
 
 server.listen(PORT, HOST, () => {
   console.log(`FAMILY CHAOS server on http://localhost:${PORT}${PUBLIC_URL ? `  public: ${PUBLIC_URL}` : ''}`);
-  for (const u of lanUrls()) console.log(`  LAN: ${u}  (open /host on the TV/PC, phones scan the QR)`);
+  if (!ON_RENDER) for (const u of lanUrls()) console.log(`  LAN: ${u}  (open /host on the TV/PC, phones scan the QR)`);
 });
