@@ -1,3 +1,4 @@
+import { CATALOG } from '../../shared/catalog';
 import { expect, test, type Page } from '@playwright/test';
 import { delta, frame, HTTP, newHost, newPhone, playerIds, waitPlaying, wheelAt } from './util';
 
@@ -89,13 +90,13 @@ test('multi-touch: steering with one finger while holding GAS with another (Kart
   expect(delta(f0, f1, 'c', ids.Parked).d).toBeLessThan(5);
 });
 
-test('game switching: all eleven games start, run and return to the lobby in one room', async ({ browser }) => {
-  test.setTimeout(300_000); // one match start/stop per game
+test('game switching: all playable games start, run and return to the lobby in one room', async ({ browser }) => {
+  test.setTimeout(900_000); // one match start/stop per game (30 games)
   const { h, code, errors } = await newHost(browser);
   const players = [];
   for (const n of ['One', 'Two', 'Three']) players.push(await newPhone(browser, `${HTTP}/join/${code}`, n));
   const ids = await playerIds(h);
-  for (const g of ['bumper', 'kart', 'reaction', 'potato', 'rush', 'soccer', 'hockey', 'board', 'kitchen', 'trapbuilders', 'vanish']) {
+  for (const g of CATALOG.filter((x) => x.status === 'playable').map((x) => x.id)) {
     await h.locator(`.lobby__games [data-game="${g}"]`).click();
     await expect(h.locator(`.lobby__games [data-game="${g}"].is-selected`)).toBeVisible();
     await h.getByTestId('start-btn').click();

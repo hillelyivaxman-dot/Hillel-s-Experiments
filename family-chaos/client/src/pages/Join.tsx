@@ -249,7 +249,7 @@ function hudView(game: string, h: Hud, t: ReturnType<typeof useT>['t'], he: bool
           { icon: 'star', on: !!h.held, label: h.held ? POW[String(h.held)] ?? '★' : '—' },
         ],
       };
-    case 'kart':
+    case 'kart': case 'boat': case 'bike':
       if (h.done) return { text: `${t('finished')} #${h.place}`, tone: 'good' };
       return {
         text: `#${h.place ?? '-'}/${h.of ?? '-'} · ${t('lap')} ${h.lap ?? 1}/${h.laps ?? '-'}`,
@@ -292,6 +292,51 @@ function hudView(game: string, h: Hud, t: ReturnType<typeof useT>['t'], he: bool
       if (ph === 'run') return h.done ? { text: L('סיימתם!', 'Finished!'), tone: 'good' } : { text: L('רוצו!', 'RUN!'), tone: 'normal', chips: [{ icon: 'dash', on: !!h.dash, label: L('הסתערות', 'DASH') }] };
       return { text: `${L('ניקוד', 'Score')} ${h.total ?? 0}`, tone: ph === 'done' ? 'good' : 'normal' };
     }
+    case 'basketball':
+      return { text: `${h.score ?? 0} ${L('נק׳', 'pts')} · ${h.left}s${Number(h.streak) > 1 ? ` · 🔥${h.streak}` : ''}`, tone: Number(h.streak) > 1 ? 'hot' : 'normal' };
+    case 'bowling':
+      if (h.ph === 'done') return { text: L('המשחק נגמר!', 'Game over!'), tone: 'good' };
+      if (!h.me) return { text: L(`תור של ${h.who} · ${h.total} נק׳`, `${h.who}'s turn · ${h.total} pts`), tone: 'normal' };
+      return { text: h.ph === 'aim' ? L('כוונו עם הג׳ויסטיק ולחצו לנעילה', 'Aim with the stick, press to lock') : h.ph === 'power' ? L('לחצו כשהמד בירוק!', 'Press when the meter is green!') : L('מתגלגל…', 'Rolling…'), tone: 'good' };
+    case 'tank':
+      return { text: `${'❤'.repeat(Math.max(0, Number(h.hp ?? 0)))} · ${L('נותרו', 'left')} ${h.left}`, tone: Number(h.hp) <= 1 ? 'bad' : 'normal', chips: [{ icon: 'fire', on: !!h.fire, label: L('ירי', 'FIRE') }, { icon: 'mine', on: !!h.mine, label: L('מוקש', 'MINE') }] };
+    case 'wizard':
+      return { text: `${'❤'.repeat(Math.max(0, Number(h.hp ?? 0)))} · ${L('נותרו', 'left')} ${h.left}`, tone: Number(h.hp) <= 1 ? 'bad' : 'normal', chips: [{ icon: 'fire', on: !!h.fire, label: L('אש', 'FIRE') }, { icon: 'shield', on: !!h.shield, label: L('מגן', 'SHIELD') }, { icon: 'blink', on: !!h.blink, label: L('קפיצה', 'BLINK') }] };
+    case 'survival': case 'defense':
+      if (h.down) return { text: L('נפלתם! חבר צריך לעמוד לידכם', 'Down! A teammate must stand next to you'), tone: 'bad' };
+      return { text: `${L('גל', 'Wave')} ${h.wave}/${h.waves} · ${'❤'.repeat(Math.max(0, Number(h.hp ?? 0)))}${h.def ? ` · 💎${h.core} · 🪙${h.alt}` : ''}`, tone: 'normal' };
+    case 'tag':
+      return { text: h.it ? L('את/ה התופס! רדפו!', "You're IT! Chase!") : `${L('ברחו!', 'Run!')} ${h.secs}s · ${h.left}s`, tone: h.it ? 'hot' : 'normal', meter: Number(h.stam ?? 0) / 100, meterLabel: L('ספרינט', 'SPRINT') };
+    case 'maze':
+      return { text: `${L('סבב', 'Round')} ${h.round}/${h.rounds} · ${h.pts} ${L('נק׳', 'pts')}${h.done ? ' ✓' : ''}`, tone: h.done ? 'good' : 'normal', chips: [{ icon: 'dash', on: !!h.dash, label: L('הסתערות', 'DASH') }] };
+    case 'rescue':
+      return { text: h.stun ? L('התרסקתם!', 'Crashed!') : `🧑‍🚀 ${h.saved}/${h.target} · ${L('נושאים', 'carrying')} ${h.carry} · ${h.left}s`, tone: h.stun ? 'bad' : 'normal', chips: [{ icon: 'turbo', on: !!h.boost, label: L('האצה', 'BOOST') }] };
+    case 'evac':
+      return { text: h.stun ? L('נתפסתם!', 'Caught!') : `💰 ${h.got}/${h.total} · ${Number(h.carry) ? L('נושאים תיבה!', 'carrying a chest!') : L('ידיים ריקות', 'empty hands')} · ${h.left}s`, tone: h.stun ? 'bad' : 'normal' };
+    case 'treasure':
+      return { text: `💰 ${h.score ?? 0} · ${h.left}s`, tone: Number(h.warm) > 0.7 ? 'hot' : 'normal', meter: Number(h.warm ?? 0), meterLabel: Number(h.warm) > 0.7 ? L('חם מאוד!', 'HOT!') : Number(h.warm) > 0.35 ? L('חמים', 'warm') : L('קר', 'cold'), chips: [{ icon: 'star', on: !!h.ping, label: L('מכ״ם', 'RADAR') }] };
+    case 'tower':
+      return h.over ? { text: `${L('המגדל', 'Tower')}: ${h.h} 🧱`, tone: 'good' } : { text: `${h.h} 🧱 · ✨${h.perfect} · ${h.left}s`, tone: 'normal' };
+    case 'spacerace':
+      if (h.done) return { text: `${t('finished')} #${h.place}`, tone: 'good' };
+      return { text: `#${h.place}/${h.of} · ${h.pct}%`, tone: 'normal', meter: Number(h.en ?? 0) / 100, meterLabel: L('אנרגיה', 'ENERGY') };
+    case 'balloon':
+      return { text: `🎈 ${h.pumps} · ${L('בכיס', 'banked')} ${h.bank} · ${h.left}s`, tone: Number(h.pumps) > 12 ? 'hot' : 'normal' };
+    case 'puzzle': {
+      const mine = String(h.mine ?? '').split(',').filter(Boolean).map((c) => ['▲', '●', '■', '★'][Number(c)]).join(' ');
+      const ph = String(h.ph);
+      return { text: `${L('הצבעים שלכם', 'Your colours')}: ${mine} · ${ph === 'show' ? L('זכרו!', 'Memorise!') : ph === 'enter' ? `${h.pos}/${h.len}` : ph === 'ok' ? '✔' : ph === 'bad' ? '✖' : ''}`, tone: ph === 'bad' ? 'bad' : ph === 'ok' ? 'good' : 'normal' };
+    }
+    case 'draw': {
+      const hebrew = he; const pick = (s: string) => { const [he, en] = s.split('|'); return he && en ? (hebrew ? he : en) : s; };
+      if (h.ph === 'reveal') return { text: L('חושפים…', 'Revealing…'), tone: 'normal' };
+      if (h.drawer) return { text: `${L('ציירו', 'Draw')}: ${pick(String(h.word))}`, tone: 'good' };
+      const opts = String(h.opts ?? '').split(';').map(pick);
+      return { text: h.locked ? L('ננעל! מחכים…', 'Locked! Waiting…') : `↑${opts[0]} →${opts[1]} ↓${opts[2]} ←${opts[3]}`, tone: h.locked ? 'good' : 'normal' };
+    }
+    case 'trivia':
+      if (h.ph === 'reveal') return { text: Number(h.ok) ? `✔ ${L('נכון!', 'Correct!')} · ${h.pts}` : `✖ · ${h.pts}`, tone: Number(h.ok) ? 'good' : 'bad' };
+      return { text: Number(h.ans) >= 0 ? L('נעול! מחכים…', 'Locked! Waiting…') : `${L('שאלה', 'Q')} ${h.q}/${h.qs} · ${h.pts}`, tone: 'normal' };
     case 'vanish':
       return h.alive ? { text: `${L('נותרו', 'LEFT')} ${h.left}`, tone: 'normal', chips: [{ icon: 'jump', on: !!h.jump, label: L('קפיצה', 'JUMP') }, { icon: 'shove', on: !!h.dash, label: L('חבטה', 'SHOVE') }] } : { text: L('נפלתם! צפו בסוף', 'You fell! Watch the end'), tone: 'bad' };
     case 'rush':

@@ -64,7 +64,7 @@ test('host screen fits TV/PC sizes (QR, code and start button visible without sc
 });
 
 test('every phone gets the right controller for every game, laid out on screen', async ({ browser }) => {
-  test.setTimeout(420_000); // every game x 6 phone profiles
+  test.setTimeout(1_500_000); // every game x 6 phone profiles
   const hctx = await browser.newContext({ viewport: { width: 1920, height: 1080 }, locale: 'en-US' });
   const h = await hctx.newPage();
   await h.goto(`${HTTP}/host`);

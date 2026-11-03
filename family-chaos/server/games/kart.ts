@@ -64,10 +64,18 @@ function nearest(tr: Track, x: number, y: number, hint: number) {
   return { idx: best, dist: Math.sqrt(bestD) };
 }
 
-export const kartGame: GameModule = {
-  id: 'kart',
+/** Handling presets: the same racing engine drives karts, boats (slidey, heavy) and bikes (fast, grippy). */
+export const RACER_TUNING: Record<string, Partial<Record<keyof typeof KART, number>>> = {
+  kart: {},
+  boat: { ACC: 500, MAX: 420, BOOST_MAX: 660, REVERSE: -90, TURN_LOW: 2.3, TURN_HIGH: 1.5, GRIP: 3.4, GRIP_DRIFT: 1.8, CORNER_DRAG: 110, ASSIST: 0.7 },
+  bike: { ACC: 760, MAX: 540, BOOST_MAX: 820, REVERSE: -120, TURN_LOW: 3.3, TURN_HIGH: 2.1, GRIP: 12, GRIP_DRIFT: 4.2, CORNER_DRAG: 190, ASSIST: 1.3 },
+};
+
+function makeRacer(id: string): GameModule {
+  return {
+  id,
   create(ctx: GameContext): GameInstance {
-    const K = KART;
+    const K = { ...KART, ...RACER_TUNING[id] } as typeof KART;
     const laps = ctx.options.laps ?? 3;
     const trackId = ctx.options.track ?? 0;
     const tr = getTrack(trackId);
@@ -338,3 +346,8 @@ export const kartGame: GameModule = {
     };
   },
 };
+}
+
+export const kartGame = makeRacer('kart');
+export const boatGame = makeRacer('boat');
+export const bikeGame = makeRacer('bike');

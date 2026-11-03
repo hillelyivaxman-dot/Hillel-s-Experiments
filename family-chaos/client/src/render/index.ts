@@ -1,7 +1,7 @@
 import { boardRenderer } from './board';
 import { bumperRenderer } from './bumper';
 import { hockeyRenderer } from './hockey';
-import { kartRenderer } from './kart';
+import { bikeRenderer, boatRenderer, kartRenderer } from './kart';
 import { kitchenRenderer } from './kitchen';
 import { potatoRenderer } from './potato';
 import { reactionRenderer } from './reaction';
@@ -9,6 +9,10 @@ import { trapBuildersRenderer } from './trapbuilders';
 import { vanishRenderer } from './vanish';
 import { rushRenderer } from './rush';
 import { soccerRenderer } from './soccer';
+import { basketballRenderer, bowlingRenderer } from './wave_a';
+import { defenseRenderer, survivalRenderer, tagRenderer, tankRenderer, wizardRenderer } from './wave_b';
+import { evacRenderer, huntRenderer, mazeRenderer, rescueRenderer, towerRenderer } from './wave_c';
+import { balloonRenderer, drawRenderer, puzzleRenderer, spaceRaceRenderer, triviaRenderer } from './wave_d';
 import type { Renderer } from './types';
 
 // Register client renderers here (one per playable game id).
@@ -24,6 +28,10 @@ export const RENDERERS: Record<string, Renderer> = {
   kitchen: kitchenRenderer,
   trapbuilders: trapBuildersRenderer,
   vanish: vanishRenderer,
+  basketball: basketballRenderer, bowling: bowlingRenderer, boat: boatRenderer, bike: bikeRenderer,
+  tank: tankRenderer, wizard: wizardRenderer, survival: survivalRenderer, defense: defenseRenderer, tag: tagRenderer,
+  maze: mazeRenderer, rescue: rescueRenderer, evac: evacRenderer, treasure: huntRenderer, tower: towerRenderer,
+  spacerace: spaceRaceRenderer, balloon: balloonRenderer, puzzle: puzzleRenderer, draw: drawRenderer, trivia: triviaRenderer,
 };
 
 const LERP_KEYS = ['x', 'y', 'a'];

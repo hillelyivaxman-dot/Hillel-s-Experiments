@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { CATALOG } from '../../shared/catalog';
 import { BTN } from '../../shared/protocol';
 import { delta, frame, HTTP, HTTPS, newHost, newPhone, padProblems, playerIds, waitPlaying, wheelAt, type SentInput } from './util';
 
@@ -167,12 +168,15 @@ test('after a network drop the controller comes back complete and working', asyn
 });
 
 test('the controller updates for each game in the same lobby (buttons appear/disappear correctly)', async ({ browser }) => {
-  test.setTimeout(240_000); // one match start/stop per game
+  test.setTimeout(900_000); // one match start/stop per game (30 games)
   const { h, code } = await newHost(browser);
   const a = await newPhone(browser, `${HTTP}/join/${code}`, 'Switcher');
   await newPhone(browser, `${HTTP}/join/${code}`, 'B');
   await newPhone(browser, `${HTTP}/join/${code}`, 'C');
-  const expected: Record<string, string[]> = { bumper: ['A', 'B', 'C'], kart: ['A', 'B', 'D', 'C'], reaction: ['A'], potato: ['A', 'B'], rush: ['A', 'B', 'C'], soccer: ['A', 'B'], hockey: ['A'], board: ['A', 'B'], kitchen: ['A', 'B'], trapbuilders: ['A', 'B'], vanish: ['A', 'B'] };
+  const expected: Record<string, string[]> = Object.fromEntries(CATALOG.filter((g) => g.status === 'playable').map((g) => {
+    const c = g.controller;
+    return [g.id, c.kind === 'tap' ? [c.button.key] : c.kind === 'choices' ? ['A', 'B', 'C', 'D'].slice(0, c.count) : c.buttons.map((b) => b.key as string)];
+  }));
   for (const [g, keys] of Object.entries(expected)) {
     await h.locator(`.lobby__games [data-game="${g}"]`).click();
     await h.getByTestId('start-btn').click();

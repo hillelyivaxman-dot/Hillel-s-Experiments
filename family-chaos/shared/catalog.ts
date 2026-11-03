@@ -57,7 +57,7 @@ const wheelPad = (style: PadStyle, buttons: ControllerButton[]): ControllerLayou
 const stickPad = (style: PadStyle, buttons: ControllerButton[], landscape = true): ControllerLayout =>
   ({ kind: 'stick', style, buttons, landscape });
 
-export const CATALOG: GameMeta[] = [
+const BASE_GAMES: GameMeta[] = [
   {
     id: 'bumper',
     name: { he: 'קרב מתנגשים', en: 'Bumper Battle' },
@@ -190,7 +190,6 @@ export const CATALOG: GameMeta[] = [
     ]),
     options: [],
   },
-  soon('treasure', 'ציד אוצרות', 'Treasure Hunt', 'arcade', ['#fbbf24', '#b45309']),
   {
     id: 'soccer',
     name: { he: 'כדורגל', en: 'Soccer' },
@@ -220,8 +219,6 @@ export const CATALOG: GameMeta[] = [
     controller: stickPad('fighter', [{ key: 'A', label: { he: 'חבטה', en: 'SMASH' }, color: '#ffd23f', big: true, icon: 'turbo' }]),
     options: [{ key: 'goals', label: { he: 'גולים לניצחון', en: 'Goals to win' }, values: [3, 5, 7, 10], default: 7 }],
   },
-  soon('draw', 'צייר ונחש', 'Draw & Guess', 'party', ['#fb7185', '#f59e0b']),
-  soon('maze', 'בריחה מהמבוך', 'Maze Escape', 'puzzle', ['#818cf8', '#4338ca']),
   {
     id: 'trapbuilders',
     name: { he: 'בונים מלכודות', en: 'Trap Builders' },
@@ -238,17 +235,116 @@ export const CATALOG: GameMeta[] = [
     ]),
     options: [{ key: 'rounds', label: { he: 'סבבים', en: 'Rounds' }, values: [2, 3, 5], default: 3 }],
   },
-  soon('tower', 'מגדל מתנדנד', 'Tower Stack', 'arcade', ['#2dd4bf', '#0f766e']),
-  soon('trivia', 'טריוויה מסיבה', 'Party Trivia', 'party', ['#c084fc', '#7c3aed']),
 ];
 
-function soon(id: string, he: string, en: string, category: Category, accent: [string, string]): GameMeta {
-  return {
-    id, name: { he, en }, tagline: { he: 'בפיתוח', en: 'In development' },
-    howTo: { he: '', en: '' }, category, minPlayers: 2, maxPlayers: 8, status: 'soon', accent,
-    controller: { kind: 'tap', button: { key: 'A', label: { he: '', en: '' }, color: '#888' } }, options: [],
-  };
+const btn = (key: ButtonKey, he: string, en: string, color: string, icon?: string, big?: boolean): ControllerButton => ({ key, label: { he, en }, color, icon, big });
+const opt = (key: string, he: string, en: string, values: number[], def: number, names?: [string, string][]): GameOption =>
+  ({ key, label: { he, en }, values, default: def, names: names?.map(([h, e]) => ({ he: h, en: e })) });
+const racePad = (): ControllerLayout => wheelPad('racing', [btn('A', 'גז', 'GAS', '#5dfc8d', 'gas', true), btn('B', 'בלם', 'BRAKE', '#ff8c42', 'brake'), btn('D', 'טורבו', 'TURBO', '#3ec1ff', 'turbo'), btn('C', 'פריט', 'ITEM', '#b26bff', 'item')]);
+const raceOpts = (): GameOption[] => [
+  opt('laps', 'הקפות', 'Laps', [1, 2, 3, 4, 5], 3),
+  opt('track', 'מסלול', 'Track', [0, 1, 2], 0, [['סופגנייה', 'Donut Loop'], ['נחש', 'Snake Pass'], ['שמונה', 'Figure Eight']]),
+];
+const SHAPES = [{ he: '▲', en: '▲' }, { he: '●', en: '●' }, { he: '■', en: '■' }, { he: '★', en: '★' }];
+const shapeChoices = (): ControllerLayout => ({ kind: 'choices', count: 4, labels: SHAPES, colors: ['#ff4d6d', '#3ec1ff', '#ffd23f', '#5dfc8d'] });
+
+function game(id: string, he: string, en: string, tagHe: string, tagEn: string, howHe: string, howEn: string, category: Category, min: number, max: number, accent: [string, string], controller: ControllerLayout, options: GameOption[] = []): GameMeta {
+  return { id, name: { he, en }, tagline: { he: tagHe, en: tagEn }, howTo: { he: howHe, en: howEn }, category, minPlayers: min, maxPlayers: max, status: 'playable', accent, controller, options };
 }
+
+const NEW_GAMES_LIST: GameMeta[] = [
+  // ---- wave A ----
+  game('basketball', 'כדורסל כאוס', 'Basketball Chaos', 'כולם זורקים לאותה סל!', 'Everyone shoots at one hoop!',
+    'זזו ימינה/שמאלה לבחור מרחק (רחוק = 3 נקודות). החזיקו את כפתור הזריקה כדי לטעון את המד, ושחררו בתוך האזור הירוק. שחרור מושלם נותן בונוס.',
+    'Walk left/right to pick your distance (far = 3 points). HOLD the shoot button to charge the meter and RELEASE inside the green zone. A perfect release gives a bonus.',
+    'sports', 1, 8, ['#fb923c', '#c2410c'], stickPad('party', [btn('A', 'זריקה (החזק)', 'SHOOT (hold)', '#ffd23f', 'kick', true)]),
+    [opt('time', 'זמן', 'Time', [45, 60, 90], 60, [['45 שנ׳', '45 s'], ['דקה', '1 min'], ['דקה וחצי', '1.5 min']])]),
+  game('bowling', 'באולינג משוגע', 'Crazy Bowling', 'כוונו, טענו, ובום — סטרייק!', 'Aim, power up, and boom — strike!',
+    'בתורכם: כוונו עם הג׳ויסטיק ולחצו לנעילה, ואז לחצו שוב כשהמד בנקודה הירוקה. סטרייק וספייר נותנים בונוס. הכי הרבה נקודות מנצח.',
+    'On your turn: aim with the stick and press to lock, then press again when the power meter is in the green. Strikes and spares give bonuses. Most points wins.',
+    'sports', 1, 8, ['#8b5cf6', '#4c1d95'], stickPad('party', [btn('A', 'נעל / גלגל', 'LOCK / ROLL', '#5dfc8d', 'throw', true)]),
+    [opt('frames', 'סבבים', 'Frames', [2, 3, 4, 5], 4)]),
+  game('boat', 'מרוץ סירות', 'Boat Racing', 'גלים, החלקות וטורבו על המים', 'Waves, slides and turbo on the water',
+    'ההגה מסובב את הסירה — היא מחליקה ולא נעצרת מיד! גז ובלם בימין, טורבו מהמד, פריטים מקופסאות ה־?.',
+    'Steer the boat — it drifts and does not stop on a dime! GAS and BRAKE on the right, TURBO from the meter, items from ? boxes.',
+    'racing', 1, 8, ['#06b6d4', '#1d4ed8'], racePad(), raceOpts()),
+  game('bike', 'מרוץ אופניים', 'Bike Racing', 'קלים, מהירים וחדים בפניות', 'Light, fast and sharp in the corners',
+    'אופניים מהירים עם אחיזה חזקה ופניות חדות. גז ובלם בימין, טורבו מהמד, פריטים מקופסאות ה־?.',
+    'Fast bikes with strong grip and sharp turns. GAS and BRAKE on the right, TURBO from the meter, items from ? boxes.',
+    'racing', 1, 8, ['#f97316', '#92400e'], racePad(), raceOpts()),
+  // ---- wave B ----
+  game('tank', 'קרב טנקים', 'Tank Battle', 'ירו, הקפיצו פגזים והניחו מוקשים', 'Fire, bounce shells and lay mines',
+    'הטנק פונה לכיוון הג׳ויסטיק. ירייה (A) קופצת פעם אחת מהקירות. מוקש (B) מתחמש אחרי שנייה. 3 פגיעות והטנק מתפוצץ. האחרון שנשאר מנצח.',
+    'The tank turns toward the stick. FIRE (A) shells bounce off walls once. MINE (B) arms after a second. Three hits and you blow up. Last tank standing wins.',
+    'action', 2, 8, ['#65a30d', '#3f6212'], stickPad('fighter', [btn('A', 'ירי', 'FIRE', '#ff4d6d', 'fire', true), btn('B', 'מוקש', 'MINE', '#ffd23f', 'mine')])),
+  game('wizard', 'דו־קרב קוסמים', 'Wizard Duel', 'כדורי אש, מגן והתעלמות', 'Fireballs, shields and blinks',
+    'כדור אש (A) מתפוצץ ודוחף. מגן (B) חוסם פגיעות. קפיצת קסם (C) מתחמקת. אספו כדורים ירוקים לריפוי. האחרון שנשאר מנצח.',
+    'FIREBALL (A) explodes and knocks back. SHIELD (B) blocks hits. BLINK (C) dodges. Grab green orbs to heal. Last wizard standing wins.',
+    'action', 2, 8, ['#a855f7', '#5b21b6'], stickPad('fighter', [btn('A', 'כדור אש', 'FIREBALL', '#ff8c42', 'fire', true), btn('B', 'מגן', 'SHIELD', '#3ec1ff', 'shield'), btn('C', 'קפיצה', 'BLINK', '#b26bff', 'blink')])),
+  game('survival', 'הישרדות בזירה', 'Arena Survival', 'כולם יחד נגד גלי מפלצות', 'All together against waves of monsters',
+    'שיתוף פעולה! חתכו מפלצות (A) ובצעו גלגול (B) כדי להתחמק. נפלתם? חבר שעומד לידכם מחיה אתכם. שרדו את כל הגלים.',
+    'Co-op! SLASH monsters (A) and ROLL (B) to dodge. Knocked down? A teammate standing next to you revives you. Survive all waves.',
+    'survival', 1, 8, ['#ec4899', '#831843'], stickPad('fighter', [btn('A', 'חיתוך', 'SLASH', '#ff4d6d', 'shove', true), btn('B', 'גלגול', 'ROLL', '#3ec1ff', 'dodge')]),
+    [opt('waves', 'גלים', 'Waves', [4, 6, 8], 6)]),
+  game('defense', 'הגנה על הבסיס', 'Base Defense', 'שמרו על הגביש מפני הגלים', 'Protect the crystal from the waves',
+    'שיתוף פעולה! ירו באויבים (A) לפני שהם מגיעים לגביש במרכז. כל אויב נותן מטבע — 4 מטבעות קונים צריח אוטומטי (B).',
+    'Co-op! SHOOT enemies (A) before they reach the crystal in the middle. Each kill gives a coin — 4 coins buy an automatic turret (B).',
+    'strategy', 1, 8, ['#14b8a6', '#115e59'], stickPad('fighter', [btn('A', 'ירי', 'SHOOT', '#ffd23f', 'fire', true), btn('B', 'צריח (4 מטבעות)', 'TURRET (4c)', '#5dfc8d', 'star')]),
+    [opt('waves', 'גלים', 'Waves', [4, 6, 8], 6)]),
+  game('tag', 'תופסת כאוס', 'Tag Chaos', 'אל תהיו התופס כשהזמן נגמר!', 'Do not be "it" when time runs out!',
+    'התופס (באש) רודף אחרי כולם. נגעתם? התפקיד עובר! ספרינט (A) מתכלה ומתמלא. מי שהיה התופס הכי מעט זמן מנצח.',
+    'The tagger (on fire) chases everyone. Touch someone to pass it on! SPRINT (A) drains and refills. Whoever was "it" for the least time wins.',
+    'party', 3, 8, ['#22c55e', '#166534'], stickPad('party', [btn('A', 'ספרינט', 'SPRINT', '#ffd23f', 'dash', true)]),
+    [opt('time', 'זמן', 'Time', [45, 60, 90], 60, [['45 שנ׳', '45 s'], ['דקה', '1 min'], ['דקה וחצי', '1.5 min']])]),
+  // ---- wave C ----
+  game('maze', 'בריחה מהמבוך', 'Maze Escape', 'מי ימצא את היציאה ראשון?', 'Who finds the exit first?',
+    'כל סבב נוצר מבוך חדש. רוצו אל היציאה בפינה הימנית־תחתונה. ראשון מקבל הכי הרבה נקודות. הסתערות (A) מאיצה לרגע.',
+    'A new maze every round. Race to the exit in the bottom-right corner. First gets the most points. DASH (A) gives a quick burst.',
+    'puzzle', 1, 8, ['#818cf8', '#3730a3'], stickPad('party', [btn('A', 'הסתערות', 'DASH', '#ffd23f', 'dash', true)]),
+    [opt('rounds', 'סבבים', 'Rounds', [2, 3, 5], 3)]),
+  game('rescue', 'חילוץ בחלל', 'Space Rescue', 'מצילים אסטרונאוטים לפני שהזמן נגמר', 'Save astronauts before time runs out',
+    'שיתוף פעולה! טוסו באוניית החלל, אספו אסטרונאוטים צפים (עד שניים) והביאו אותם לתחנה משמאל. הימנעו מסלעים — פגיעה מפילה את מי שנושאים. האצה (A).',
+    'Co-op! Fly your ship, pick up drifting astronauts (up to two) and bring them to the station on the left. Avoid rocks — a crash drops your passengers. BOOST (A).',
+    'coop', 1, 8, ['#38bdf8', '#312e81'], stickPad('fighter', [btn('A', 'האצה', 'BOOST', '#3ec1ff', 'turbo', true)])),
+  game('evac', 'פינוי אוצרות', 'Treasure Evacuation', 'מוציאים את האוצר לפני ההצפה!', 'Get the treasure out before the flood!',
+    'שיתוף פעולה! הרימו תיבות אוצר (A), סחבו אותן ליציאה משמאל והיזהרו מהשומרים. מים עולים מימין! ספרינט (B) כשאתם בלי תיבה.',
+    'Co-op! Pick up treasure chests (A), carry them to the exit on the left and beware the guards. Water rises from the right! SPRINT (B) while empty-handed.',
+    'coop', 1, 6, ['#fbbf24', '#0e7490'], stickPad('party', [btn('A', 'הרם / הנח', 'GRAB / DROP', '#5dfc8d', 'hand', true), btn('B', 'ספרינט', 'SPRINT', '#ffd23f', 'dash')])),
+  game('treasure', 'ציד אוצרות', 'Treasure Hunt', 'חפרו מהר — האוצרות חבויים!', 'Dig fast — the treasure is hidden!',
+    'האוצרות קבורים. חפרו (A) במקום הנכון. המד בטלפון מראה חם/קר. מכ״ם (B) מצביע על האוצר הקרוב. יש גם פצצות! הכי הרבה שווי מנצח.',
+    'Treasure is buried. DIG (A) in the right spot. Your phone shows hot/cold. RADAR (B) points to the nearest treasure. Beware of bombs! Most value wins.',
+    'arcade', 2, 8, ['#fbbf24', '#b45309'], stickPad('party', [btn('A', 'חפירה', 'DIG', '#ffd23f', 'dig', true), btn('B', 'מכ״ם', 'RADAR', '#3ec1ff', 'star')]),
+    [opt('time', 'זמן', 'Time', [45, 75, 100], 75)]),
+  game('tower', 'מגדל מתנדנד', 'Tower Stack', 'בנו את המגדל הכי גבוה — בלי ליפול', 'Build the tallest tower — without falling',
+    'קוביה מתנדנדת מעל המגדל שלכם. לחצו כדי להפיל אותה בדיוק על הקודמת. מה שחורג נחתך. מושלם משאיר את הרוחב. המגדל הכי גבוה מנצח.',
+    'A block swings above your tower. Tap to drop it exactly on the last one. Overhang gets cut off. Perfect drops keep the width. Tallest tower wins.',
+    'arcade', 1, 8, ['#2dd4bf', '#0f766e'], { kind: 'tap', button: btn('A', 'הפל!', 'DROP!', '#2dd4bf', undefined, true) },
+    [opt('time', 'זמן', 'Time', [45, 75, 100], 75)]),
+  // ---- wave D ----
+  game('spacerace', 'מרוץ חלל', 'Space Racing', 'דוהרים בין סלעים, אוספים אנרגיה', 'Rocket through rocks, grab energy',
+    'האוניה טסה קדימה לבד. הזיזו ימינה/שמאלה, התחמקו מסלעים, אספו כדורי אנרגיה והשתמשו בהאצה (A). ראשון לקו הסיום מנצח.',
+    'Your ship flies forward on its own. Steer left/right, dodge rocks, collect energy orbs and use BOOST (A). First over the finish line wins.',
+    'racing', 1, 8, ['#6366f1', '#0f172a'], stickPad('fighter', [btn('A', 'האצה', 'BOOST', '#3ec1ff', 'turbo', true)])),
+  game('balloon', 'בלון בפאניקה', 'Balloon Panic', 'לנפח או לשמור? סיכון!', 'Pump or bank? Push your luck!',
+    'נפחו את הבלון (A) — כל נפיחה שווה יותר, אבל הוא עלול להתפוצץ בכל רגע ולהעלים הכל! לחצו שמור (B) כדי להכניס את הנקודות לכיס.',
+    'PUMP your balloon (A) — every pump is worth more, but it can pop any time and wipe it all out! Press BANK (B) to lock the points in.',
+    'party', 1, 8, ['#f43f5e', '#9d174d'], { kind: 'choices', count: 2, labels: [{ he: 'נפח!', en: 'PUMP!' }, { he: 'שמור', en: 'BANK' }], colors: ['#ff4d6d', '#5dfc8d'], icons: ['jump', 'bank'] },
+    [opt('time', 'זמן', 'Time', [45, 60, 90], 60)]),
+  game('puzzle', 'פאזל קבוצתי', 'Team Puzzle', 'זוכרים יחד את הרצף', 'Remember the sequence together',
+    'שיתוף פעולה! הרצף מופיע על המסך לרגע ואז נעלם. לכל שחקן שייכים רק חלק מהצבעים — לחצו על הצבע שלכם בתורו. טעות עולה בחיים.',
+    'Co-op! The sequence flashes on screen then hides. Each player owns only some of the colours — press yours when its turn comes. A mistake costs a life.',
+    'puzzle', 2, 8, ['#e879f9', '#6d28d9'], shapeChoices(), [opt('levels', 'שלבים', 'Levels', [4, 6, 8], 6)]),
+  game('draw', 'צייר ונחש', 'Draw & Guess', 'מציירים עם האצבע, מנחשים מהר', 'Draw with your thumb, guess fast',
+    'המצייר מקבל מילה ומצייר עם הג׳ויסטיק (A = עט למטה, B = מחיקה). כל השאר מנחשים: הטו את הג׳ויסטיק לכיוון המילה הנכונה (למעלה/ימין/למטה/שמאל) ולחצו נעילה. מהר = יותר נקודות.',
+    'The drawer gets a word and draws with the stick (A = pen down, B = clear). Everyone else guesses: tilt the stick toward the right word (up/right/down/left) and press LOCK. Faster = more points.',
+    'party', 2, 8, ['#fb7185', '#d97706'], stickPad('party', [btn('A', 'עט / נעילה', 'PEN / LOCK', '#5dfc8d', 'dig', true), btn('B', 'מחק', 'CLEAR', '#ff8c42', 'chop')]),
+    [opt('rounds', 'סבבים', 'Rounds', [2, 3, 4, 6], 3)]),
+  game('trivia', 'טריוויה מסיבה', 'Party Trivia', 'שאלות, מהירות ורצף ניצחונות', 'Questions, speed and streaks',
+    'השאלה מופיעה על המסך עם ארבע תשובות צבעוניות. לחצו על הסמל התואם (▲ ● ■ ★). תשובה נכונה ומהירה נותנת יותר נקודות, ורצף נותן בונוס.',
+    'The question shows on screen with four coloured answers. Press the matching symbol (▲ ● ■ ★). Correct and fast earns more, and streaks give a bonus.',
+    'party', 1, 12, ['#c084fc', '#7c3aed'], shapeChoices(), [opt('questions', 'שאלות', 'Questions', [5, 8, 12, 16], 8)]),
+];
+export const CATALOG: GameMeta[] = [...BASE_GAMES, ...NEW_GAMES_LIST];
 
 export const getMeta = (id: string) => CATALOG.find((g) => g.id === id);
 

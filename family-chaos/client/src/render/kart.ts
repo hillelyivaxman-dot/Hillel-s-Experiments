@@ -18,38 +18,45 @@ function trackPath(id: number) {
 
 const ITEM_ICON: Record<string, string> = { turbo: '🚀', oil: '🛢', shield: '🛡' };
 
-export const kartRenderer: Renderer = {
+type Kind = 'kart' | 'boat' | 'bike';
+const THEME: Record<Kind, { bg: string; stripe: string; sand: string; curb1: string; curb2: string; road: string; line: string }> = {
+  kart: { bg: '#1f8a4c', stripe: '#23964f', sand: '#e8c27a', curb1: '#fff', curb2: '#ff4d6d', road: '#3a3a4a', line: 'rgba(255,255,255,0.35)' },
+  boat: { bg: '#0b6fa8', stripe: '#0e7bb8', sand: '#f0d9a0', curb1: '#ffffff', curb2: '#ff8c42', road: '#2aa7d8', line: 'rgba(255,255,255,0.5)' },
+  bike: { bg: '#7a4b22', stripe: '#835227', sand: '#b3763a', curb1: '#f2e2c4', curb2: '#e0592a', road: '#a8692f', line: 'rgba(255,255,255,0.3)' },
+};
+
+function make(kind: Kind): Renderer { const TH = THEME[kind]; return {
   world: { x: 0, y: 0, w: WORLD_W, h: WORLD_H },
   background: (g, W, H) => {
-    g.fillStyle = '#1f8a4c';
+    g.fillStyle = TH.bg;
     g.fillRect(0, 0, W, H);
   },
 
   draw(g, f, { players, t, fx }) {
     // grass stripes
-    g.fillStyle = '#23964f';
+    g.fillStyle = TH.stripe;
     for (let x = 0; x < WORLD_W; x += 80) g.fillRect(x, 0, 40, WORLD_H);
     const path = trackPath(f.tr);
     const tr = getTrack(f.tr);
     g.lineJoin = 'round';
     g.lineCap = 'round';
     // run-off sand
-    g.strokeStyle = '#e8c27a';
+    g.strokeStyle = TH.sand;
     g.lineWidth = TRACK_WIDTH + 96;
     g.stroke(path);
     // curbs
-    g.strokeStyle = '#fff';
+    g.strokeStyle = TH.curb1;
     g.lineWidth = TRACK_WIDTH + 18;
     g.stroke(path);
-    g.strokeStyle = '#ff4d6d';
+    g.strokeStyle = TH.curb2;
     g.setLineDash([22, 22]);
     g.stroke(path);
     g.setLineDash([]);
     // asphalt
-    g.strokeStyle = '#3a3a4a';
+    g.strokeStyle = TH.road;
     g.lineWidth = TRACK_WIDTH;
     g.stroke(path);
-    g.strokeStyle = 'rgba(255,255,255,0.35)';
+    g.strokeStyle = TH.line;
     g.lineWidth = 3;
     g.setLineDash([26, 30]);
     g.stroke(path);
@@ -128,16 +135,30 @@ export const kartRenderer: Renderer = {
         g.moveTo(-24, -8); g.lineTo(-44 - Math.random() * 14, 0); g.lineTo(-24, 8);
         g.fill();
       }
-      g.fillStyle = 'rgba(0,0,0,0.3)';
-      g.beginPath(); g.roundRect(-22, -12, 48, 30, 8); g.fill();
-      g.fillStyle = '#111';
-      for (const [wx, wy] of [[-14, -15], [12, -15], [-14, 15], [12, 15]]) g.fillRect(wx - 6, wy - 4, 12, 8);
-      g.fillStyle = info.color;
-      g.strokeStyle = '#120a2a';
-      g.lineWidth = 3;
-      g.beginPath(); g.roundRect(-24, -14, 48, 28, 9); g.fill(); g.stroke();
-      g.fillStyle = 'rgba(255,255,255,0.35)';
-      g.fillRect(-16, -11, 30, 5);
+      if (kind === 'kart') {
+        g.fillStyle = 'rgba(0,0,0,0.3)';
+        g.beginPath(); g.roundRect(-22, -12, 48, 30, 8); g.fill();
+        g.fillStyle = '#111';
+        for (const [wx, wy] of [[-14, -15], [12, -15], [-14, 15], [12, 15]]) g.fillRect(wx - 6, wy - 4, 12, 8);
+        g.fillStyle = info.color;
+        g.strokeStyle = '#120a2a';
+        g.lineWidth = 3;
+        g.beginPath(); g.roundRect(-24, -14, 48, 28, 9); g.fill(); g.stroke();
+        g.fillStyle = 'rgba(255,255,255,0.35)';
+        g.fillRect(-16, -11, 30, 5);
+      } else if (kind === 'boat') {
+        g.strokeStyle = 'rgba(255,255,255,.7)'; g.lineWidth = 3; // wake
+        g.beginPath(); g.moveTo(-26, -8); g.quadraticCurveTo(-56 - Math.sin(t * 9) * 4, -16, -78, -20); g.moveTo(-26, 8); g.quadraticCurveTo(-56 + Math.sin(t * 9) * 4, 16, -78, 20); g.stroke();
+        g.fillStyle = info.color; g.strokeStyle = '#120a2a'; g.lineWidth = 3;
+        g.beginPath(); g.moveTo(-26, -13); g.lineTo(14, -15); g.quadraticCurveTo(38, -8, 40, 0); g.quadraticCurveTo(38, 8, 14, 15); g.lineTo(-26, 13); g.closePath(); g.fill(); g.stroke();
+        g.fillStyle = 'rgba(255,255,255,.55)'; g.fillRect(-18, -4, 30, 8);
+      } else {
+        g.fillStyle = 'rgba(0,0,0,0.3)'; g.beginPath(); g.ellipse(2, 4, 30, 8, 0, 0, Math.PI * 2); g.fill();
+        g.fillStyle = '#111'; g.beginPath(); g.ellipse(-20, 0, 11, 5, 0, 0, Math.PI * 2); g.ellipse(22, 0, 11, 5, 0, 0, Math.PI * 2); g.fill();
+        g.strokeStyle = '#120a2a'; g.lineWidth = 3; g.fillStyle = info.color;
+        g.beginPath(); g.roundRect(-18, -5, 38, 10, 5); g.fill(); g.stroke();
+        g.strokeStyle = '#ddd'; g.lineWidth = 4; g.beginPath(); g.moveTo(18, -13); g.lineTo(22, 13); g.stroke();
+      }
       g.rotate(-c.a);
       drawCritter(g, 0, -4, 11, info.color, info.avatar, { look: c.a, t, hurt: !!c.s, outline: '#120a2a' });
       g.restore();
@@ -186,4 +207,8 @@ export const kartRenderer: Renderer = {
       case 'bump': fx.kick(3); sfx.bump(); break;
     }
   },
-};
+}; }
+
+export const kartRenderer = make('kart');
+export const boatRenderer = make('boat');
+export const bikeRenderer = make('bike');
