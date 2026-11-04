@@ -9,7 +9,7 @@ Read PROGRESS.md and docs/GAME_AUDIT.md first. State: exactly ten games; Kart Ch
 
 ## Next (priority order)
 1. Polish the remaining eight games: Chaos Rush tracks/camera, Family Board Party (dice/board interactivity, bonus mini-games), Trap Builders flow, Bumper / Floor Is Lava / Hot Potato feel; original per-game sound.
-2. Browser tests for the tournament UI (league, multi-day, resume), per-game "play to the end" runs, and a WebSocket load test with many rooms.
+2. Browser test for tournament resume, per-game "play to the end" runs, and a WebSocket load test with many rooms.
 3. Team tournaments, cosmetic prizes beyond trophies, chaos powers for Kart / Soccer / Hockey / Rush / Trap Builders / Board.
 4. Kart podium scene and 3D polish; performance budget measured on a real phone.
 5. Accounts: password reset, Google login, XP / cosmetics profile card.

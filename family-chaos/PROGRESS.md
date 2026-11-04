@@ -21,19 +21,19 @@ The old 30-game library is kept on the git branch `backup/pre-3.0-422a138`.
 | 5 Design system | "sticker-book arcade" (docs/DESIGN_SYSTEM.md), drawn icons, console-style lobby with ten tiles, keyboard + gamepad navigation, GSAP transitions | done (a8269ed); layout fixed for TV/PC sizes in this stage |
 | 6 Controllers | accurate stick, multi-touch, pointer capture, no scroll, L/R + size options, rotate, reconnect; S25-Ultra-sized viewport emulation (412×891 / 891×412) | done; **emulation only** |
 | 7 Accounts + GOD ADMIN | guest/account, stats, achievements, trophies; owner verified server-side; 19 powers; game-changing powers only in party rooms with visible chaos mode, refused during tournaments | done, unit + e2e tested; needs `DATABASE_URL` on Render |
-| 8 Tournaments | party, knockout, league, multi-day; manual/random/mixed picks; points table; finals; trophies; hold/skip; persisted in the database and resumable | done, unit-tested (PGlite); **browser flow for league/multi-day not e2e-tested** |
+| 8 Tournaments | party, knockout, league, multi-day; manual/random/mixed picks; points table; finals; trophies; hold/skip; persisted in the database and resumable | done, unit-tested (PGlite); browser flow for league + multi-day hold e2e-tested (multiplayer.spec); resume-from-database flow only unit-tested |
 | 9 Tests | see below | done for what is listed |
 
 ## Test status (last full run on this build)
 * `tsc --noEmit`: clean. Unit (vitest): **14 files, 113 tests pass**.
 * Browser (Playwright, Chromium, CDP touch emulation), run per spec file: controller 13/13, controls 3/3, devices 3/3, games-input 1/1
-  (every game: two phones, every control reaches the server, both players in the match, results, back to the lobby), kart3d 3/3, multiplayer 5/5, network 6/6, accounts 4/4 → **38/38**.
+  (every game: two phones, every control reaches the server, both players in the match, results, back to the lobby), kart3d 3/3, multiplayer 7/7, network 6/6, accounts 4/4 → **38/38**, plus league and multi-day tournament flows (2 more, 40 total).
 * Failures found and fixed this stage: selected tile's endless wiggle made clicks "unstable" (now plays twice); lobby start button overflowed the fold at 1920×1080 with the long "needs 2 players" text; hockey touchpad test assumed a relative stick; a joystick test assumed the round was still running after the host lagged.
 * Not tested: real phones (tilt direction, wheel feel, 3D frame rate on a real GPU), the live Render site, Postgres (unit tests use PGlite), many-room load beyond the earlier local checks.
 
 ## Honest remaining list
 * Remaining-eight-game polish: Chaos Rush tracks/camera, Family Board Party interactivity and bonus mini-games, Trap Builders flow, original per-game sound.
-* Tournaments: team tournaments, cosmetic prizes beyond trophies; e2e for league / multi-day / resume.
+* Tournaments: team tournaments, cosmetic prizes beyond trophies; browser test for resume.
 * Chaos powers for Kart, Soccer, Hockey, Rush, Trap Builders, Board (only cosmetic powers there).
 * Kart podium scene and extra 3D polish; a performance budget test on a real phone.
 * Render: set `DATABASE_URL` (free Postgres) for accounts, owner and saved tournaments; without it those are off (see docs/DEPLOY.md).

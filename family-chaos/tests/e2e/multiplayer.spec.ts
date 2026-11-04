@@ -190,3 +190,36 @@ test('party tournament: 3 games in a row, points panel, skip to the next game, c
   await expect(h.getByTestId('start-btn')).toBeVisible();
   await expect(h.getByTestId('tour-panel')).toHaveCount(0);
 });
+
+test('league tournament from hand-picked games: each game is played twice, points table after every round, champion at the end', async ({ browser }) => {
+  test.setTimeout(180_000);
+  const { h, code } = await hostPage(browser);
+  for (const n of ['One', 'Two', 'Three']) await phone(browser, code, n);
+  await h.getByTestId('tour-custom').click();
+  for (const g of ['bumper', 'vanish']) await h.locator(`.lobby__games [data-game="${g}"]`).click();
+  await h.getByTestId('tour-custom-league').click();
+  const rounds = 4; // 2 games x 2 rounds
+  for (let r = 0; r < rounds; r++) {
+    await waitPlaying(h);
+    await h.getByRole('button', { name: /End round/ }).click();
+    await expect(h.getByTestId('tour-panel')).toBeVisible();
+    if (r < rounds - 1) await h.getByTestId('tour-skip').click();
+  }
+  await expect(h.getByTestId('tour-champion')).toBeVisible();
+  await h.getByTestId('lobby-btn').click();
+  await expect(h.getByTestId('start-btn')).toBeVisible();
+});
+
+test('multi-day tournament can be put on hold after a round and shows the hold state', async ({ browser }) => {
+  test.setTimeout(120_000);
+  const { h, code } = await hostPage(browser);
+  for (const n of ['One', 'Two']) await phone(browser, code, n);
+  await h.getByTestId('tour-custom').click();
+  for (const g of ['bumper', 'vanish']) await h.locator(`.lobby__games [data-game="${g}"]`).click();
+  await h.getByTestId('tour-custom-multiday').click();
+  await waitPlaying(h);
+  await h.getByRole('button', { name: /End round/ }).click();
+  await expect(h.getByTestId('tour-panel')).toBeVisible();
+  await h.getByTestId('tour-hold').click();
+  await expect(h.getByTestId('tour-hold')).toBeVisible();
+});
