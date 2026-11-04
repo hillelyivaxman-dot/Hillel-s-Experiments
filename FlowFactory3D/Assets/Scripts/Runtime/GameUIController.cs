@@ -32,6 +32,7 @@ namespace FlowFactory
         public event Action SoundToggled;
         public event Action VolumeCycled;
         public event Action FpsToggled;
+        public event Action FrameRateToggled;
         public event Action ProgressResetConfirmed;
         /// <summary>Raised for every button press so the app can play a click.</summary>
         public event Action AnyButton;
@@ -74,6 +75,7 @@ namespace FlowFactory
         private Button soundButton;
         private Button volumeButton;
         private Button fpsButton;
+        private Button frameRateButton;
         private Button resetProgressButton;
         private bool resetArmed;
 
@@ -142,6 +144,7 @@ namespace FlowFactory
                 bgRect.offsetMin = Vector2.zero;
                 bgRect.offsetMax = Vector2.zero;
             }
+            rect.gameObject.AddComponent<ScreenFx>();
             return rect.gameObject;
         }
 
@@ -271,16 +274,19 @@ namespace FlowFactory
             Ui.AddShadow(title, 6f, 0.5f);
 
             soundButton = Btn("Sound", t, "", Ui.Secondary, 54, null, () => { if (SoundToggled != null) SoundToggled(); });
-            Ui.PlaceCentered((RectTransform)soundButton.transform, new Vector2(0.5f, 0.7f), new Vector2(760f, 160f), Vector2.zero);
+            Ui.PlaceCentered((RectTransform)soundButton.transform, new Vector2(0.5f, 0.74f), new Vector2(760f, 150f), Vector2.zero);
 
             volumeButton = Btn("Volume", t, "", Ui.Secondary, 54, null, () => { if (VolumeCycled != null) VolumeCycled(); });
-            Ui.PlaceCentered((RectTransform)volumeButton.transform, new Vector2(0.5f, 0.7f), new Vector2(760f, 160f), new Vector2(0f, -200f));
+            Ui.PlaceCentered((RectTransform)volumeButton.transform, new Vector2(0.5f, 0.74f), new Vector2(760f, 150f), new Vector2(0f, -175f));
 
-            fpsButton = Btn("Fps", t, "", Ui.Secondary, 46, null, () => { if (FpsToggled != null) FpsToggled(); });
-            Ui.PlaceCentered((RectTransform)fpsButton.transform, new Vector2(0.5f, 0.7f), new Vector2(760f, 140f), new Vector2(0f, -400f));
+            frameRateButton = Btn("FrameRate", t, "", Ui.Secondary, 46, null, () => { if (FrameRateToggled != null) FrameRateToggled(); });
+            Ui.PlaceCentered((RectTransform)frameRateButton.transform, new Vector2(0.5f, 0.74f), new Vector2(760f, 150f), new Vector2(0f, -350f));
 
-            resetProgressButton = Btn("ResetProgress", t, "RESET LEVELS", Ui.Danger, 46, OnResetProgressPressed, null);
-            Ui.PlaceCentered((RectTransform)resetProgressButton.transform, new Vector2(0.5f, 0.7f), new Vector2(760f, 140f), new Vector2(0f, -590f));
+            fpsButton = Btn("Fps", t, "", Ui.Secondary, 42, null, () => { if (FpsToggled != null) FpsToggled(); });
+            Ui.PlaceCentered((RectTransform)fpsButton.transform, new Vector2(0.5f, 0.74f), new Vector2(760f, 120f), new Vector2(0f, -510f));
+
+            resetProgressButton = Btn("ResetProgress", t, "RESET LEVELS", Ui.Danger, 44, OnResetProgressPressed, null);
+            Ui.PlaceCentered((RectTransform)resetProgressButton.transform, new Vector2(0.5f, 0.74f), new Vector2(760f, 130f), new Vector2(0f, -655f));
 
             Text note = Ui.NewLabel("Note", t, "Ads and purchases in this build are TEST ONLY.\nNo real money is charged.", 32, Ui.TextDim, TextAnchor.MiddleCenter, FontStyle.Normal);
             Ui.PlaceCentered(note.rectTransform, new Vector2(0.5f, 0.2f), new Vector2(900f, 110f), Vector2.zero);
@@ -437,19 +443,20 @@ namespace FlowFactory
             }
         }
 
-        public void ShowSettings(ProgressData progress, bool fpsOn)
+        public void ShowSettings(ProgressData progress, bool fpsOn, bool smooth60)
         {
             HideAll();
             settingsScreen.SetActive(true);
-            RefreshSettings(progress, fpsOn);
+            RefreshSettings(progress, fpsOn, smooth60);
         }
 
-        public void RefreshSettings(ProgressData progress, bool fpsOn)
+        public void RefreshSettings(ProgressData progress, bool fpsOn, bool smooth60)
         {
             Ui.SetText(soundButton, progress.SoundOn ? "Sound: ON" : "Sound: OFF");
             string[] names = { "Low", "Medium", "High" };
             Ui.SetText(volumeButton, "Volume: " + names[Mathf.Clamp(progress.VolumeStep, 0, 2)]);
             volumeButton.interactable = progress.SoundOn;
+            Ui.SetText(frameRateButton, smooth60 ? "Frame rate: 60 (smooth)" : "Frame rate: 30 (battery)");
             fpsButton.gameObject.SetActive(FpsCounter.Available);
             Ui.SetText(fpsButton, fpsOn ? "FPS display: ON" : "FPS display: OFF");
             resetArmed = false;

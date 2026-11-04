@@ -80,6 +80,7 @@ namespace FlowFactory
         {
             RectTransform rect = Ui.NewRect(name, safeRoot);
             Ui.Stretch(rect);
+            rect.gameObject.AddComponent<ScreenFx>().Pop = name != "Shop";
             Image bg = Ui.NewImage("Background", rect, background);
             bg.raycastTarget = opaqueToTaps;
             bg.rectTransform.anchorMin = new Vector2(-1f, -1f);

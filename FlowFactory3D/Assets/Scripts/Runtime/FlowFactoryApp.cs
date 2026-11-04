@@ -51,6 +51,9 @@ namespace FlowFactory
         private int lastScreenWidth;
         private int lastScreenHeight;
 
+        private const string Smooth60Key = "ff.smooth60";
+        private bool smooth60;
+
         private static FlowFactoryApp instance;
 
         // ---------------------------------------------------------------- setup
@@ -64,13 +67,24 @@ namespace FlowFactory
             }
             instance = this;
 
-            Application.targetFrameRate = Application.isMobilePlatform ? 30 : 60;
+            smooth60 = PlayerPrefs.GetInt(Smooth60Key, 0) == 1;
+            ApplyFrameRate();
             if (Application.isMobilePlatform)
             {
                 QualitySettings.vSyncCount = 0;
                 Screen.sleepTimeout = SleepTimeout.NeverSleep;
                 Screen.orientation = ScreenOrientation.Portrait;
             }
+            // The scene is simple: no shadows, no MSAA, and a render-resolution cap on very dense screens.
+            QualitySettings.shadows = ShadowQuality.Disable;
+            QualitySettings.antiAliasing = 0;
+#if UNITY_ANDROID && !UNITY_EDITOR
+            if (Screen.width > 1080)
+            {
+                int height = Mathf.RoundToInt(Screen.height * 1080f / Screen.width);
+                Screen.SetResolution(1080, height, true);
+            }
+#endif
 
             levels = LevelRepository.LoadAll();
             save = new SaveService(new PlayerPrefsStore(), levels.Count);
@@ -134,6 +148,18 @@ namespace FlowFactory
             };
 
             ShowMenu();
+
+            string tourFolder;
+            if (ScreenshotTour.Requested(out tourFolder))
+            {
+                StartCoroutine(ScreenshotTour.Run(this, tourFolder));
+            }
+        }
+
+        private void ApplyFrameRate()
+        {
+            // 30 fps is stable and cool on mid-range phones; 60 fps is an opt-in for strong devices.
+            Application.targetFrameRate = smooth60 ? 60 : (Application.isMobilePlatform ? 30 : 60);
         }
 
         private void SetUpCamera()
@@ -182,19 +208,26 @@ namespace FlowFactory
                 save.Data.SoundOn = !save.Data.SoundOn;
                 audioService.Enabled = save.Data.SoundOn;
                 save.Save();
-                ui.RefreshSettings(save.Data, fps.Visible);
+                ui.RefreshSettings(save.Data, fps.Visible, smooth60);
             };
             ui.VolumeCycled += () =>
             {
                 save.Data.VolumeStep = (save.Data.VolumeStep + 1) % 3;
                 audioService.VolumeStep = save.Data.VolumeStep;
                 save.Save();
-                ui.RefreshSettings(save.Data, fps.Visible);
+                ui.RefreshSettings(save.Data, fps.Visible, smooth60);
+            };
+            ui.FrameRateToggled += () =>
+            {
+                smooth60 = !smooth60;
+                PlayerPrefs.SetInt(Smooth60Key, smooth60 ? 1 : 0);
+                ApplyFrameRate();
+                ui.RefreshSettings(save.Data, fps.Visible, smooth60);
             };
             ui.FpsToggled += () =>
             {
                 fps.Visible = !fps.Visible;
-                ui.RefreshSettings(save.Data, fps.Visible);
+                ui.RefreshSettings(save.Data, fps.Visible, smooth60);
             };
             ui.ProgressResetConfirmed += () =>
             {
@@ -254,7 +287,7 @@ namespace FlowFactory
         private void ShowSettings()
         {
             screen = AppScreen.Settings;
-            ui.ShowSettings(save.Data, fps.Visible);
+            ui.ShowSettings(save.Data, fps.Visible, smooth60);
         }
 
         private void LeaveLevel()
@@ -520,6 +553,7 @@ namespace FlowFactory
             }
 
             audioService.Play(Sfx.Run);
+            grid.StartFlow(result, manager.Rotations);
             grid.HideHint();
             ui.SetRunPulse(false);
             ui.HideToast();
@@ -535,6 +569,7 @@ namespace FlowFactory
             }
 
             StopRun();
+            grid.StopFlow();
             awakening.Clear();
             telemetry.Log("level_retry", "level=" + manager.Level.id + " reason=reset");
             manager.ResetLevel();
@@ -568,6 +603,7 @@ namespace FlowFactory
                 audioService.Play(Sfx.Deliver);
                 audioService.Play(Sfx.Success);
                 manager.CompleteRun();
+                grid.StopFlow();
 
                 lastReward = economy.AwardLevel(level, manager.TapCount);
                 money.RefreshBadges();
@@ -597,6 +633,7 @@ namespace FlowFactory
             else
             {
                 yield return FailureRoutine(result);
+                grid.StopFlow();
                 manager.CompleteRun();
                 yield return new WaitForSeconds(0.6f);
                 manager.ReturnToEditing();
@@ -641,6 +678,117 @@ namespace FlowFactory
                 default: return "The parcel got stuck. Try again!";
             }
         }
+
+        // ---------------------------------------------------------------- automation
+        // Used by the PlayMode tests and the screenshot tour. The game itself never calls these.
+
+        public static FlowFactoryApp Instance
+        {
+            get { return instance; }
+        }
+
+        public int LevelCount
+        {
+            get { return levels.Count; }
+        }
+
+        public SaveService Progress
+        {
+            get { return save; }
+        }
+
+        public PlayerEconomy Economy
+        {
+            get { return economy; }
+        }
+
+        public string ScreenName
+        {
+            get { return screen.ToString(); }
+        }
+
+        public LevelState CurrentLevelState
+        {
+            get { return manager.State; }
+        }
+
+        public int CurrentLevelId
+        {
+            get { return manager.Level != null ? manager.Level.id : 0; }
+        }
+
+        public int CurrentTapCount
+        {
+            get { return manager.TapCount; }
+        }
+
+        public bool SuccessCardOpen
+        {
+            get { return ui.OverlayOpen; }
+        }
+
+        public bool AnyMoneyOverlayOpen
+        {
+            get { return money.OverlayOpen; }
+        }
+
+        public void Automation_ResetEverything()
+        {
+            save.ResetAll();
+            ThemeCatalog.Apply(save.Data.Theme, save.Data.Parcel);
+            parcel.Build();
+            dailyOffered = true;
+            ShowMenu();
+        }
+
+        public void Automation_UnlockAll()
+        {
+            save.Data.HighestUnlocked = levels.Count;
+            save.Save();
+        }
+
+        public void Automation_ShowMenu() { ShowMenu(); }
+        public void Automation_ShowLevelSelect() { ShowLevelSelect(); }
+        public void Automation_ShowSettings() { ShowSettings(); }
+        public void Automation_OpenLevel(int levelId) { StartLevel(levelId - 1); }
+        public void Automation_OpenShop(ShopTab tab) { money.OpenShop(tab); }
+        public void Automation_ShowDailyGift() { money.ShowDailyGift(); }
+        public void Automation_Next() { StartLevel(levelIndex + 1); }
+        public void Automation_PressRun() { OnRun(); }
+        public void Automation_PressHint() { OnHint(); }
+
+        /// <summary>Taps every belt that still faces the wrong way (through the normal rotate path), then presses Run.</summary>
+        public void Automation_ApplySolutionTaps()
+        {
+            LevelData level = manager.Level;
+            for (int i = 0; i < level.tiles.Length; i++)
+            {
+                TileSpec tile = level.tiles[i];
+                if (!tile.rotatable) continue;
+                int guard = 0;
+                while (guard++ < 4 && TileGeometry.Openings(tile.kind, manager.Rotations[i]) != TileGeometry.Openings(tile.kind, level.solution[i]))
+                {
+                    if (!manager.TryRotate(i % level.width, i / level.width)) break;
+                }
+            }
+        }
+
+        /// <summary>Solves the open level like a player and waits until the success card is showing. Returns false on timeout.</summary>
+        public IEnumerator Automation_SolveAndWait(float timeoutSeconds = 60f)
+        {
+            Automation_ApplySolutionTaps();
+            yield return null;
+            OnRun();
+            float waited = 0f;
+            while (!ui.OverlayOpen && waited < timeoutSeconds)
+            {
+                waited += Time.unscaledDeltaTime;
+                yield return null;
+            }
+            AutomationResult = ui.OverlayOpen;
+        }
+
+        public bool AutomationResult { get; private set; }
 
         // ---------------------------------------------------------------- lifecycle
 

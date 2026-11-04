@@ -127,6 +127,13 @@ namespace FlowFactory.EditorTools
             PlayerSettings.SetScriptingBackend(NamedBuildTarget.Android, ScriptingImplementation.IL2CPP);
             PlayerSettings.Android.targetArchitectures = AndroidArchitecture.ARM64;
             PlayerSettings.Android.minSdkVersion = AndroidSdkVersions.AndroidApiLevel26;
+            PlayerSettings.Android.targetSdkVersion = AndroidSdkVersions.AndroidApiLevelAuto;
+            PlayerSettings.SetManagedStrippingLevel(NamedBuildTarget.Android, ManagedStrippingLevel.Medium);
+            PlayerSettings.SetUseDefaultGraphicsAPIs(BuildTarget.Android, false);
+            PlayerSettings.SetGraphicsAPIs(BuildTarget.Android, new[] { UnityEngine.Rendering.GraphicsDeviceType.OpenGLES3, UnityEngine.Rendering.GraphicsDeviceType.Vulkan });
+            PlayerSettings.bundleVersion = "0.3.0";
+            PlayerSettings.Android.bundleVersionCode = 3;
+            PlayerSettings.gpuSkinning = false;
 
             GenerateLevels(false);
             EnsureMainScene();
@@ -202,6 +209,41 @@ namespace FlowFactory.EditorTools
                 Debug.LogError("[FlowFactory] Android build failed: " + report.summary.result + ", errors: " + report.summary.totalErrors);
             }
             return ok;
+        }
+
+        // ------------------------------------------------------------ diagnostics
+
+        /// <summary>Prints (and saves) what this Unity installation offers, so problems can be diagnosed from a copy of the text.</summary>
+        [MenuItem("Flow Factory/Environment Report")]
+        public static void EnvironmentReport()
+        {
+            var sb = new System.Text.StringBuilder();
+            sb.AppendLine("FlowFactory environment report " + DateTime.Now.ToString("s"));
+            sb.AppendLine("Unity " + Application.unityVersion + " on " + Application.platform);
+            sb.AppendLine("Active build target: " + EditorUserBuildSettings.activeBuildTarget);
+            sb.AppendLine("Android Build Support installed: " + BuildPipeline.IsBuildTargetSupported(BuildTargetGroup.Android, BuildTarget.Android));
+            sb.AppendLine("Render pipeline asset: " + (UnityEngine.Rendering.GraphicsSettings.defaultRenderPipeline != null ? UnityEngine.Rendering.GraphicsSettings.defaultRenderPipeline.name : "none (Built-in)"));
+            sb.AppendLine("Color space: " + PlayerSettings.colorSpace);
+            sb.AppendLine("Orientation: " + PlayerSettings.defaultInterfaceOrientation);
+            sb.AppendLine("Android scripting backend: " + PlayerSettings.GetScriptingBackend(NamedBuildTarget.Android));
+            sb.AppendLine("Android min SDK: " + PlayerSettings.Android.minSdkVersion + ", architectures: " + PlayerSettings.Android.targetArchitectures);
+            sb.AppendLine("Application id: " + PlayerSettings.GetApplicationIdentifier(NamedBuildTarget.Android));
+            sb.AppendLine("Scenes in build: " + EditorBuildSettings.scenes.Length);
+            sb.AppendLine("Level assets: " + AssetDatabase.FindAssets("t:LevelDefinition").Length + " (catalog has " + LevelCatalog.Count + ")");
+            sb.AppendLine("Level problems: " + ValidateLevels());
+            string text = sb.ToString();
+            Debug.Log(text);
+            Directory.CreateDirectory("Logs");
+            File.WriteAllText("Logs/flowfactory_environment.txt", text);
+        }
+
+        [MenuItem("Flow Factory/Capture Screenshot Tour (Game view 1080x1920)")]
+        public static void CaptureScreenshotTour()
+        {
+            string folder = Path.GetFullPath("Logs/ScreenshotTour");
+            SessionState.SetString("ff.tour", folder);
+            Debug.Log("[FlowFactory] Screenshot tour starts. Output: " + folder);
+            EditorApplication.EnterPlaymode();
         }
 
         private static void EnsureFolder(string path)

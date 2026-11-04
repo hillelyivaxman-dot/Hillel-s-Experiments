@@ -14,10 +14,33 @@ namespace FlowFactory
 
         public void Burst(Vector3 origin)
         {
+            StartCoroutine(GlowRing(origin));
             for (int i = 0; i < 28; i++)
             {
                 StartCoroutine(Piece(origin));
             }
+        }
+
+        /// <summary>A golden light pulse that expands and fades on the floor where the parcel arrived.</summary>
+        private IEnumerator GlowRing(Vector3 origin)
+        {
+            Material shared = GameMaterials.GetBlobShadow();
+            if (shared == null) yield break;
+
+            var material = new Material(shared);
+            GameObject ring = Primitives.Create(PrimitiveType.Quad, transform, new Vector3(origin.x, 0.13f, origin.z), Vector3.one * 0.5f,
+                material, Quaternion.Euler(90f, 0f, 0f), "GlowRing");
+            const float life = 0.8f;
+            for (float t = 0f; t < life; t += Time.deltaTime)
+            {
+                float k = t / life;
+                float size = Mathf.Lerp(0.6f, 3.6f, 1f - (1f - k) * (1f - k));
+                ring.transform.localScale = new Vector3(size, size, 1f);
+                material.SetColor("_Color", new Color(1f, 0.85f, 0.35f, 0.85f * (1f - k)));
+                yield return null;
+            }
+            Destroy(ring);
+            Destroy(material);
         }
 
         public void Clear()

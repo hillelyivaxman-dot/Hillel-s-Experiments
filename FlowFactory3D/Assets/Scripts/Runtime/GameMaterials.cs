@@ -67,6 +67,30 @@ namespace FlowFactory
             return material;
         }
 
+        /// <summary>Soft contact shadow material (alpha blended). Falls back to a plain dark material if unsupported.</summary>
+        public static Material GetBlobShadow()
+        {
+            Material material;
+            if (Cache.TryGetValue("blob", out material) && material != null)
+            {
+                return material;
+            }
+
+            Shader blob = Resources.Load<Shader>("Shaders/FlowFactoryBlob");
+            if (blob != null && blob.isSupported)
+            {
+                material = new Material(blob) { name = "FF_Blob" };
+                material.SetColor("_Color", new Color(0f, 0f, 0f, 0.42f));
+                material.SetTexture("_MainTex", ProceduralTextures.Get(TextureKind.Blob));
+            }
+            else
+            {
+                material = null; // callers skip the shadow when there is no blend shader
+            }
+            Cache["blob"] = material;
+            return material;
+        }
+
         /// <summary>Re-reads the ground colours after the theme changed.</summary>
         public static void RefreshGround()
         {
@@ -128,6 +152,64 @@ namespace FlowFactory
             meshRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             meshRenderer.receiveShadows = false;
             return go;
+        }
+
+        private static bool? meshesReadable;
+        private static Vector2? topUvSigns;
+
+        /// <summary>
+        /// True when the built-in primitive meshes can be read on the CPU (needed to merge meshes at runtime).
+        /// If not, the game simply keeps one object per part.
+        /// </summary>
+        public static bool MeshesReadable
+        {
+            get
+            {
+                if (!meshesReadable.HasValue)
+                {
+                    meshesReadable = GetMesh(PrimitiveType.Cube).isReadable && GetMesh(PrimitiveType.Cylinder).isReadable && GetMesh(PrimitiveType.Sphere).isReadable;
+                }
+                return meshesReadable.Value;
+            }
+        }
+
+        /// <summary>
+        /// Direction in which the cube's top-face texture coordinates grow: x = sign of du/dx, y = sign of dv/dz.
+        /// Measured from the mesh so scrolling belts always move the right way; (1, 1) if the mesh is unreadable.
+        /// </summary>
+        public static Vector2 CubeTopUvSigns
+        {
+            get
+            {
+                if (!topUvSigns.HasValue)
+                {
+                    Vector2 result = Vector2.one;
+                    Mesh cube = GetMesh(PrimitiveType.Cube);
+                    if (cube.isReadable)
+                    {
+                        Vector3[] vertices = cube.vertices;
+                        Vector3[] normals = cube.normals;
+                        Vector2[] uvs = cube.uv;
+                        int minX = -1, maxX = -1, minZ = -1, maxZ = -1;
+                        for (int i = 0; i < vertices.Length && i < normals.Length && i < uvs.Length; i++)
+                        {
+                            if (normals[i].y < 0.9f) continue;
+                            if (minX < 0 || vertices[i].x < vertices[minX].x) minX = i;
+                            if (maxX < 0 || vertices[i].x > vertices[maxX].x) maxX = i;
+                            if (minZ < 0 || vertices[i].z < vertices[minZ].z) minZ = i;
+                            if (maxZ < 0 || vertices[i].z > vertices[maxZ].z) maxZ = i;
+                        }
+                        if (minX >= 0)
+                        {
+                            float du = uvs[maxX].x - uvs[minX].x;
+                            float dv = uvs[maxZ].y - uvs[minZ].y;
+                            result = new Vector2(du < 0f ? -1f : 1f, dv < 0f ? -1f : 1f);
+                        }
+                    }
+                    topUvSigns = result;
+                }
+                return topUvSigns.Value;
+            }
         }
 
         private static Mesh GetMesh(PrimitiveType type)

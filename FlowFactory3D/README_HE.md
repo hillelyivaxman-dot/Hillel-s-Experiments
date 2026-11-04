@@ -1,4 +1,4 @@
-# FLOW FACTORY 3D — גרסה 0.2
+# FLOW FACTORY 3D — גרסה 0.3
 
 משחק חידות תלת־ממדי (Unity 6.3 LTS, C#). מסובבים אריחי מסוע, לוחצים **RUN**, וחבילה נעה לפי חיבורי המסועים עד היעד.
 ממשק המשחק באנגלית פשוטה; כל הקוד כתוב מפרימיטיבים של Unity, בלי נכסים בתשלום ובלי רכיבי ענן. **פרסומות ורכישות הן מדומות בלבד (TEST, בלי SDK ובלי כסף אמיתי)** — ראה פרק "כלכלה, מודעות ורכישות".
@@ -64,6 +64,11 @@ FlowFactory3D/
 - צלילים מיוצרים בקוד; Safe Area; ממשק לפי 1080x1920 עם `CanvasScaler`; כפתורים גדולים.
 - תצוגת FPS רק בעורך/Development build. `LocalTelemetry` כותב לקובץ מקומי בלבד, בלי מזהים אישיים:
   `session_start, tutorial_start, tutorial_complete, level_start, level_success, level_retry, session_end`.
+
+## v0.3: אימות אמיתי ב-Unity (חשוב לקרוא)
+
+הדו"ח המלא: `docs/V0_3_REPORT_HE.md`. בקצרה: **עדיין לא הורץ ב-Unity** (לא היה חיבור לעורך). נוספו מסועים נעים, צל לחבילה, אפקט סיום, אנימציות כפתורים ומעברים, איחוד רשתות, הגדרות Android, בדיקות PlayMode, סיור צילומי מסך ודוח סביבה.
+סדר מומלץ אצלך: `Flow Factory > Setup Project` → `Environment Report` → Test Runner (EditMode ואז PlayMode) → `Capture Screenshot Tour` → `Build Android APK (development)`. סקריפטים: `Tools/UnityChecks/`.
 
 ## גרסה 0.2: שלבים וכלכלה
 

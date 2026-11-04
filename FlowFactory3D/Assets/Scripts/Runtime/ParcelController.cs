@@ -19,11 +19,23 @@ namespace FlowFactory
             {
                 Destroy(body.gameObject);
             }
+            Transform oldShadow = transform.Find("Shadow");
+            if (oldShadow != null)
+            {
+                Destroy(oldShadow.gameObject);
+            }
             body = new GameObject("Body").transform;
             body.SetParent(transform, false);
             Primitives.Create(PrimitiveType.Cube, body, new Vector3(0f, 0.17f, 0f), new Vector3(0.36f, 0.34f, 0.36f), Palette.Parcel, "Box");
             Primitives.Create(PrimitiveType.Cube, body, new Vector3(0f, 0.17f, 0f), new Vector3(0.38f, 0.07f, 0.38f), Palette.ParcelTape, "TapeH");
             Primitives.Create(PrimitiveType.Cube, body, new Vector3(0f, 0.17f, 0f), new Vector3(0.07f, 0.36f, 0.38f), Palette.ParcelTape, "TapeV");
+            // A soft contact shadow on the belt under the parcel; it stays flat while the box wobbles or falls.
+            Material blob = GameMaterials.GetBlobShadow();
+            if (blob != null)
+            {
+                Primitives.Create(PrimitiveType.Quad, transform, new Vector3(0f, -GridManager.ParcelHeight + 0.125f, 0f), new Vector3(0.62f, 0.62f, 1f),
+                    blob, Quaternion.Euler(90f, 0f, 0f), "Shadow");
+            }
             // A white shipping label with a dark barcode line on the side.
             Primitives.Create(PrimitiveType.Cube, body, new Vector3(0.185f, 0.16f, 0.05f), new Vector3(0.02f, 0.14f, 0.18f), Palette.ParcelLabel, "Label");
             Primitives.Create(PrimitiveType.Cube, body, new Vector3(0.195f, 0.14f, 0.05f), new Vector3(0.02f, 0.03f, 0.13f), Palette.Frame, "Barcode");

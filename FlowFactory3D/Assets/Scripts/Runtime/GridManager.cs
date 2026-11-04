@@ -178,6 +178,37 @@ namespace FlowFactory
             if (tile != null) tile.RotateStep();
         }
 
+        /// <summary>Scrolls the belt rollers along a route while the parcel travels it.</summary>
+        public void StartFlow(RouteResult route, int[] rotations)
+        {
+            StopFlow();
+            IList<GridPoint> path = route.Path;
+            for (int k = 0; k < path.Count; k++)
+            {
+                ConveyorTile tile = tiles[level.IndexOf(path[k].x, path[k].y)];
+                if (tile == null) continue;
+                Direction? entry = k > 0 ? DirectionBetween(path[k - 1], path[k]).Opposite() : (Direction?)null;
+                Direction? exit = k < path.Count - 1 ? DirectionBetween(path[k], path[k + 1]) : (Direction?)null;
+                tile.SetFlow(entry, exit, rotations[level.IndexOf(path[k].x, path[k].y)]);
+            }
+        }
+
+        public void StopFlow()
+        {
+            if (tiles == null) return;
+            foreach (ConveyorTile tile in tiles)
+            {
+                if (tile != null) tile.StopFlow();
+            }
+        }
+
+        private static Direction DirectionBetween(GridPoint from, GridPoint to)
+        {
+            if (to.x > from.x) return Direction.East;
+            if (to.x < from.x) return Direction.West;
+            return to.y > from.y ? Direction.South : Direction.North;
+        }
+
         public void FlashCell(GridPoint p, Color color, float seconds)
         {
             if (level == null || !level.InBounds(p.x, p.y)) return;

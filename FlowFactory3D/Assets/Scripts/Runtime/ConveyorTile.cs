@@ -18,7 +18,23 @@ namespace FlowFactory
         public TileKind Kind { get; private set; }
         public bool Rotatable { get; private set; }
 
+        /// <summary>How fast belt rollers scroll while a parcel is on the route (texture units per second).</summary>
+        private const float FlowUvSpeed = 1.6f;
+
+        private sealed class BeltPart
+        {
+            public MeshRenderer Renderer;
+            public Vector3 LocalDirection;
+            public bool AlongZ;
+            public float Flow;
+            public float Offset;
+        }
+
         private Transform visual;
+        private readonly List<BeltPart> belts = new List<BeltPart>();
+        private readonly List<Mesh> mergedMeshes = new List<Mesh>();
+        private MaterialPropertyBlock block;
+        private bool flowing;
         private readonly List<MeshRenderer> renderers = new List<MeshRenderer>();
         private readonly List<Material> originals = new List<Material>();
         private float currentAngle;
@@ -53,12 +69,125 @@ namespace FlowFactory
                     break;
             }
 
+            MergeStaticParts();
             foreach (MeshRenderer r in visual.GetComponentsInChildren<MeshRenderer>())
             {
                 renderers.Add(r);
                 originals.Add(r.sharedMaterial);
             }
             SnapTo(rotation);
+        }
+
+        /// <summary>
+        /// Combines all parts that never move on their own into one mesh per material, which cuts the number of
+        /// draw calls on a phone from ~12 per tile to ~5. Belts stay separate because they scroll.
+        /// Skipped (harmlessly) if the primitive meshes are not readable.
+        /// </summary>
+        private void MergeStaticParts()
+        {
+            if (!Primitives.MeshesReadable)
+            {
+                return;
+            }
+
+            var groups = new Dictionary<Material, List<CombineInstance>>();
+            var consumed = new List<GameObject>();
+            foreach (MeshFilter filter in visual.GetComponentsInChildren<MeshFilter>())
+            {
+                if (filter.sharedMesh == null || filter.gameObject.name == "Belt") continue;
+                var meshRenderer = filter.GetComponent<MeshRenderer>();
+                List<CombineInstance> list;
+                if (!groups.TryGetValue(meshRenderer.sharedMaterial, out list))
+                {
+                    list = new List<CombineInstance>();
+                    groups[meshRenderer.sharedMaterial] = list;
+                }
+                list.Add(new CombineInstance
+                {
+                    mesh = filter.sharedMesh,
+                    transform = visual.worldToLocalMatrix * filter.transform.localToWorldMatrix
+                });
+                consumed.Add(filter.gameObject);
+            }
+
+            foreach (KeyValuePair<Material, List<CombineInstance>> pair in groups)
+            {
+                var mesh = new Mesh { name = "FF_TileMerged" };
+                mesh.CombineMeshes(pair.Value.ToArray(), true, true);
+                mergedMeshes.Add(mesh);
+
+                var go = new GameObject("Merged");
+                go.transform.SetParent(visual, false);
+                go.AddComponent<MeshFilter>().sharedMesh = mesh;
+                var meshRenderer = go.AddComponent<MeshRenderer>();
+                meshRenderer.sharedMaterial = pair.Key;
+                meshRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                meshRenderer.receiveShadows = false;
+            }
+
+            foreach (GameObject part in consumed)
+            {
+                part.SetActive(false);
+                Destroy(part);
+            }
+        }
+
+        private void OnDestroy()
+        {
+            foreach (Mesh mesh in mergedMeshes)
+            {
+                if (mesh != null) Destroy(mesh);
+            }
+        }
+
+        // ------------------------------------------------------------ belt flow
+
+        /// <summary>
+        /// Makes the belt rollers scroll along the parcel's route: towards the exit side, away from the entry side.
+        /// Sides are world directions; <paramref name="rotation"/> is this tile's current logical rotation.
+        /// </summary>
+        public void SetFlow(Direction? entrySide, Direction? exitSide, int rotation)
+        {
+            foreach (BeltPart part in belts)
+            {
+                Direction arm = LocalToDirection(part.LocalDirection).Rotate(rotation);
+                part.Flow = exitSide.HasValue && exitSide.Value == arm ? 1f : entrySide.HasValue && entrySide.Value == arm ? -1f : 0f;
+            }
+            flowing = belts.Count > 0;
+        }
+
+        public void StopFlow()
+        {
+            flowing = false;
+            foreach (BeltPart part in belts)
+            {
+                part.Flow = 0f;
+                part.Offset = 0f;
+                part.Renderer.SetPropertyBlock(null);
+            }
+        }
+
+        private static Direction LocalToDirection(Vector3 local)
+        {
+            if (local.z > 0.5f) return Direction.North;
+            if (local.z < -0.5f) return Direction.South;
+            return local.x > 0f ? Direction.East : Direction.West;
+        }
+
+        private void UpdateFlow()
+        {
+            if (block == null) block = new MaterialPropertyBlock();
+            Vector2 signs = Primitives.CubeTopUvSigns;
+            foreach (BeltPart part in belts)
+            {
+                if (part.Flow == 0f) continue;
+                // A feature moves along +axis when the texture offset moves against the uv slope.
+                float velocity = part.Flow * (part.AlongZ ? part.LocalDirection.z : part.LocalDirection.x);
+                part.Offset += -(part.AlongZ ? signs.y : signs.x) * velocity * FlowUvSpeed * Time.deltaTime;
+                part.Offset = Mathf.Repeat(part.Offset, 1f);
+                block.SetVector("_MainTex_ST", part.AlongZ ? new Vector4(1f, 1f, 0f, part.Offset) : new Vector4(1f, 1f, part.Offset, 0f));
+                part.Renderer.SetPropertyBlock(block);
+            }
         }
 
         /// <summary>Starts a smooth 90 degree clockwise turn.</summary>
@@ -92,6 +221,11 @@ namespace FlowFactory
 
         private void Update()
         {
+            if (flowing)
+            {
+                UpdateFlow();
+            }
+
             bool turning = !Mathf.Approximately(currentAngle, targetAngle);
             if (!turning && pulse <= 0f)
             {
@@ -156,7 +290,8 @@ namespace FlowFactory
             Vector3 railScale = alongZ ? new Vector3(0.05f, 0.10f, 0.54f) : new Vector3(0.54f, 0.10f, 0.05f);
 
             Box(direction * 0.25f + Vector3.up * 0.03f, frameScale, Palette.Frame, "Frame");
-            Box(direction * 0.25f + Vector3.up * 0.085f, beltScale, belt, "Belt", alongZ ? TextureKind.Rollers : TextureKind.RollersH);
+            GameObject beltObject = Box(direction * 0.25f + Vector3.up * 0.085f, beltScale, belt, "Belt", alongZ ? TextureKind.Rollers : TextureKind.RollersH);
+            belts.Add(new BeltPart { Renderer = beltObject.GetComponent<MeshRenderer>(), LocalDirection = direction, AlongZ = alongZ });
 
             bool skipPositive = skipRailToward.HasValue && Vector3.Dot(side, skipRailToward.Value) > 0.5f;
             bool skipNegative = skipRailToward.HasValue && Vector3.Dot(side, skipRailToward.Value) < -0.5f;

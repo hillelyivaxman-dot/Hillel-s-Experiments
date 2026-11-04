@@ -11,7 +11,8 @@ namespace FlowFactory
         RollersH,
         Wood,
         Hazard,
-        Grid
+        Grid,
+        Blob
     }
 
     /// <summary>Small textures drawn in code (no image files), created once and cached.</summary>
@@ -118,6 +119,13 @@ namespace FlowFactory
                     float edge = Mathf.Min(Mathf.Min(u, 1f - u), Mathf.Min(v, 1f - v));
                     float value = edge < 0.02f ? 0.78f : 0.94f + (Noise(x, y, 4) - 0.5f) * 0.08f;
                     return Gray(value);
+                }
+                case TextureKind.Blob:
+                {
+                    // Radial falloff in the alpha channel: a soft round contact shadow.
+                    float d = Mathf.Clamp01(Vector2.Distance(new Vector2(u, v), new Vector2(0.5f, 0.5f)) * 2f);
+                    float alpha = Mathf.Pow(1f - d, 1.6f);
+                    return new Color(1f, 1f, 1f, alpha);
                 }
             }
             return Color.white;

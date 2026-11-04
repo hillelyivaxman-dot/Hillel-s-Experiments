@@ -120,6 +120,7 @@ namespace FlowFactory
             AddShadow(image);
             var button = rect.gameObject.AddComponent<Button>();
             button.targetGraphic = image;
+            rect.gameObject.AddComponent<ButtonJuice>();
 
             ColorBlock colors = button.colors;
             colors.normalColor = Color.white;
