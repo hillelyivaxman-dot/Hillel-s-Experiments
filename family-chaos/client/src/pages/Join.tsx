@@ -17,7 +17,7 @@ type Hud = Record<string, string | number>;
 
 /** Phone: join form → personal lobby → controller → results. */
 export function Join({ initialCode }: { initialCode: string }) {
-  const { t } = useT();
+  const { t, lang } = useT();
   const [code, setCode] = useState(initialCode.toUpperCase());
   const [name, setName] = useState(savedProfile.name);
   const [avatar, setAvatar] = useState(savedProfile.avatar);
@@ -151,6 +151,7 @@ export function Join({ initialCode }: { initialCode: string }) {
   return (
     <div className={`phone ${playing ? 'phone--pad' : ''}`} style={{ ['--pc' as string]: meInfo.color }}>
       <ConnBanner status={status} />
+      {room.chaos && <div className="chaos-banner chaos-banner--phone" data-testid="chaos-banner"><Icon name="fire" size="1em" /> {lang === 'he' ? 'מצב כאוס' : 'CHAOS MODE'}</div>}
       {room.phase === 'lobby' && <PhoneLobby room={room} me={me!} conn={conn} act={act} isLeader={isLeader} />}
       {inMatch && !playing && <div className="center-screen"><CritterCanvas color={meInfo.color} variant={meInfo.avatar} size={140} /><p className="big-msg">{t('watchScreen')}</p></div>}
       {playing && <PhoneGame room={room} conn={conn} hud={hud} isLeader={isLeader} act={act} meId={me} />}
@@ -315,7 +316,7 @@ function PhoneIntro({ meta }: { meta: ReturnType<typeof getMeta> & object }) {
   const c = meta.controller;
   const legend: { icon?: string; label: string; color: string }[] = [];
   if (c.kind === 'wheel') legend.push({ label: lang === 'he' ? 'חצים: ימינה / שמאלה' : 'Arrows: left / right', color: '#8fa0ff' });
-  if (c.kind === 'stick') legend.push({ label: lang === 'he' ? 'ג׳ויסטיק: תזוזה' : 'Stick: move', color: '#8fa0ff' });
+  if (c.kind === 'stick') legend.push({ label: c.pointer ? (lang === 'he' ? 'מגע: המחבט הולך לאצבע' : 'Touch: the mallet follows your finger') : (lang === 'he' ? 'ג׳ויסטיק: תזוזה' : 'Stick: move'), color: '#8fa0ff' });
   if (c.kind === 'stick' || c.kind === 'wheel') for (const b of c.buttons) legend.push({ icon: b.icon, label: l(b.label), color: b.color });
   if (c.kind === 'tap') legend.push({ label: l(c.button.label), color: c.button.color });
   if (c.kind === 'choices') (c.labels ?? []).forEach((b, i) => legend.push({ label: l(b), color: c.colors?.[i] ?? '#fff' }));

@@ -27,8 +27,10 @@ export function lanIp(): string | null {
   return null;
 }
 
-export async function newHost(browser: Browser, base = HTTP) {
+export async function newHost(browser: Browser, base = HTTP, host3d = false) {
   const ctx = await browser.newContext({ viewport: { width: 1600, height: 900 }, locale: 'en-US', ignoreHTTPSErrors: true });
+  // software WebGL on several pages at once is slow: the host shows Kart Chaos on the 2D map unless a test asks for the 3D broadcast
+  await ctx.addInitScript((v) => { try { localStorage.setItem('fc.host3d', v); } catch { /* */ } }, host3d ? '1' : '0');
   const h = await ctx.newPage();
   const errors: string[] = [];
   const sockets: string[] = [];

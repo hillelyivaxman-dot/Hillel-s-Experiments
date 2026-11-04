@@ -12,6 +12,7 @@ import { Join } from './pages/Join';
 import { unlockAudio } from './sound';
 import { installCompat, isSupported } from './compat';
 import './styles.css';
+import './design.css';
 
 installCompat();
 

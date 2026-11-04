@@ -57,6 +57,8 @@ export interface GameInstance {
   onTap?(playerId: string, value: number, at: number): void;
   /** Serializable state sent to screens ~30 times per second. Keep it small. */
   snapshot(): unknown;
+  /** Owner chaos powers (speed, jump, size, teleport, invisible, swap). Return false when this game cannot apply the power. */
+  power?(playerId: string, kind: import('./powers').PlayerPower, secs: number): boolean;
   isOver(): boolean;
   /** Current ranking, best first. Called when the game ends (or is ended early). */
   standings(): StandingRow[];

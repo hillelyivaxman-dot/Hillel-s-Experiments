@@ -37,6 +37,26 @@ create table if not exists plays (
   at timestamptz not null default now()
 );
 create index if not exists plays_user on plays(user_id, at desc);
+create table if not exists tournaments (
+  id text primary key,
+  owner_user bigint not null references users(id) on delete cascade,
+  title text not null,
+  mode text not null,
+  status text not null default 'active',
+  state text not null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create index if not exists tournaments_owner on tournaments(owner_user, updated_at desc);
+create table if not exists trophies (
+  id bigserial primary key,
+  user_id bigint not null references users(id) on delete cascade,
+  tournament_id text not null,
+  title text not null,
+  mode text not null,
+  at timestamptz not null default now()
+);
+create index if not exists trophies_user on trophies(user_id);
 alter table users add column if not exists role text not null default 'PLAYER';
 `;
 

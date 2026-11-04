@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { CATALOG, CATEGORY_NAMES, getMeta } from '../../../shared/catalog';
-import { GOD_POWERS, type AdminAction, type GodPower, type RoomState } from '../../../shared/protocol';
+import { GOD_COSMETIC, GOD_POWERS, type AdminAction, type GodPower, type RoomState } from '../../../shared/protocol';
 import { useT } from '../i18n';
 import type { Conn } from '../net';
 import { Icon } from '../ui/icons';
@@ -18,6 +18,13 @@ const POWERS: Record<GodPower, { icon: string; he: [string, string]; en: [string
   steal: { icon: 'coin', he: ['גניבת כוכבים', 'לוקח עד 2 כוכבים מהמוביל ונותן לאחרון'], en: ['Rob the leader', 'Moves up to 2 stars from the leader to the last place'] },
   leader: { icon: 'crown', he: ['החלפת מנהיג', 'מנהיג חדש לחדר (השחקן שבחרתם או אקראי)'], en: ['New room leader', 'Makes the chosen (or a random) player the leader'], target: true },
   end: { icon: 'flag', he: ['סיום המשחק', 'מסיים עכשיו ומציג תוצאות'], en: ['End the game', 'Ends it right now and shows the results'], live: true },
+  speed: { icon: 'bolt', he: ['מהירות־על', 'השחקן הנבחר רץ מהר יותר 8 שניות'], en: ['Super speed', 'The chosen player is much faster for 8 s'], live: true, target: true },
+  jump: { icon: 'jump', he: ['קפיצה גבוהה', 'השחקן קופץ גבוה יותר 8 שניות (במשחקי קפיצה)'], en: ['High jump', 'Jumps much higher for 8 s (jumping games)'], live: true, target: true },
+  giant: { icon: 'star', he: ['ענק', 'השחקן גדל ל־8 שניות'], en: ['Giant', 'The player grows for 8 s'], live: true, target: true },
+  tiny: { icon: 'spark', he: ['ננס', 'השחקן מתכווץ ל־8 שניות'], en: ['Tiny', 'The player shrinks for 8 s'], live: true, target: true },
+  teleport: { icon: 'door', he: ['טלפורט', 'השחקן קופץ למקום אקראי'], en: ['Teleport', 'The player jumps to a random spot'], live: true, target: true },
+  invisible: { icon: 'ghost', he: ['בלתי נראה', 'השחקן כמעט שקוף 8 שניות'], en: ['Invisible', 'The player is almost see-through for 8 s'], live: true, target: true },
+  swap: { icon: 'repeat', he: ['החלפת מקומות', 'השחקן מחליף מקום עם שחקן אקראי'], en: ['Swap places', 'The player swaps places with a random rival'], live: true, target: true },
 };
 
 interface Alert { id: number; text: string; bad: boolean }
@@ -46,7 +53,8 @@ export function AdminPanel({ room, conn, act, onClose }: { room: RoomState; conn
 
   const power = (p: GodPower) => {
     const d = POWERS[p];
-    const reason = tourOn ? l({ he: 'כבוי בטורניר (מצב תחרותי)', en: 'Off during tournaments (competitive)' }) : d.live && !live ? l({ he: 'זמין רק בזמן משחק', en: 'Only during a game' }) : '';
+    const cosmetic = (GOD_COSMETIC as readonly string[]).includes(p);
+    const reason = tourOn ? l({ he: 'כבוי בטורניר (מצב תחרותי)', en: 'Off during tournaments (competitive)' }) : !cosmetic && !room.chaos ? l({ he: 'דורש מצב כאוס (למעלה)', en: 'Needs chaos mode (above)' }) : d.live && !live ? l({ he: 'זמין רק בזמן משחק', en: 'Only during a game' }) : '';
     return (
       <button key={p} className="admin-power" data-power={p} disabled={!!reason} title={reason || undefined} onClick={() => conn.send({ t: 'god', power: p, target: d.target && target ? target : undefined })}>
         <Icon name={d.icon} size="1.5em" />
@@ -109,6 +117,10 @@ export function AdminPanel({ room, conn, act, onClose }: { room: RoomState; conn
 
       <section>
         <h3>{l({ he: 'כוחות הכתר', en: 'Crown powers' })}</h3>
+        <button className={`btn btn--sm ${room.chaos ? 'btn--primary' : 'btn--secondary'}`} disabled={tourOn} data-testid="admin-chaos" onClick={() => conn.send({ t: 'god', power: 'chaos' })}>
+          <Icon name="fire" size="1em" /> {room.chaos ? l({ he: 'מצב כאוס פעיל — לכבות', en: 'Chaos mode ON — turn off' }) : l({ he: 'הפעל מצב כאוס', en: 'Turn chaos mode on' })}
+        </button>
+        <p className="muted small">{l({ he: 'מצב כאוס מוצג לכל המשתתפים. רק בו הכוחות יכולים לשנות את המשחק, ולא בטורנירים.', en: 'Chaos mode is shown to every player. Only then can powers change the game — never in tournaments.' })}</p>
         <label className="admin-target">{l({ he: 'שחקן יעד (לכוחות שצריכים)', en: 'Target player (for powers that need one)' })}
           <select value={target} onChange={(e) => setTarget(e.target.value)} className="admin-select" data-testid="admin-target">
             <option value="">{l({ he: 'אקראי', en: 'Random' })}</option>

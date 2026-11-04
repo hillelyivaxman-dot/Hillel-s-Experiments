@@ -96,6 +96,7 @@ export const soccerRenderer: Renderer = {
 
   event(e, f, { players, fx }) {
     switch (e.k) {
+      case 'pass': fx.burst(e.x, e.y, '#5dfc8d', 10, 220, 5); sfx.pass(); break;
       case 'kick': fx.burst(e.x, e.y, '#fff', 8, 260, 5); sfx.bump(); break;
       case 'touch': sfx.click(); break;
       case 'post': fx.burst(e.x, e.y, '#fff', 10, 300, 5); fx.kick(5); sfx.bump(); break;

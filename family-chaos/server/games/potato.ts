@@ -1,6 +1,7 @@
 import { BTN } from '../../shared/protocol';
 import { r1 } from '../util';
 import { collide, damp, integrate, spawnRing, type Body } from './physics';
+import { Mods } from './powers';
 import type { GameContext, GameInstance, GameModule, StandingRow } from './types';
 
 // HOT POTATO: the bomb holder must touch someone to pass it before the fuse runs out.
@@ -32,6 +33,7 @@ export const potatoGame: GameModule = {
     let flight: { f: string; t: string; at: number } | null = null; // bomb in the air (visual)
     let boom: { x: number; y: number; id: string } | null = null;
     const ring = spawnRing(ctx.players.length, 260);
+    const mods = new Mods();
     const rs: Runner[] = ctx.players.map((p, i) => ({
       id: p.id, x: ring[i].x, y: ring[i].y, vx: 0, vy: 0, r: P.R, m: 1,
       out: false, outRound: 0, sprintT: 0, sprintCd: 0, passes: 0,
@@ -96,7 +98,16 @@ export const potatoGame: GameModule = {
         hud();
       },
 
+      power(pid, kind, secs) {
+        const r = rs.find((q) => q.id === pid); if (!r || r.out) return false;
+        if (kind === 'teleport') { r.x = (ctx.rand() - 0.5) * (P.W - 200); r.y = (ctx.rand() - 0.5) * (P.H - 200); r.vx = r.vy = 0; }
+        else if (kind === 'swap') { const o = rs.filter((q) => q !== r && !q.out); if (!o.length) return false; const q = o[Math.floor(ctx.rand() * o.length)]; [r.x, q.x] = [q.x, r.x]; [r.y, q.y] = [q.y, r.y]; }
+        else if (kind === 'jump') return false; // no jumping in this game
+        else mods.add(pid, kind, secs);
+        return true;
+      },
       tick(dt) {
+        mods.tick(dt);
         time += dt;
         if (ph === 'done') return;
         if (ph === 'boom') {
@@ -109,8 +120,9 @@ export const potatoGame: GameModule = {
           if (r.out) continue;
           const inp = ctx.input(r.id);
           const k = (r.sprintT > 0 ? P.SPRINT : 1) * (r.id === holder ? 1.12 : 1);
-          r.vx += inp.x * P.ACC * k * dt;
-          r.vy += inp.y * P.ACC * k * dt;
+          const sk = mods.speed(r.id); r.r = P.R * mods.size(r.id);
+          r.vx += inp.x * P.ACC * k * sk * dt;
+          r.vy += inp.y * P.ACC * k * sk * dt;
           damp(r, P.KEEP, dt);
           integrate(r, dt);
           const hw = P.W / 2 - r.r, hh = P.H / 2 - r.r;
@@ -169,7 +181,7 @@ export const potatoGame: GameModule = {
         return {
           t: r1(time), ph, round, h: holder,
           heat: ph === 'play' ? r1(1 - fuse / fuseMax) : 1,
-          p: rs.map((r) => ({ id: r.id, x: Math.round(r.x), y: Math.round(r.y), o: r.out ? 1 : 0, s: r.sprintT > 0 ? 1 : 0 })),
+          p: rs.map((r) => ({ id: r.id, x: Math.round(r.x), y: Math.round(r.y), o: r.out ? 1 : 0, s: r.sprintT > 0 ? 1 : 0, ...mods.extras(r.id) })),
           b: boom,
           fl: flight ? { f: flight.f, t: flight.t, k: r1(Math.min(1, (time - flight.at) / 0.4)) } : null,
         };

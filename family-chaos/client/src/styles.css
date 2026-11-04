@@ -598,3 +598,10 @@ body { touch-action: manipulation; }
 .phone-game--3d .pad-btn { opacity: .86; }
 .phone-game--3d .phone-intro { background: rgba(12,6,36,.7); }
 .stage__view { position: absolute; top: 10px; inset-inline-end: 10px; z-index: 6; }
+
+/* touchpad (air hockey): whole pad area is the playing surface under the buttons */
+.touchpad { z-index: 0; border-radius: 18px; background: repeating-linear-gradient(90deg, rgba(255,255,255,.04) 0 40px, transparent 40px 80px), rgba(255,255,255,.06); border: 3px dashed rgba(255,255,255,.25); touch-action: none; }
+.touchpad__mid { position: absolute; top: 8%; bottom: 8%; left: 50%; width: 0; border-left: 3px dashed rgba(255,255,255,.18); }
+.touchpad__dot { position: absolute; width: 62px; height: 62px; margin: -31px 0 0 -31px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff, #ffd23f 55%); border: 4px solid #140b2e; box-shadow: 0 6px 0 #140b2e; pointer-events: none; }
+.touchpad__hint { position: absolute; inset: 0; display: grid; place-items: center; opacity: .35; pointer-events: none; } .touchpad__hint svg { width: 4rem; height: 4rem; }
+.pad--stick .pad-btn { z-index: 2; }

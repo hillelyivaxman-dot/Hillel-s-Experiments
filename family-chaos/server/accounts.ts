@@ -124,6 +124,29 @@ export class Accounts {
     await this.db.query("update users set role = 'OWNER' where id = $1 and not exists (select 1 from users where role = 'OWNER')", [userId]);
   }
 
+  // ---- tournaments & trophies (see Room.persist) ----
+  async saveTournament(userId: number, id: string | null, title: string, mode: string, status: string, body: string): Promise<string> {
+    const tid = id ?? token(9);
+    await this.db.query(
+      `insert into tournaments (id, owner_user, title, mode, status, state) values ($1, $2, $3, $4, $5, $6)
+       on conflict (id) do update set title = $3, mode = $4, status = $5, state = $6, updated_at = now() where tournaments.owner_user = $2`,
+      [tid, userId, title.slice(0, 60), mode, status, body]);
+    return tid;
+  }
+  async loadTournament(userId: number, id: string): Promise<string | null> {
+    const r = await this.db.query<{ state: string }>('select state from tournaments where id = $1 and owner_user = $2', [id, userId]);
+    return r[0]?.state ?? null;
+  }
+  async listTournaments(userId: number) {
+    const rows = await this.db.query<{ id: string; title: string; mode: string; status: string; updated_at: Date | string; state: string }>(
+      'select id, title, mode, status, updated_at, state from tournaments where owner_user = $1 order by updated_at desc limit 12', [userId]);
+    return rows.map((r) => { let idx = 0, total = 0; try { const s = JSON.parse(r.state); idx = s.idx + 1; total = s.total; } catch { /* */ } return { id: r.id, title: r.title, mode: r.mode, status: r.status, at: new Date(r.updated_at).toISOString(), progress: `${Math.min(idx, total)}/${total}` }; });
+  }
+  async deleteTournament(userId: number, id: string) { await this.db.query('delete from tournaments where id = $1 and owner_user = $2', [id, userId]); }
+  async addTrophy(userId: number, tournamentId: string, title: string, mode: string) {
+    await this.db.query('insert into trophies (user_id, tournament_id, title, mode) select $1, $2, $3, $4 where not exists (select 1 from trophies where user_id = $1 and tournament_id = $2)', [userId, tournamentId, title.slice(0, 60), mode]);
+  }
+
   async logout(tok: string | undefined | null) {
     if (tok) await this.db.query('delete from sessions where token_hash = $1', [sha(tok)]);
   }
@@ -181,6 +204,7 @@ export class Accounts {
       stats,
       achievements: ACHIEVEMENTS.map((a) => ({ id: a.id, done: a.test(stats) })),
       favorites,
+      trophies: (await this.db.query<{ title: string; mode: string; at: Date | string }>('select title, mode, at from trophies where user_id = $1 order by at desc limit 20', [user.id])).map((t) => ({ ...t, at: new Date(t.at).toISOString() })),
       history: history.map((h) => ({ ...h, at: new Date(h.at).toISOString() })),
     };
   }
@@ -240,7 +264,7 @@ export async function handleAccountApi(
       codeFromEnv: !!process.env.OWNER_SETUP_CODE,
     }), true;
   }
-  if (!path.startsWith('/api/auth/') && !path.startsWith('/api/me')) return false;
+  if (!path.startsWith('/api/auth/') && !path.startsWith('/api/me') && !path.startsWith('/api/tournaments')) return false;
   if (!acc) { send(res, 503, { error: 'accounts_unavailable' }); return true; }
   try {
     if (req.method === 'POST') {
@@ -279,6 +303,8 @@ export async function handleAccountApi(
       const s = await acc.changePassword(user.id, b.current, b.next);
       return send(res, 200, { ok: true }, { 'Set-Cookie': sessionCookie(s.token, secure) }), true;
     }
+    if (path === '/api/tournaments' && req.method === 'GET') return send(res, 200, { tournaments: await acc.listTournaments(user.id) }), true;
+    if (path === '/api/tournaments/delete' && req.method === 'POST') { const b = await readJson(req); await acc.deleteTournament(user.id, String(b.id)); return send(res, 200, { ok: true }), true; }
     if (path === '/api/me/owner' && req.method === 'POST') {
       const b = await readJson(req);
       await acc.claimOwner(user.id, b.code);

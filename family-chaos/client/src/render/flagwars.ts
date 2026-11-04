@@ -67,11 +67,11 @@ export const flagWarsRenderer: Renderer = {
       if (p.cr) { // the stolen flag on the carrier's back
         g.save(); g.translate(p.x - p.fx * 20, p.y - z - 6); g.scale(0.55, 0.55); banner(g, 0, 0, 1 - p.tm, t * 1.4, 1); g.restore();
       }
-      drawCritter(g, p.x, p.y - z, 24, info.color, info.avatar, { t, look: Math.atan2(p.fy, p.fx), squash: p.lg ? 0.2 : 0, outline: '#120a2a' });
+      drawCritter(g, p.x, p.y - z, 24 * (p.sz ?? 1), info.color, info.avatar, { t, look: Math.atan2(p.fy, p.fx), squash: p.lg ? 0.2 : 0, outline: '#120a2a', alpha: p.iv ? 0.16 : 1 });
       // team headband + role badge
       g.strokeStyle = TEAM_COLORS[p.tm]; g.lineWidth = 6; g.lineCap = 'round'; g.beginPath(); g.arc(p.x, p.y - z - 8, 21, Math.PI * 1.1, Math.PI * 1.9); g.stroke();
       drawIcon(g, ['bolt', 'ice', 'shield'][p.ro], p.x + 22, p.y - z - 24, 16);
-      nameTag(g, p.x, p.y - z - 50, info.name, info.color, 14);
+      if (!p.iv) nameTag(g, p.x, p.y - z - 50 * (p.sz ?? 1), info.name, info.color, 14);
       if (p.sh) { g.strokeStyle = 'rgba(120,230,255,.9)'; g.lineWidth = 5; g.beginPath(); g.arc(p.x, p.y - z, 36, 0, 7); g.stroke(); g.fillStyle = 'rgba(120,230,255,.15)'; g.fill(); }
       if (p.sl) drawIcon(g, 'ice', p.x - 22, p.y - z - 24, 16);
       if (p.s) for (let k = 0; k < 3; k++) { const a = t * 6 + k * 2.1; drawIcon(g, 'star', p.x + Math.cos(a) * 22, p.y - z - 40 + Math.sin(a) * 5, 11); }

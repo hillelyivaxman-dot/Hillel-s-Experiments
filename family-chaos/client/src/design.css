@@ -1,0 +1,123 @@
+/* =====================================================================================================
+   FAMILY CHAOS design system v3 — "sticker-book arcade"
+   Everything looks like a die-cut vinyl sticker stuck on a night-purple board: flat saturated colour, a thick ink outline,
+   a hard (unblurred) drop edge, one halftone highlight. No soft gradients, no glassy panels.
+   Type: Secular One (Hebrew + Latin, chunky) for headings, buttons and names; Rubik for reading text. Sentence case.
+   Colour roles: ink #140b2e (outlines, text on bright), board #231552, sun #ffd23f (focus / selected / money),
+   tomato #ff4d6d (primary action, red team), sky #3ec1ff (secondary, blue team), mint #5dfc8d (ready / good), grape #8b5cf6.
+   Motion: things respond to a press (lift, press, pop); only the logo and the selected game tile move by themselves.
+   ===================================================================================================== */
+:root {
+  --font-display: 'Secular One', 'Rubik', system-ui, sans-serif;
+  --ink: #140b2e; --board: #231552; --board-2: #2d1b66; --paper: #fff8ef;
+  --sun: #ffd23f; --tomato: #ff4d6d; --sky: #3ec1ff; --mint: #5dfc8d; --grape: #8b5cf6;
+  --edge: 3px; --lift: 0 6px 0 var(--ink);
+  --confetti: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cg opacity='.16'%3E%3Ccircle cx='30' cy='40' r='6' fill='%23ffd23f'/%3E%3Crect x='120' y='24' width='14' height='6' rx='3' fill='%233ec1ff' transform='rotate(25 127 27)'/%3E%3Cpath d='M180 70l7 12 12-2-6 11 8 9-12 1-5 11-6-11-12-2 9-8z' fill='%23ff4d6d'/%3E%3Ccircle cx='70' cy='140' r='5' fill='%235dfc8d'/%3E%3Crect x='150' y='160' width='16' height='6' rx='3' fill='%23ffd23f' transform='rotate(-30 158 163)'/%3E%3Cpath d='M20 190l6-10 6 10z' fill='%238b5cf6'/%3E%3C/g%3E%3C/svg%3E");
+}
+body {
+  background: var(--confetti), radial-gradient(120% 90% at 50% -20%, #3a2390, #1a0f3d 62%) fixed;
+  background-attachment: fixed;
+}
+h1, h2, h3, .btn, .chip, .game-card__name, .player-tile__name, .logo, .selected-game h3 { font-family: var(--font-display); font-weight: 400; letter-spacing: 0; }
+h2 { font-weight: 400; }
+:focus-visible { outline: 4px solid var(--sun); outline-offset: 3px; border-radius: 10px; }
+
+/* ---- buttons: sticker keys ---- */
+.btn {
+  font-family: var(--font-display); background: var(--c1); border: var(--edge) solid var(--ink); border-radius: 18px; color: var(--ink);
+  box-shadow: 0 7px 0 var(--ink); text-shadow: none; padding: 0.7em 1.4em; transition: transform .08s ease-out, box-shadow .08s ease-out;
+}
+.btn::before, .btn::after { display: none; }
+.btn:hover:not(:disabled) { filter: none; transform: translateY(-2px); box-shadow: 0 9px 0 var(--ink); }
+.btn:active:not(:disabled) { transform: translateY(6px); box-shadow: 0 1px 0 var(--ink); }
+.btn--primary { --c1: var(--tomato); color: #fff; text-shadow: 0 2px 0 rgba(20,11,46,.55); }
+.btn--secondary { --c1: var(--sky); color: var(--ink); }
+.btn--xl { font-size: clamp(1.3rem, 2.4vw, 1.9rem); padding: 0.75em 1.5em; }
+.btn:disabled { background: #5b4a8a; color: #b9a8e8; box-shadow: 0 4px 0 var(--ink); filter: none; }
+.chip { font-family: var(--font-display); background: var(--board-2); border: 2.5px solid var(--ink); box-shadow: 0 3px 0 var(--ink); border-radius: 999px; font-weight: 400; }
+.chip:hover { background: #3b2685; }
+.chip.is-on { background: var(--sun); color: var(--ink); border-color: var(--ink); }
+.mini { border: 2px solid var(--ink); box-shadow: 0 2px 0 var(--ink); }
+
+/* ---- surfaces ---- */
+.card, .lobby__join, .selected-game, .results__side, .admin-card {
+  background: var(--board); border: var(--edge) solid var(--ink); border-radius: 22px; box-shadow: 0 8px 0 var(--ink); backdrop-filter: none;
+}
+input, select { background: #140b2e; border: 3px solid var(--ink); box-shadow: inset 0 2px 0 rgba(255,255,255,.08); }
+input:focus, select:focus { border-color: var(--sun); }
+
+/* ---- logo: the one thing allowed to wobble ---- */
+.logo__chaos { -webkit-text-stroke: 3px var(--ink); paint-order: stroke fill; text-shadow: 0 6px 0 var(--ink); font-weight: 400; }
+.logo__family { color: var(--sun); -webkit-text-stroke: 1.5px var(--ink); paint-order: stroke fill; font-weight: 400; }
+
+/* ---- game tiles: die-cut stickers ---- */
+.game-card {
+  background: var(--a1); border: 4px solid var(--ink); border-radius: 22px; box-shadow: 0 9px 0 var(--ink); overflow: hidden; isolation: isolate;
+  transition: transform .14s cubic-bezier(.3,1.5,.5,1), box-shadow .14s;
+}
+.game-card::after { background: radial-gradient(circle, rgba(255,255,255,.28) 1.5px, transparent 2px) 0 0 / 14px 14px; z-index: -1; opacity: .8; mask-image: linear-gradient(160deg, #000 0%, transparent 62%); -webkit-mask-image: linear-gradient(160deg, #000 0%, transparent 62%); }
+.game-card::before { content: ''; position: absolute; inset: auto -20% -30% -20%; height: 60%; background: var(--a2); transform: skewY(-9deg); z-index: -1; }
+.game-card:hover:not(:disabled) { transform: translateY(-5px) rotate(-1deg); box-shadow: 0 13px 0 var(--ink); }
+.game-card.is-selected { outline: 5px solid var(--sun); outline-offset: 3px; transform: translateY(-10px) rotate(-1.6deg) scale(1.03); box-shadow: 0 17px 0 var(--ink); animation: peel 2.4s ease-in-out infinite; }
+@keyframes peel { 50% { transform: translateY(-13px) rotate(1.2deg) scale(1.04); } }
+.game-card__art { filter: drop-shadow(3px 0 0 #fff) drop-shadow(-3px 0 0 #fff) drop-shadow(0 3px 0 #fff) drop-shadow(0 -3px 0 #fff) drop-shadow(0 7px 0 rgba(20,11,46,.45)); }
+.game-card__body { background: none; padding: 0.5rem 0.9rem 0.9rem; gap: 0.25rem; }
+.game-card__name { font-size: 1.3rem; text-shadow: 0 3px 0 var(--ink); -webkit-text-stroke: 1px var(--ink); paint-order: stroke fill; }
+.game-card__cat { text-transform: none; letter-spacing: 0; font-weight: 700; font-size: 0.82rem; background: var(--ink); color: var(--paper); align-self: start; justify-self: start; padding: 0.15em 0.7em; border-radius: 999px; opacity: 1; display: inline-flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; }
+.game-card__tag { font-size: 0.88rem; font-weight: 500; }
+.game-card--compact { border-width: 3px; }
+.fav-btn { border: 2.5px solid var(--ink); box-shadow: 0 2px 0 var(--ink); }
+
+/* ---- lobby: ticket for joining, a stage for the chosen game ---- */
+.lobby__join { border-style: solid; position: relative; }
+.lobby__join::before, .lobby__join::after { content: ''; position: absolute; top: 118px; width: 26px; height: 26px; border-radius: 50%; background: #1d1148; border: var(--edge) solid var(--ink); }
+.lobby__join::before { inset-inline-start: -16px; } .lobby__join::after { inset-inline-end: -16px; }
+.qr-frame { border: 4px solid var(--ink); box-shadow: 0 8px 0 var(--tomato), 0 8px 0 4px var(--ink); }
+.room-code span { background: var(--sun); border: 3px solid var(--ink); box-shadow: 0 6px 0 var(--ink); font-family: var(--font-display); font-weight: 400; }
+.player-tile { background: var(--board-2); border: 3px solid var(--ink); box-shadow: 0 6px 0 var(--ink); border-radius: 18px; }
+.player-tile.is-ready { box-shadow: 0 6px 0 var(--ink), 0 0 0 5px var(--mint); }
+.selected-game { background: var(--board-2); }
+.selected-game h3 { font-size: 1.9rem; }
+.lobby__games { gap: 12px; padding: 10px 10px 16px; }
+
+/* ---- results ---- */
+.podium__block { border: 4px solid var(--ink); box-shadow: 0 8px 0 var(--ink); font-family: var(--font-display); }
+.results__title { font-family: var(--font-display); font-weight: 400; -webkit-text-stroke: 2px var(--ink); paint-order: stroke fill; text-shadow: 0 5px 0 var(--ink); }
+
+/* ---- admin panel and misc ---- */
+.admin-panel { background: var(--board); border-inline-start: 4px solid var(--ink); box-shadow: -10px 0 0 rgba(20,11,46,.55); }
+.admin-power { background: var(--board-2); border: 3px solid var(--ink); box-shadow: 0 4px 0 var(--ink); }
+.toast { border: 3px solid var(--ink); box-shadow: 0 5px 0 var(--ink); }
+
+/* ---- phone: sticker pad buttons ---- */
+.pad-btn { border: 4px solid var(--ink); font-family: var(--font-display); box-shadow: 0 7px 0 var(--ink); }
+.pad-btn.is-down { transform: translateY(5px); box-shadow: 0 2px 0 var(--ink); }
+.phone-game__hud { border-bottom: 4px solid var(--ink); }
+
+@media (prefers-reduced-motion: reduce) { .game-card.is-selected { animation: none; } }
+:root[data-motion='reduced'] .game-card.is-selected { animation: none; }
+
+/* lobby rail: all ten games visible at once (5 x 2), art + name only; details live in the stage panel on the right */
+.lobby__games { grid-template-columns: repeat(5, minmax(0, 1fr)); max-height: none; overflow: visible; align-content: center; }
+.lobby__games .game-card { min-height: 0; grid-template-rows: auto auto; border-width: 3px; box-shadow: 0 6px 0 var(--ink); }
+.lobby__games .game-card__art { height: clamp(34px, 7.5vh, 76px); padding: 6px 8px 0; }
+.lobby__games .game-card__cat, .lobby__games .game-card__tag { display: none; }
+.lobby__games .game-card__body { padding: 0.1rem 0.5rem 0.55rem; }
+.lobby__games .game-card__name { font-size: clamp(0.85rem, 1.9vh, 1.15rem); text-align: center; }
+.lobby__games .game-card.is-selected { transform: translateY(-6px) rotate(-1.4deg) scale(1.04); }
+.rail-soon { display: none; }
+.lobby__games { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); grid-template-rows: repeat(2, minmax(0, 1fr)); overflow: visible; scroll-snap-type: none; }
+.lobby__games .game-card { flex: none; height: 100%; display: grid; grid-template-rows: minmax(0, 1fr) auto; }
+.lobby__games .game-card__art { height: auto; padding: 6px 8px 0; min-height: 0; }
+.lobby__bottom { height: clamp(200px, 40vh, 380px); }
+.lobby__bottom { height: clamp(210px, 38vh, 380px); min-height: 0; align-items: stretch; }
+.lobby__games { height: 100%; min-height: 0; padding: 6px 6px 12px; gap: 10px; }
+.lobby__games .game-card__art svg { max-height: 100%; }
+.selected-game { min-height: 0; overflow: auto; }
+.qr-frame img, .qr-ph { width: min(280px, 24vw, 25vh); }
+.lobby__join::before, .lobby__join::after { display: none; }
+.btn--sm { font-size: 0.95rem; padding: 0.35em 0.9em; box-shadow: 0 4px 0 var(--ink); }
+.chaos-banner { position: fixed; top: 10px; left: 50%; transform: translateX(-50%); z-index: 70; padding: 4px 16px; border-radius: 999px; background: var(--tomato); color: #fff; border: 3px solid var(--ink); box-shadow: 0 4px 0 var(--ink); font-family: var(--font-display); animation: chaosPulse 1.2s ease-in-out infinite; pointer-events: none; }
+.chaos-banner--phone { top: auto; bottom: 8px; font-size: .85rem; padding: 2px 12px; }
+@keyframes chaosPulse { 50% { transform: translateX(-50%) scale(1.07); } }
+:root[data-motion='reduced'] .chaos-banner { animation: none; }

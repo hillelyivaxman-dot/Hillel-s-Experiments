@@ -96,12 +96,15 @@ test('owner setup: the setup code makes a signed-in user OWNER; only that browse
   const code = (await host.getByTestId('room-code').innerText()).replace(/\s/g, '');
   for (const n of ['One', 'Two']) await newPhone(browser, `${HTTP}/join/${code}`, n);
   await host.getByTestId('crown-btn').click();
+  await expect(host.locator('[data-power="bonus"]')).toBeDisabled(); // game-changing powers need chaos mode first
+  await host.getByTestId('admin-chaos').click();
+  await expect(host.getByTestId('chaos-banner')).toBeVisible(); // ... and everybody can see it
   await host.locator('[data-power="bonus"]').click();
   await expect(host.locator('.player-tile__meta', { hasText: /\b3\b/ })).toHaveCount(1);
   // the management panel: players list with connection state, all 12 powers with explanations, game control
   await expect(host.getByTestId('admin-panel')).toBeVisible();
   await expect(host.locator('[data-testid="admin-players"] li')).toHaveCount(2);
-  await expect(host.locator('.admin-power')).toHaveCount(12);
+  await expect(host.locator('.admin-power')).toHaveCount(19);
   await expect(host.locator('.admin-power[data-power="freeze"]')).toBeDisabled(); // only during a game: and says why
   await expect(host.locator('.admin-power[data-power="freeze"] small')).not.toBeEmpty();
   await host.getByTestId('admin-start').click(); // start a game from the panel

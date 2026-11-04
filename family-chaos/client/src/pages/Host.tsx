@@ -14,7 +14,7 @@ import { ConnBanner, Logo, useConnStatus } from '../ui/common';
 /** The big screen (TV / PC). Also used read-only for remote "watch" screens. */
 export function Host({ watchCode }: { watchCode?: string }) {
   const watch = watchCode !== undefined;
-  const { t } = useT();
+  const { t, lang } = useT();
   const [conn, setConn] = useState<Conn | null>(null);
   const [room, setRoom] = useState<RoomState | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -90,6 +90,7 @@ export function Host({ watchCode }: { watchCode?: string }) {
       {room.phase === 'lobby' && <Lobby room={room} act={act} watch={watch} />}
       {inMatch && <Stage room={room} conn={conn} act={act} watch={watch} />}
       {room.phase === 'results' && <Results room={room} act={act} watch={watch} />}
+      {room.chaos && <div className="chaos-banner" data-testid="chaos-banner"><Icon name="fire" size="1em" /> {lang === 'he' ? 'מצב כאוס' : 'CHAOS MODE'}</div>}
       {owner && !watch && (
         <div className="crown" data-testid="crown">
           <button className="crown__btn" onClick={() => setCrown((v) => !v)} aria-expanded={crown} aria-label="Admin" data-testid="crown-btn"><Icon name="crown" size="1.2em" /></button>

@@ -2,6 +2,7 @@ import { BTN } from '../../shared/protocol';
 import { BASES, circRect, FW, inBase, inMud, ROLES, SPAWNS, WALLS } from '../../shared/flagwars';
 import { r1 } from '../util';
 import { collide, damp, integrate, type Body } from './physics';
+import { Mods } from './powers';
 import type { GameContext, GameInstance, GameModule, StandingRow } from './types';
 
 // FLAG WARS: two teams. Grab the other team's flag and carry it into YOUR base to score. If you stand in the enemy half
@@ -26,6 +27,7 @@ export const flagWarsGame: GameModule = {
       return { id: pl.id, x: sx, y: sy, vx: 0, vy: 0, r: FW.R, m: 1, tm, role: k % ROLES.length, z: 0, jumpT: 0, jumpCd: 0, stam: 100, stun: 0, out: 0, carry: -1, lungeT: 0, lungeCd: 0, pw: 0, pwT: 0, slow: 0, shield: 0, caps: 0, tags: 0, steals: 0, ax: tm ? -1 : 1, ay: 0 };
     });
     const byId = new Map(ps.map((p) => [p.id, p]));
+    const mods = new Mods();
     const handicap = (tm: number) => 1 + Math.min(0.2, Math.max(0, counts[1 - tm] - counts[tm]) * 0.07); // a smaller team is a bit faster
     const flags: Flag[] = [0, 1].map((t) => ({ x: BASES[t].fx, y: BASES[t].fy, st: 0, by: null, ret: 0 }));
     const score = [0, 0];
@@ -58,13 +60,21 @@ export const flagWarsGame: GameModule = {
           hud(p);
         }
       },
+      power(pid, kind, secs) {
+        const p = byId.get(pid); if (!p || p.out > 0) return false;
+        if (kind === 'teleport') { for (let k = 0; k < 30; k++) { const x = 160 + ctx.rand() * (FW.W - 320), y = 80 + ctx.rand() * (FW.H - 160); const t = { x, y }; if (!WALLS.some((w) => !w.low && x > w.x - 30 && x < w.x + w.w + 30 && y > w.y - 30 && y < w.y + w.h + 30)) { p.x = t.x; p.y = t.y; p.vx = p.vy = 0; break; } } }
+        else if (kind === 'swap') { const o = ps.filter((q) => q !== p && q.out <= 0); if (!o.length) return false; const q = o[Math.floor(ctx.rand() * o.length)]; [p.x, q.x] = [q.x, p.x]; [p.y, q.y] = [q.y, p.y]; }
+        else mods.add(pid, kind, secs);
+        return true;
+      },
       tick(dt) {
+        mods.tick(dt);
         time += dt; hudT += dt;
         for (const p of ps) {
           const i = ctx.input(p.id);
           p.jumpCd = Math.max(0, p.jumpCd - dt); p.lungeCd = Math.max(0, p.lungeCd - dt); p.pw = Math.max(0, p.pw - dt); p.pwT = Math.max(0, p.pwT - dt);
           p.stun = Math.max(0, p.stun - dt); p.slow = Math.max(0, p.slow - dt); p.shield = Math.max(0, p.shield - dt);
-          const hadJ = p.jumpT > 0; p.jumpT = Math.max(0, p.jumpT - dt); p.z = p.jumpT > 0 ? Math.sin((1 - p.jumpT / FW.JUMP_T) * Math.PI) * 60 : 0; void hadJ;
+          const hadJ = p.jumpT > 0; p.jumpT = Math.max(0, p.jumpT - dt); p.z = p.jumpT > 0 ? Math.sin((1 - p.jumpT / FW.JUMP_T) * Math.PI) * 60 * mods.jump(p.id) : 0; void hadJ;
           if (p.out > 0) { // jail: back to the base spawn
             p.out -= dt; p.vx = p.vy = 0;
             if (p.out <= 0) { const k = ps.filter((q) => q.tm === p.tm).indexOf(p); const [sx, sy] = SPAWNS[p.tm][k % SPAWNS[p.tm].length]; p.x = sx; p.y = sy; p.shield = 1.5; ctx.fx('respawn', { id: p.id }); hud(p); }
@@ -74,7 +84,8 @@ export const flagWarsGame: GameModule = {
           if (mag > 0.25) { p.ax = i.x / mag; p.ay = i.y / mag; }
           const sprint = (i.b & BTN.B) !== 0 && p.stam > 0 && mag > 0.2;
           p.stam = Math.max(0, Math.min(100, p.stam + (sprint ? -34 : 18) * dt));
-          let sp = FW.SPEED * (sprint ? FW.SPRINT : 1) * (p.carry >= 0 ? FW.CARRY : 1) * handicap(p.tm);
+          p.r = FW.R * mods.size(p.id);
+          let sp = FW.SPEED * (sprint ? FW.SPRINT : 1) * (p.carry >= 0 ? FW.CARRY : 1) * handicap(p.tm) * mods.speed(p.id);
           if (inMud(p.x, p.y) && p.z <= 0) sp *= 0.55;
           if (p.slow > 0) sp *= 0.4;
           if (p.pwT > 0) sp *= 2.1;
@@ -121,7 +132,7 @@ export const flagWarsGame: GameModule = {
       snapshot: () => ({
         t: r1(time), left: Math.max(0, Math.ceil(TIME - time)), sc: score, ot: overtime ? 1 : 0, win: WIN,
         fl: flags.map((f) => [Math.round(f.x), Math.round(f.y), f.st, f.by ?? '']),
-        p: ps.map((p) => ({ id: p.id, x: Math.round(p.x), y: Math.round(p.y), z: Math.round(p.z), tm: p.tm, ro: p.role, cr: p.carry >= 0 ? 1 : 0, ...(p.out > 0 ? { o: 1 } : {}), ...(p.stun > 0 ? { s: 1 } : {}), ...(p.shield > 0 ? { sh: 1 } : {}), ...(p.slow > 0 ? { sl: 1 } : {}), ...(p.lungeT > 0 ? { lg: 1 } : {}), ...(p.pwT > 0 ? { ds: 1 } : {}), st: Math.round(p.stam), fx: r1(p.ax), fy: r1(p.ay) })),
+        p: ps.map((p) => ({ id: p.id, x: Math.round(p.x), y: Math.round(p.y), z: Math.round(p.z), tm: p.tm, ro: p.role, cr: p.carry >= 0 ? 1 : 0, ...(p.out > 0 ? { o: 1 } : {}), ...(p.stun > 0 ? { s: 1 } : {}), ...(p.shield > 0 ? { sh: 1 } : {}), ...(p.slow > 0 ? { sl: 1 } : {}), ...(p.lungeT > 0 ? { lg: 1 } : {}), ...(p.pwT > 0 ? { ds: 1 } : {}), st: Math.round(p.stam), fx: r1(p.ax), fy: r1(p.ay), ...mods.extras(p.id) })),
       }),
       isOver: () => over,
       standings(): StandingRow[] {

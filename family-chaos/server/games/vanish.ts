@@ -2,6 +2,7 @@ import { BTN } from '../../shared/protocol';
 import { tileIndex, VANISH } from '../../shared/vanish';
 import { r1 } from '../util';
 import { collide, damp, integrate, type Body } from './physics';
+import { Mods } from './powers';
 import type { GameContext, GameInstance, GameModule, StandingRow } from './types';
 
 // VANISHING FLOOR: the floor is slippery and crumbles. Tiles you stand on crack and vanish, and the arena eats itself
@@ -24,6 +25,7 @@ export const vanishGame: GameModule = {
       return { id: p.id, x: (COLS * TILE) / 2 + Math.cos(a) * 300, y: (ROWS * TILE) / 2 + Math.sin(a) * 200, vx: 0, vy: 0, r: V.PLAYER_R, m: 1, z: 0, jumpT: 0, jumpCd: 0, dashCd: 0, alive: true, diedAt: -1, fall: 0, bumps: 0 };
     });
     const byId = new Map(ps.map((p) => [p.id, p]));
+    const mods = new Mods();
     const hud = (p: Pl) => ctx.hud(p.id, { alive: p.alive ? 1 : 0, jump: p.jumpCd <= 0 ? 1 : 0, dash: p.dashCd <= 0 ? 1 : 0, left: ps.filter((q) => q.alive).length });
     ps.forEach(hud);
 
@@ -48,20 +50,29 @@ export const vanishGame: GameModule = {
         }
       },
 
+      power(pid, kind, secs) {
+        const p = byId.get(pid); if (!p || !p.alive) return false;
+        if (kind === 'teleport') { const solid: number[] = []; state.forEach((s, i) => { if (s === 0) solid.push(i); }); if (!solid.length) return false; const i = solid[Math.floor(ctx.rand() * solid.length)]; p.x = (i % COLS) * TILE + TILE / 2; p.y = Math.floor(i / COLS) * TILE + TILE / 2; p.vx = p.vy = 0; }
+        else if (kind === 'swap') { const o = ps.filter((q) => q !== p && q.alive); if (!o.length) return false; const q = o[Math.floor(ctx.rand() * o.length)]; [p.x, q.x] = [q.x, p.x]; [p.y, q.y] = [q.y, p.y]; }
+        else mods.add(pid, kind, secs);
+        return true;
+      },
       tick(dt) {
+        mods.tick(dt);
         time += dt;
         // players
         for (const p of ps) {
           if (!p.alive) { p.fall += dt; continue; }
           const inp = ctx.input(p.id);
-          p.vx += inp.x * 1500 * dt; p.vy += inp.y * 1500 * dt;
+          const sk = mods.speed(p.id);
+          p.vx += inp.x * 1500 * sk * dt; p.vy += inp.y * 1500 * sk * dt; p.r = V.PLAYER_R * mods.size(p.id);
           damp(p, 0.07, dt); // slippery
           const sp = Math.hypot(p.vx, p.vy);
-          if (sp > 430) { p.vx *= 430 / sp; p.vy *= 430 / sp; }
+          if (sp > 430 * sk) { p.vx *= (430 * sk) / sp; p.vy *= (430 * sk) / sp; }
           integrate(p, dt);
           const hj = p.jumpT > 0;
           p.jumpT = Math.max(0, p.jumpT - dt); p.jumpCd = Math.max(0, p.jumpCd - dt); const hadD = p.dashCd <= 0; p.dashCd = Math.max(0, p.dashCd - dt);
-          p.z = p.jumpT > 0 ? Math.sin((1 - p.jumpT / V.JUMP_T) * Math.PI) * 70 : 0;
+          p.z = p.jumpT > 0 ? Math.sin((1 - p.jumpT / V.JUMP_T) * Math.PI) * 70 * mods.jump(p.id) : 0;
           if ((hj && p.jumpT <= 0) || (!hadD && p.dashCd <= 0)) hud(p);
         }
         for (let i = 0; i < ps.length; i++) for (let j = i + 1; j < ps.length; j++) {
@@ -104,7 +115,7 @@ export const vanishGame: GameModule = {
       snapshot() {
         return {
           t: r1(time), tl: Array.from(state).join(''), left: ps.filter((p) => p.alive).length,
-          p: ps.map((p) => ({ id: p.id, x: Math.round(p.x), y: Math.round(p.y), z: Math.round(p.z), al: p.alive ? 1 : 0, fl: p.alive ? 0 : r1(p.fall) })),
+          p: ps.map((p) => ({ id: p.id, x: Math.round(p.x), y: Math.round(p.y), z: Math.round(p.z), al: p.alive ? 1 : 0, fl: p.alive ? 0 : r1(p.fall), ...mods.extras(p.id) })),
         };
       },
 

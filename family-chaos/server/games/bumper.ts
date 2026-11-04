@@ -1,6 +1,7 @@
 import { BTN } from '../../shared/protocol';
 import { r1 } from '../util';
 import { collide, damp, integrate, spawnRing, type Body } from './physics';
+import { Mods } from './powers';
 import type { GameContext, GameInstance, GameModule, StandingRow } from './types';
 
 // BUMPER BATTLE: push everyone out of a shrinking circular arena.
@@ -59,9 +60,10 @@ export const bumperGame: GameModule = {
     const byId = new Map(bs.map((b) => [b.id, b]));
     const active = (b: Bumper) => b.lives > 0 && b.falling <= 0;
 
+    const mods = new Mods();
     function updateMass(b: Bumper) {
-      b.r = b.pow === 'mega' ? C.RADIUS * 1.5 : C.RADIUS;
-      b.m = (b.dashT > 0 ? 2.2 : 1) * (b.pow === 'mega' ? 3 : 1) * (b.pow === 'shield' || b.inv > 0 ? 8 : 1);
+      b.r = (b.pow === 'mega' ? C.RADIUS * 1.5 : C.RADIUS) * mods.size(b.id);
+      b.m = (b.dashT > 0 ? 2.2 : 1) * (b.pow === 'mega' ? 3 : 1) * mods.size(b.id) ** 2 * (b.pow === 'shield' || b.inv > 0 ? 8 : 1);
     }
 
     function hud(b: Bumper) {
@@ -106,7 +108,16 @@ export const bumperGame: GameModule = {
         hud(b);
       },
 
+      power(pid, kind, secs) {
+        const b = byId.get(pid); if (!b || !active(b)) return false;
+        if (kind === 'teleport') { const a = ctx.rand() * Math.PI * 2, d = Math.sqrt(ctx.rand()) * R * 0.7; b.x = Math.cos(a) * d; b.y = Math.sin(a) * d; b.vx = b.vy = 0; }
+        else if (kind === 'swap') { const o = bs.filter((q) => q !== b && active(q)); if (!o.length) return false; const q = o[Math.floor(ctx.rand() * o.length)]; [b.x, q.x] = [q.x, b.x]; [b.y, q.y] = [q.y, b.y]; }
+        else if (kind === 'jump') return false; // no jumping in this game
+        else mods.add(pid, kind, secs);
+        return true;
+      },
       tick(dt) {
+        mods.tick(dt); bs.forEach(updateMass);
         time += dt;
         const k = Math.min(1, Math.max(0, (time - C.SHRINK_START) / (C.SHRINK_END - C.SHRINK_START)));
         R = C.R0 - (C.R0 - C.RMIN) * k;
@@ -125,7 +136,7 @@ export const bumperGame: GameModule = {
             continue;
           }
           const inp = ctx.input(b.id);
-          const acc = C.ACC * (b.pow === 'speed' ? 1.6 : 1);
+          const acc = C.ACC * (b.pow === 'speed' ? 1.6 : 1) * mods.speed(b.id);
           b.vx += inp.x * acc * dt;
           b.vy += inp.y * acc * dt;
           if (Math.hypot(inp.x, inp.y) > 0.2) b.face = Math.atan2(inp.y, inp.x);
@@ -213,7 +224,7 @@ export const bumperGame: GameModule = {
           R: r1(R),
           p: bs.map((b) => ({
             id: b.id, x: Math.round(b.x), y: Math.round(b.y), r: b.r, a: r1(b.face), l: b.lives,
-            f: b.falling > 0 ? 1 : 0, d: b.dashT > 0 ? 1 : 0, i: b.inv > 0 ? 1 : 0, w: b.pow ?? '', k: b.ko, h: b.held ?? '', g: b.dodgeT > 0 ? 1 : 0,
+            f: b.falling > 0 ? 1 : 0, d: b.dashT > 0 ? 1 : 0, i: b.inv > 0 ? 1 : 0, w: b.pow ?? '', k: b.ko, h: b.held ?? '', g: b.dodgeT > 0 ? 1 : 0, ...mods.extras(b.id),
           })),
           u: pows.map((p) => ({ id: p.id, k: p.k, x: r1(p.x), y: r1(p.y) })),
         };

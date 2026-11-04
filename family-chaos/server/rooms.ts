@@ -18,6 +18,7 @@ export class Rooms {
 
   /** Hook for saving signed-in players' results (wired to the accounts database by the server). */
   onPlays: Room['onPlays'] = null;
+  tourStore: Room['tourStore'] = null;
 
   constructor(private clock: () => number = Date.now) {}
 
@@ -49,6 +50,7 @@ export class Rooms {
         if (c.room) c.room.detach(c);
         const room = new Room(this.newCode(), this.clock);
         room.onPlays = this.onPlays;
+        room.tourStore = this.tourStore;
         room.maxPlayers = clamp(Math.floor(num(m.maxPlayers, 8)), 2, 12);
         if (typeof m.password === 'string' && m.password.trim()) room.password = m.password.trim().slice(0, 32);
         this.rooms.set(room.code, room);

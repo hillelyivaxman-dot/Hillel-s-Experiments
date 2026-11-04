@@ -122,6 +122,7 @@ openDb()
   .then((db) => {
     if (!db) { console.log('Accounts: OFF (no DATABASE_URL on this host; games work without accounts)'); return; }
     accounts = new Accounts(db);
+    rooms.tourStore = { save: (u, id, t, m, st, b) => accounts!.saveTournament(u, id, t, m, st, b), load: (u, id) => accounts!.loadTournament(u, id), trophy: (u, id, t, m) => accounts!.addTrophy(u, id, t, m) };
     accounts.ownerSetupCode().then((c) => { if (c) console.log(`OWNER SETUP CODE (sign in on /account, open "Owner setup", enter it once): ${c}`); }).catch(() => {});
     rooms.onPlays = (rows) => { accounts?.recordPlays(rows).catch((e) => console.error('save results', e)); };
     console.log(`Accounts database: ${db.kind}${db.persistent ? '' : ' (NOT persistent: set DATABASE_URL to keep accounts)'}`);

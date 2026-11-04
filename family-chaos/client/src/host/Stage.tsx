@@ -49,6 +49,7 @@ export function Stage({ room, conn, act, watch }: { room: RoomState; conn: Conn;
           if (e.k === 'god_confetti') { for (let i = 0; i < 6; i++) fx.burst(w.x + Math.random() * w.w, w.y + Math.random() * w.h * 0.5, ['#ff4d6d', '#3ec1ff', '#ffd23f', '#5dfc8d'][i % 4], 30, 500, 8, 400); sfx.win(); }
           else if (e.k === 'god_quake') { fx.kick(24); sfx.boom(); }
           else if (e.k === 'god_flash') { fx.blink('#ffffff', 0.9); sfx.power(); }
+          else if (e.k === 'god_say') { fx.text(cx, cy - w.h * 0.28, document.documentElement.lang === 'he' ? e.he : e.en, '#ffd23f', 70); fx.burst(cx, cy - w.h * 0.28, '#b26bff', 24, 420, 7); sfx.power(); }
           else { fx.text(cx, cy, ':crown:', '#ffd23f', 160); fx.burst(cx, cy, '#ffd23f', 40, 450, 8); sfx.win(); }
           continue;
         }

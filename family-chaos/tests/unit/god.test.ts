@@ -34,11 +34,15 @@ describe('GOD ADMIN crown (server-side authorisation)', () => {
     host.owner = true;
     room.handle(host, { t: 'admin', act: { a: 'start' } });
     advance(TIMING.COUNTDOWN_MS + 500);
+    rooms.route(host, { t: 'god', power: 'chaos' }); // game-changing powers need chaos mode, which everybody can see
+    advance(50);
+    expect(state().chaos).toBe(true);
     for (const power of GOD_POWERS) {
       if (power === 'end') continue;
       host.inbox.length = 0;
       rooms.route(host, { t: 'god', power });
-      expect(host.last('error'), power).toBeUndefined();
+      const err = host.last('error')?.code;
+      expect(err === undefined || (err === 'unsupported' && power === 'jump'), `${power}: ${err}`).toBe(true); // Bumper Battle has no jumping
     }
     advance(100);
     expect(state().players.reduce((a, p) => a + p.stars, 0)).toBeGreaterThan(0); // bonus gave stars
@@ -53,11 +57,24 @@ describe('GOD ADMIN crown (server-side authorisation)', () => {
     host.owner = true;
     room.handle(host, { t: 'admin', act: { a: 'start' } });
     advance(TIMING.COUNTDOWN_MS + 500);
+    rooms.route(host, { t: 'god', power: 'chaos' });
     rooms.route(host, { t: 'god', power: 'freeze' });
     advance(100);
     expect(state().phase).toBe('paused');
     advance(3200);
     expect(state().phase).toBe('playing');
+  });
+
+  it('game-changing powers are refused while chaos mode is off; cosmetic ones are always fine; chaos mode is switched by the owner only', () => {
+    const { rooms, host, phones, room, advance, state } = setup();
+    room.handle(host, { t: 'admin', act: { a: 'start' } });
+    advance(TIMING.COUNTDOWN_MS + 300);
+    rooms.route(phones[0], { t: 'god', power: 'chaos' }); expect(phones[0].last('error')?.code).toBe('not_allowed'); // a player cannot
+    host.owner = true;
+    rooms.route(host, { t: 'god', power: 'speed' }); expect(host.last('error')?.code).toBe('chaos_off');
+    host.inbox.length = 0; rooms.route(host, { t: 'god', power: 'confetti' }); expect(host.last('error')).toBeUndefined();
+    rooms.route(host, { t: 'god', power: 'chaos' }); advance(50); expect(state().chaos).toBe(true);
+    host.inbox.length = 0; rooms.route(host, { t: 'god', power: 'speed' }); expect(host.last('error')).toBeUndefined();
   });
 
   it('is disabled in competitive tournaments', () => {

@@ -25,7 +25,7 @@ export type PadStyle = 'racing' | 'fighter' | 'platform' | 'party';
 
 export type ControllerLayout =
   // buttons are ordered by importance: [0] is the primary button under the resting thumb
-  | { kind: 'stick'; style: PadStyle; buttons: ControllerButton[]; landscape?: boolean }
+  | { kind: 'stick'; style: PadStyle; buttons: ControllerButton[]; landscape?: boolean; pointer?: boolean } // pointer: a touchpad (finger = target position) instead of a joystick
   // racing: a wheel to rotate with a finger (or arrows / phone tilt) instead of a joystick
   | { kind: 'wheel'; style: PadStyle; buttons: ControllerButton[] }
   | { kind: 'tap'; button: ControllerButton } // one giant button
@@ -165,14 +165,15 @@ const BASE_GAMES: GameMeta[] = [
     name: { he: 'מיני כדורגל', en: 'Mini Soccer' },
     tagline: { he: 'קבוצה נגד קבוצה — מי יבקיע יותר?', en: 'Team vs team — who scores more?' },
     howTo: {
-      he: 'הקבוצות נבחרות אוטומטית (אדומים נגד כחולים). ג׳ויסטיק לריצה, בעיטה לבעוט לכיוון הג׳ויסטיק, ספרינט מתכלה. תיקו = הארכה עם גול הזהב.',
-      en: 'Teams are automatic (red vs blue). Stick to run, KICK shoots where you aim, SPRINT drains stamina. A tie goes to golden-goal overtime.',
+      he: 'הקבוצות נבחרות אוטומטית (אדומים נגד כחולים). ג׳ויסטיק לריצה, בעיטה לבעוט לכיוון הג׳ויסטיק, מסירה (C) שולחת את הכדור לחבר הקבוצה שאליו אתם מכוונים, ספרינט מתכלה. תיקו = הארכה עם גול הזהב.',
+      en: 'Teams are automatic (red vs blue). Stick to run, KICK shoots where you aim, PASS (C) sends the ball to the teammate you aim at, SPRINT drains stamina. A tie goes to golden-goal overtime.',
     },
     category: 'sports', minPlayers: 2, maxPlayers: 8, status: 'playable',
     accent: ['#22c55e', '#15803d'],
     controller: stickPad('fighter', [
       { key: 'A', label: { he: 'בעיטה', en: 'KICK' }, color: '#ffd23f', big: true, icon: 'kick' },
       { key: 'B', label: { he: 'ספרינט', en: 'SPRINT' }, color: '#3ec1ff', icon: 'dash' },
+      { key: 'C', label: { he: 'מסירה', en: 'PASS' }, color: '#5dfc8d', icon: 'throw' },
     ]),
     options: [{ key: 'time', label: { he: 'זמן משחק', en: 'Match time' }, values: [60, 120, 180], default: 120, names: [{ he: 'דקה', en: '1 min' }, { he: '2 דקות', en: '2 min' }, { he: '3 דקות', en: '3 min' }] }],
   },
@@ -181,12 +182,12 @@ const BASE_GAMES: GameMeta[] = [
     name: { he: 'הוקי אוויר', en: 'Air Hockey' },
     tagline: { he: 'מהיר, חלק ונוצץ — 1 נגד 1 או 2 נגד 2', en: 'Fast, slick, shiny — 1v1 or 2v2' },
     howTo: {
-      he: 'הזיזו את המחבט עם הג׳ויסטיק (רק בחצי שלכם) והבקיעו לשער היריב. "חבטה" נותנת פרץ מהירות. ראשון ל־7 גולים מנצח.',
-      en: 'Move your mallet with the stick (your half only) and score in the rival goal. SMASH gives a speed burst. First to 7 goals wins.',
+      he: 'הניחו אצבע על המסך — המחבט הולך בדיוק לשם (רק בחצי שלכם) והבקיעו לשער היריב. "חבטה" נותנת פרץ מהירות. ראשון ל־7 גולים מנצח.',
+      en: 'Put a finger on the pad — the mallet goes exactly there (your half only) and score in the rival goal. SMASH gives a speed burst. First to 7 goals wins.',
     },
     category: 'sports', minPlayers: 2, maxPlayers: 4, status: 'playable',
     accent: ['#38bdf8', '#6366f1'],
-    controller: stickPad('fighter', [{ key: 'A', label: { he: 'חבטה', en: 'SMASH' }, color: '#ffd23f', big: true, icon: 'turbo' }]),
+    controller: { ...stickPad('fighter', [{ key: 'A', label: { he: 'חבטה', en: 'SMASH' }, color: '#ffd23f', big: true, icon: 'turbo' }]), pointer: true } as ControllerLayout,
     options: [{ key: 'goals', label: { he: 'גולים לניצחון', en: 'Goals to win' }, values: [3, 5, 7, 10], default: 7 }],
   },
   {

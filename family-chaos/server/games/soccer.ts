@@ -66,9 +66,34 @@ export const soccerGame: GameModule = {
       if (ot || Math.abs(score[0] - score[1]) >= C.MERCY) over = true; // golden goal, or mercy rule at an 8-goal lead
     }
 
+    /** PASS: the ball goes to the teammate best lined up with where you aim, led a little so it arrives at his feet. */
+    function pass(p: Pl) {
+      const dx = ball.x - p.x, dy = ball.y - p.y;
+      p.kickCd = C.KICK_CD; p.kickFx = 0.18;
+      if (Math.hypot(dx, dy) > C.KICK_REACH) { ctx.fx('swing', { id: p.id }); return; }
+      const inp = ctx.input(p.id);
+      const aim = Math.hypot(inp.x, inp.y) > 0.3 ? Math.atan2(inp.y, inp.x) : p.face;
+      let best: Pl | null = null, bs = -1;
+      for (const q of ps) {
+        if (q === p || q.team !== p.team) continue;
+        const a = Math.atan2(q.y - p.y, q.x - p.x), cos = Math.cos(a - aim), d = Math.hypot(q.x - p.x, q.y - p.y);
+        const sc = cos > 0.35 ? cos * 2 - d / 900 : -1;
+        if (sc > bs) { bs = sc; best = q; }
+      }
+      let ax = Math.cos(aim), ay = Math.sin(aim), v = 520;
+      if (best) {
+        const d = Math.hypot(best.x - ball.x, best.y - ball.y), t = d / 560;
+        const tx = best.x + best.vx * Math.min(0.5, t), ty = best.y + best.vy * Math.min(0.5, t);
+        const l = Math.hypot(tx - ball.x, ty - ball.y) || 1; ax = (tx - ball.x) / l; ay = (ty - ball.y) / l; v = Math.min(700, 320 + d * 0.8);
+      }
+      ball.vx = ax * v; ball.vy = ay * v; ball.lastTouch = p.id; p.touches++;
+      ctx.fx('pass', { id: p.id, to: best?.id ?? '', x: r1(ball.x), y: r1(ball.y) }); ctx.buzz(p.id, 25);
+    }
+
     return {
       onPress(pid, btn) {
         const p = byId.get(pid);
+        if (p && celebrate <= 0 && btn === BTN.C && p.kickCd <= 0) { pass(p); return; }
         if (!p || celebrate > 0 || btn !== BTN.A || p.kickCd > 0) return;
         const dx = ball.x - p.x, dy = ball.y - p.y, d = Math.hypot(dx, dy);
         p.kickCd = C.KICK_CD; p.kickFx = 0.18;

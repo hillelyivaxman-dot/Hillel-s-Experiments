@@ -69,6 +69,42 @@ export function Lobby({ room, act, watch }: { room: RoomState; act: (a: AdminAct
   const meta = getMeta(room.selectedGame)!;
   const connected = room.players.filter((p) => p.connected).length;
   const [custom, setCustom] = useState<string[] | null>(null);
+  // TV remote / keyboard / gamepad: arrows move over the game tiles, Enter / A starts
+  const nav = useRef({ room, act, watch, custom: custom as string[] | null });
+  nav.current = { room, act, watch, custom };
+  useEffect(() => {
+    const ids = [...CATALOG.filter((g) => g.status === 'playable')].map((g) => g.id);
+    const move = (dx: number, dy: number) => {
+      const n = nav.current; if (n.watch || n.room.phase !== 'lobby') return;
+      const rtl = document.documentElement.dir === 'rtl', cols = 5;
+      const i = Math.max(0, ids.indexOf(n.room.selectedGame));
+      const j = Math.max(0, Math.min(ids.length - 1, i + (rtl ? -dx : dx) + dy * cols));
+      if (j !== i) { sfx.click(); n.act({ a: 'select', game: ids[j] }); }
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.target as HTMLElement)?.closest?.('input,select,textarea')) return;
+      if (e.key === 'ArrowRight') move(1, 0); else if (e.key === 'ArrowLeft') move(-1, 0); else if (e.key === 'ArrowDown') move(0, 1); else if (e.key === 'ArrowUp') move(0, -1);
+      else if (e.key === 'Enter' && !(e.target as HTMLElement)?.closest?.('button')) { const n = nav.current; if (!n.watch && n.room.phase === 'lobby') document.querySelector<HTMLButtonElement>('[data-testid="start-btn"]:not(:disabled)')?.click(); }
+    };
+    window.addEventListener('keydown', onKey);
+    let raf = 0, held = false, lastDir = 0;
+    const poll = () => { // gamepad: d-pad / left stick to move, A (button 0) to start
+      raf = requestAnimationFrame(poll);
+      const pad = navigator.getGamepads?.().find((g) => g);
+      if (!pad) return;
+      const dx = pad.buttons[15]?.pressed || pad.axes[0] > 0.6 ? 1 : pad.buttons[14]?.pressed || pad.axes[0] < -0.6 ? -1 : 0;
+      const dy = pad.buttons[13]?.pressed || pad.axes[1] > 0.6 ? 1 : pad.buttons[12]?.pressed || pad.axes[1] < -0.6 ? -1 : 0;
+      const now = performance.now();
+      if ((dx || dy) && now - lastDir > 220) { lastDir = now; move(dx, dy); }
+      const a = !!pad.buttons[0]?.pressed;
+      if (a && !held) document.querySelector<HTMLButtonElement>('[data-testid="start-btn"]:not(:disabled)')?.click();
+      held = a;
+    };
+    poll();
+    return () => { window.removeEventListener('keydown', onKey); cancelAnimationFrame(raf); };
+  }, []);
+  const [saved, setSaved] = useState<{ id: string; title: string; mode: string; status: string; progress: string }[]>([]);
+  useEffect(() => { fetch('/api/tournaments', { credentials: 'same-origin' }).then((r) => (r.ok ? r.json() : { tournaments: [] })).then((d) => setSaved((d.tournaments ?? []).filter((x: { status: string }) => x.status === 'active'))).catch(() => {}); }, []);
   const favs: string[] = (() => { try { return JSON.parse(store.get('fc.favs') ?? '[]'); } catch { return []; } })(); // favourites float to the front
   const canStart = connected >= meta.minPlayers;
 
@@ -152,11 +188,17 @@ export function Lobby({ room, act, watch }: { room: RoomState; act: (a: AdminAct
                 </button>
                 <button className={`chip ${custom ? 'is-on' : ''}`} disabled={connected < 2} data-testid="tour-custom" onClick={() => setCustom(custom ? null : [])}><Icon name="edit" /> {l({ he: 'בחירה ידנית', en: 'Pick games' })}
                 </button>
-                {custom && (
-                  <button className="btn btn--primary" disabled={!custom.length} data-testid="tour-custom-go" onClick={() => { sfx.go(); act({ a: 'tournament', games: custom }); setCustom(null); }}>
-                    ▶ {l({ he: 'התחל טורניר', en: 'Start tournament' })} ({custom.length})
+                {custom && ([['party', { he: 'מסיבה', en: 'Party' }], ['league', { he: 'ליגה ×2', en: 'League ×2' }], ['multiday', { he: 'רב־יומי', en: 'Multi-day' }]] as const).map(([m, name]) => (
+                  <button key={m} className="btn btn--primary btn--sm" disabled={!custom.length} data-testid={m === 'party' ? 'tour-custom-go' : `tour-custom-${m}`}
+                    onClick={() => { sfx.go(); act({ a: 'tournament', games: custom, mode: m, rounds: 2, count: m === 'party' ? custom.length : undefined }); setCustom(null); }}>
+                    ▶ {l(name)} ({custom.length})
                   </button>
-                )}
+                ))}
+                {!custom && saved.slice(0, 3).map((tr) => (
+                  <button key={tr.id} className="chip" data-testid="tour-resume" onClick={() => { sfx.go(); act({ a: 'tour_resume', id: tr.id }); }}>
+                    <Icon name="play" size="1em" /> {l({ he: 'המשך', en: 'Resume' })}: {tr.mode} {tr.progress}
+                  </button>
+                ))}
                 {custom && <span className="muted small">{l({ he: 'לחצו על משחקים בסרגל למטה לפי הסדר', en: 'Tap games in the rail below, in order' })}</span>}
               </div>
           )}

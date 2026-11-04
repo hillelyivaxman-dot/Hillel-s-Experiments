@@ -11,7 +11,6 @@ const dbg = (p: Page) => p.evaluate(() => (window as any).__fcKart ?? { frames: 
 test('Kart Chaos: the phone draws its own 3D world from live server frames, with HUD, camera switch and map', async ({ browser }) => {
   test.setTimeout(120_000);
   const { h, code } = await newHost(browser);
-  await h.evaluate(() => localStorage.setItem('fc.host3d', '0'));
   const a = await newPhone(browser, `${HTTP}/join/${code}`, 'Driver', land);
   await newPhone(browser, `${HTTP}/join/${code}`, 'Rival', land);
   await h.locator('.lobby__games [data-game="kart"]').click();
@@ -47,7 +46,6 @@ test('Kart Chaos: the phone draws its own 3D world from live server frames, with
 test('Kart Chaos controls: manual gas option adds a GAS button and the manual flag; sensitivity and camera options are remembered', async ({ browser }) => {
   test.setTimeout(90_000);
   const { h, code } = await newHost(browser);
-  await h.evaluate(() => localStorage.setItem('fc.host3d', '0')); // software WebGL x3 pages is too heavy for CI: host on the 2D map here
   const a = await newPhone(browser, `${HTTP}/join/${code}`, 'Driver', land);
   await newPhone(browser, `${HTTP}/join/${code}`, 'Rival', land);
   await h.locator('.lobby__games [data-game="kart"]').click();
@@ -72,7 +70,7 @@ test('Kart Chaos controls: manual gas option adds a GAS button and the manual fl
 
 test('Kart Chaos host: 3D broadcast with leader / car switcher, and a switch back to the 2D map', async ({ browser }) => {
   test.setTimeout(120_000);
-  const { h, code } = await newHost(browser);
+  const { h, code } = await newHost(browser, HTTP, true);
   const a = await newPhone(browser, `${HTTP}/join/${code}`, 'Driver', land);
   await newPhone(browser, `${HTTP}/join/${code}`, 'Rival', { viewport: { width: 360, height: 240 } });
   await h.locator('.lobby__games [data-game="kart"]').click();

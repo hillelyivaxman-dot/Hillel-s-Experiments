@@ -71,12 +71,17 @@ export const hockeyGame: GameModule = {
           if (!had && m.boostCd <= 0) hud(m);
           const inp = pause > 0 ? { x: 0, y: 0 } : ctx.input(m.id);
           const max = C.MAXV * (m.boostT > 0 ? C.BOOST_K : 1);
-          const tx = inp.x * max, ty = inp.y * max;
-          const step = C.ACC * dt;
+          const x0 = m.team === 0 ? -C.HW + m.r : m.r + 8, x1 = m.team === 0 ? -m.r - 8 : C.HW - m.r;
+          let tx = inp.x * max, ty = inp.y * max;
+          const abs = pause <= 0 && (ctx.input(m.id).b & BTN.M) !== 0; // touchpad: the finger IS the mallet (x, y = position over your half, -1..1)
+          if (abs) {
+            const gx = x0 + ((inp.x + 1) / 2) * (x1 - x0), gy = inp.y * (C.HH - m.r);
+            tx = Math.max(-max, Math.min(max, (gx - m.x) * 16)); ty = Math.max(-max, Math.min(max, (gy - m.y) * 16));
+          }
+          const step = (abs ? C.ACC * 2.2 : C.ACC) * dt;
           m.vx += Math.max(-step, Math.min(step, tx - m.vx));
           m.vy += Math.max(-step, Math.min(step, ty - m.vy));
           integrate(m, dt);
-          const x0 = m.team === 0 ? -C.HW + m.r : m.r + 8, x1 = m.team === 0 ? -m.r - 8 : C.HW - m.r;
           if (m.x < x0) { m.x = x0; m.vx = Math.max(0, m.vx); }
           if (m.x > x1) { m.x = x1; m.vx = Math.min(0, m.vx); }
           if (Math.abs(m.y) > C.HH - m.r) { m.y = Math.sign(m.y) * (C.HH - m.r); m.vy = 0; }

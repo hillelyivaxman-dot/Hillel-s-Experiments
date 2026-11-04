@@ -41,8 +41,8 @@ export const vanishRenderer: Renderer = {
         continue;
       }
       g.fillStyle = `rgba(0,0,0,${0.3 - p.z / 400})`; g.beginPath(); g.ellipse(p.x, p.y + 26, 28 - p.z / 6, 11 - p.z / 12, 0, 0, Math.PI * 2); g.fill();
-      drawCritter(g, p.x, p.y - p.z, 27, info.color, info.avatar, { t, squash: p.z > 1 ? -0.1 : 0 });
-      nameTag(g, p.x, p.y - p.z - 48, info.name, info.color, 15);
+      drawCritter(g, p.x, p.y - p.z, 27 * (p.sz ?? 1), info.color, info.avatar, { t, squash: p.z > 1 ? -0.1 : 0, alpha: p.iv ? 0.16 : 1 });
+      if (!p.iv) nameTag(g, p.x, p.y - p.z - 48 * (p.sz ?? 1), info.name, info.color, 15);
     }
     fx.draw(g);
   },

@@ -29,7 +29,11 @@ export interface ResultRow {
 
 /** Party tournament (in-memory, per room): a series of games with points per place; the next game starts by itself. */
 export interface TourState {
-  mode: 'party' | 'knockout'; // knockout: the last place of every game is out until one player is left
+  mode: 'party' | 'knockout' | 'league' | 'multiday'; // knockout: the last place of every game is out until one player is left; league: a fixed schedule; multiday: a league that is saved and can be resumed on another day
+  id?: string; // saved tournament id (signed-in host + database)
+  title?: string;
+  skipped?: string[]; // games dropped because the group size / scoring does not fit
+  absent?: { name: string; points: number }[]; // saved players who are not in the room right now
   alive: string[]; // knockout: players still in
   total: number;
   idx: number; // index of the current (or just finished) game
@@ -56,6 +60,7 @@ export interface RoomState {
   results: ResultRow[] | null;
   hostConnected: boolean;
   tour: TourState | null;
+  chaos: boolean; // owner switched chaos mode on: everybody can see it, game-changing crown powers are allowed
 }
 
 export type AdminAction =
@@ -67,7 +72,8 @@ export type AdminAction =
   | { a: 'end' }
   | { a: 'lobby' }
   | { a: 'again' }
-  | { a: 'tournament'; count?: number; games?: string[]; mode?: 'party' | 'knockout' }
+  | { a: 'tournament'; count?: number; games?: string[]; mode?: 'party' | 'knockout' | 'league' | 'multiday'; rounds?: number }
+  | { a: 'tour_resume'; id: string }
   | { a: 'tour_skip' }
   | { a: 'tour_hold'; hold: boolean }
   | { a: 'tour_cancel' }
@@ -107,6 +113,8 @@ export type S2C =
 
 export type ErrorCode =
   | 'competitive'
+  | 'chaos_off' // a game-changing power needs chaos mode
+  | 'unsupported' // this game cannot apply that power
   | 'no_room'
   | 'bad_password'
   | 'room_full'
@@ -128,5 +136,9 @@ export const PLAYER_COLORS = [
 export const AVATAR_COUNT = 12;
 
 /** The crown ("GOD ADMIN") powers. Executed by the server, only for the verified OWNER and only outside tournaments. */
-export const GOD_POWERS = ['confetti', 'quake', 'flash', 'announce', 'freeze', 'slowmo', 'turbo', 'mirror', 'bonus', 'steal', 'leader', 'end'] as const;
+export const GOD_POWERS = ['confetti', 'quake', 'flash', 'announce', 'freeze', 'slowmo', 'turbo', 'mirror', 'bonus', 'steal', 'leader', 'end', 'speed', 'jump', 'giant', 'tiny', 'teleport', 'invisible', 'swap'] as const;
+/** Powers that only decorate the screen: allowed any time. Everything else changes the game and needs visible chaos mode. */
+export const GOD_COSMETIC = ['confetti', 'quake', 'flash', 'announce'] as const;
+/** Powers that act on one player inside the game (the game must support them). */
+export const GOD_PLAYER = ['speed', 'jump', 'giant', 'tiny', 'teleport', 'invisible', 'swap'] as const;
 export type GodPower = (typeof GOD_POWERS)[number];

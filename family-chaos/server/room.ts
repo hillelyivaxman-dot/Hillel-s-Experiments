@@ -1,14 +1,22 @@
 import { CATALOG, defaultOptions, getMeta } from '../shared/catalog';
 import {
-  type TourState, GOD_POWERS, type GodPower,
+  type TourState, GOD_COSMETIC, GOD_PLAYER, GOD_POWERS, type GodPower,
   AVATAR_COUNT, PLAYER_COLORS,
   type AdminAction, type C2S, type ErrorCode, type PlayerInfo, type ResultRow, type RoomPhase, type RoomState, type S2C,
 } from '../shared/protocol';
 import { GAMES } from './games';
+import type { PlayerPower } from './games/powers';
 import type { GameContext, GameInstance, PlayerInput } from './games/types';
 import { clamp, cleanName, num, rng, safeEqual, token } from './util';
 
 /** A connected socket, abstracted so rooms can be unit-tested without WebSockets. */
+/** Persistence for tournaments (implemented by Accounts on top of the database). */
+export interface TourStore {
+  save(userId: number, id: string | null, title: string, mode: string, status: string, body: string): Promise<string>;
+  load(userId: number, id: string): Promise<string | null>;
+  trophy(userId: number, tournamentId: string, title: string, mode: string): Promise<void>;
+}
+
 export interface Client {
   send(m: S2C): void;
   close(): void;
@@ -68,6 +76,7 @@ export class Room {
   private lastRttPush = 0;
   private phoneFx: unknown[] = [];
   private phoneAcc = 0;
+  chaos = false;
   private god = { freezeUntil: 0, scaleUntil: 0, scale: 1, mirrorUntil: 0 };
   godLog: { at: number; userId: number | null; power: string }[] = [];
   private fx: { k: string; [key: string]: unknown }[] = [];
@@ -285,7 +294,8 @@ export class Room {
         if (this.tour?.done) this.tour = null;
         return this.startGame();
       }
-      case 'tournament': return this.startTour(act.count, act.games, act.mode);
+      case 'tournament': return this.startTour(act.count, act.games, act.mode, act.rounds);
+      case 'tour_resume': { void this.resumeTour(String(act.id)).then((e) => { if (e) this.hosts.forEach((h) => h.send({ t: 'error', code: e })); }); return null; }
       case 'tour_skip':
         if (!this.tour || this.tour.done || this.phase !== 'results') return 'not_allowed';
         return this.advanceTour();
@@ -297,7 +307,8 @@ export class Room {
         break;
       case 'tour_cancel':
         if (!this.tour) return 'not_allowed';
-        this.tour = null; this.dirty = true;
+        if (this.tour.mode === 'multiday' && !this.tour.done) this.persist(); // "cancel" a multi-day series = pause it: it stays saved and can be resumed
+        this.tour = null; this.tourId = null; this.dirty = true;
         break;
       case 'pause':
         if (this.phase !== 'playing') return 'not_allowed';
@@ -364,13 +375,31 @@ export class Room {
   private godPower(c: Client, power: string, target?: string) {
     if (!c.owner) return c.send({ t: 'error', code: 'not_allowed' });
     if (this.tour && !this.tour.done) return c.send({ t: 'error', code: 'competitive' });
-    if (!(GOD_POWERS as readonly string[]).includes(power)) return c.send({ t: 'error', code: 'bad_message' });
+    if (power !== 'chaos' && !(GOD_POWERS as readonly string[]).includes(power)) return c.send({ t: 'error', code: 'bad_message' });
     const now = this.clock();
     const live = this.phase === 'playing' || this.phase === 'paused';
-    const need = ['freeze', 'slowmo', 'turbo', 'mirror', 'end'];
+    const cosmetic = (GOD_COSMETIC as readonly string[]).includes(power);
+    // chaos mode: the owner switches it on for a party room; it is shown to every screen and phone, and only then can powers change the game
+    if (power === 'chaos') {
+      this.chaos = !this.chaos; this.dirty = true; this.fxPush('god_say', { he: this.chaos ? 'מצב כאוס פעיל!' : 'מצב כאוס כבוי', en: this.chaos ? 'CHAOS MODE ON!' : 'Chaos mode off' });
+      this.godLog.push({ at: now, userId: c.userId ?? null, power }); console.log(`GOD power=chaos(${this.chaos}) user=${c.userId ?? '?'} room=${this.code}`);
+      return;
+    }
+    if (!cosmetic && !this.chaos) return c.send({ t: 'error', code: 'chaos_off' });
+    const need = ['freeze', 'slowmo', 'turbo', 'mirror', 'end', ...GOD_PLAYER];
     if (need.includes(power) && !live) return c.send({ t: 'error', code: 'not_allowed' });
     const ids = [...this.players.values()].filter((p) => p.info.connected).map((p) => p.info.id);
     const pick = () => (target && this.players.has(target) ? target : ids[Math.floor(rng(this.seed++)() * ids.length)]);
+    if ((GOD_PLAYER as readonly string[]).includes(power)) {
+      const id = pick(), who = id ? this.players.get(id) : null;
+      if (!id || !who || !this.game?.power) return c.send({ t: 'error', code: 'unsupported' });
+      if (!this.participants.includes(id)) return c.send({ t: 'error', code: 'unsupported' });
+      if (!this.game.power(id, power as PlayerPower, 8)) return c.send({ t: 'error', code: 'unsupported' });
+      const NAMES: Record<string, [string, string]> = { speed: ['מהירות־על', 'Super speed'], jump: ['קפיצה גבוהה', 'High jump'], giant: ['ענק', 'Giant'], tiny: ['ננס', 'Tiny'], teleport: ['טלפורט', 'Teleport'], invisible: ['בלתי נראה', 'Invisible'], swap: ['החלפת מקומות', 'Swap places'] };
+      this.fxPush('god_say', { he: `${NAMES[power][0]}: ${who.info.name}`, en: `${NAMES[power][1]}: ${who.info.name}` });
+      this.godLog.push({ at: now, userId: c.userId ?? null, power }); console.log(`GOD power=${power} target=${id} user=${c.userId ?? '?'} room=${this.code}`);
+      return;
+    }
     switch (power as GodPower) {
       case 'confetti': case 'quake': case 'flash': this.fxPush(`god_${power}`); break;
       case 'announce': this.fxPush('god_announce'); break;
@@ -392,50 +421,111 @@ export class Room {
     console.log(`GOD power=${power} user=${c.userId ?? '?'} room=${this.code}`);
   }
 
-  // ---------- party tournament ----------
+  // ---------- tournaments (party / knockout / league / multi-day) ----------
+
+  /** Where saved tournaments live (set by Rooms when a database exists). */
+  tourStore: TourStore | null = null;
+  private tourId: string | null = null;
+
+  /** The signed-in account behind the host screen (or, failing that, the room leader): owner of saved tournaments. */
+  private ownerUserId(): number | null {
+    for (const h of this.hosts) if (h.userId) return h.userId;
+    const l = this.leaderId ? this.players.get(this.leaderId) : null;
+    return l?.userId ?? null;
+  }
+  private keyOf(p: PlayerRec) { return p.userId ? `u:${p.userId}` : `n:${p.info.name.toLowerCase()}`; }
+
+  /** Writes the series to the database (survives Render restarts). No database or not signed in: it stays in memory. */
+  private persist() {
+    const t = this.tour, uid = this.ownerUserId();
+    if (!t || !this.tourStore || !uid) return;
+    const points: Record<string, { name: string; points: number }> = {};
+    for (const p of this.players.values()) points[this.keyOf(p)] = { name: p.info.name, points: t.points[p.info.id] ?? 0 };
+    for (const a of t.absent ?? []) points[`n:${a.name.toLowerCase()}`] ??= { name: a.name, points: a.points };
+    if (!this.tourId) this.tourId = token(9); // decided now, so two quick saves never create two rows
+    t.id = this.tourId;
+    const body = JSON.stringify({ mode: t.mode, idx: t.idx, total: t.total, games: t.games, points, done: t.done, title: t.title });
+    this.tourStore.save(uid, this.tourId, t.title ?? 'Tournament', t.mode, t.done ? 'done' : 'active', body)
+      .then(() => { this.dirty = true; })
+      .catch((e) => console.error('save tournament', e));
+    if (t.done && t.champion && !this.trophyGiven) {
+      this.trophyGiven = true;
+      const champ = this.players.get(t.champion);
+      if (champ?.userId) this.tourStore.trophy(champ.userId, this.tourId, t.title ?? 'Tournament', t.mode).catch((e) => console.error('trophy', e));
+    }
+  }
+  private trophyGiven = false;
 
   /** Knockout picks individual-ranking games only (co-op games have no loser). */
   private koPool: string[] | null = null;
   private pickKnockoutGame(alive: number, last?: string): string | null {
-    const COOP = new Set(['survival', 'defense', 'rescue', 'evac', 'puzzle', 'kitchen']);
-    const pool = CATALOG.filter((g) => g.status === 'playable' && GAMES[g.id] && !COOP.has(g.id) && alive >= g.minPlayers && (g.id !== last || this.koPool?.length === 1) && (!this.koPool || this.koPool.includes(g.id))).map((g) => g.id);
+    const pool = CATALOG.filter((g) => g.status === 'playable' && GAMES[g.id] && alive >= g.minPlayers && alive <= g.maxPlayers && (g.id !== last || this.koPool?.length === 1) && (!this.koPool || this.koPool.includes(g.id))).map((g) => g.id);
     return pool.length ? pool[Math.floor(rng(this.seed++)() * pool.length)] : null;
   }
 
-  private startTour(count?: number, games?: string[], mode: 'party' | 'knockout' = 'party'): ErrorCode | null {
+  private startTour(count?: number, games?: string[], mode: TourState['mode'] = 'party', rounds?: number): ErrorCode | null {
     if (this.phase !== 'lobby' && this.phase !== 'results') return 'in_game';
     const n = [...this.players.values()].filter((p) => p.info.connected).length;
+    this.trophyGiven = false; this.tourId = null;
+    const fits = (g: string) => { const m = getMeta(g); return !!m && m.status === 'playable' && !!GAMES[g] && n >= m.minPlayers && n <= m.maxPlayers; };
+    const skipped = (games ?? []).filter((g) => !fits(g));
+    const base = { points: Object.fromEntries([...this.players.keys()].map((id) => [id, 0])), nextAt: null, held: false, done: false, champion: null, alive: [] as string[], skipped, title: `${mode} ${new Date().toISOString().slice(0, 10)}` };
     if (mode === 'knockout') {
       if (n < 2) return 'not_allowed';
-      this.koPool = games?.length ? games : null;
+      this.koPool = games?.filter(fits).length ? games.filter(fits) : null;
       const first = this.pickKnockoutGame(n);
       if (!first) return 'not_allowed';
       const alive = [...this.players.values()].filter((p) => p.info.connected).map((p) => p.info.id);
-      this.tour = { mode, alive, total: alive.length - 1, idx: 0, games: [first], points: Object.fromEntries([...this.players.keys()].map((id) => [id, 0])), nextAt: null, held: false, done: false, champion: null };
+      this.tour = { ...base, mode, alive, total: alive.length - 1, idx: 0, games: [first] };
       this.selectGame(first);
       const err = this.startGame();
-      if (err) this.tour = null;
+      if (err) this.tour = null; else this.persist();
       return err;
     }
-    let list: string[];
-    if (games?.length) {
-      list = games.filter((g) => { const m = getMeta(g); return m && m.status === 'playable' && GAMES[g] && n >= m.minPlayers; }).slice(0, 12);
+    // party / league / multiday: the organiser's picks first, the rest (if any) filled up at random
+    const pool = CATALOG.filter((g) => fits(g.id)).map((g) => g.id);
+    let list = (games ?? []).filter(fits);
+    const want = Math.max(2, Math.min(12, Math.floor(num(count, mode === 'party' ? 5 : Math.max(list.length || 4, 1) * Math.max(1, Math.floor(num(rounds, 2)))))));
+    const rand = rng(this.seed++);
+    if (mode === 'league' || mode === 'multiday') { // a fixed schedule: the chosen games, repeated round after round
+      const cycle = list.length ? list : pool.slice(0, 4);
+      list = Array.from({ length: want }, (_, i) => cycle[i % cycle.length]);
     } else {
-      const pool = CATALOG.filter((g) => g.status === 'playable' && GAMES[g.id] && n >= g.minPlayers).map((g) => g.id);
-      const want = Math.max(2, Math.min(10, Math.floor(num(count, 5))));
-      list = [];
-      const rand = rng(this.seed++);
-      while (list.length < want && pool.length) {
+      list = list.slice(0, 12);
+      while (list.length < (games?.length ? list.length : want) && pool.length) {
         const bag = pool.filter((g) => g !== list[list.length - 1]);
         const from = bag.length ? bag : pool;
         list.push(from[Math.floor(rand() * from.length)]);
       }
+      if (games?.length && count && list.length < count) while (list.length < count && pool.length) { const bag = pool.filter((g) => g !== list[list.length - 1]); const from = bag.length ? bag : pool; list.push(from[Math.floor(rand() * from.length)]); } // "mixed": picks + random fill
     }
     if (list.length < 1) return 'not_allowed';
-    this.tour = { mode: 'party', alive: [], total: list.length, idx: 0, games: list, points: Object.fromEntries([...this.players.keys()].map((id) => [id, 0])), nextAt: null, held: false, done: false, champion: null };
+    this.tour = { ...base, mode, total: list.length, idx: 0, games: list };
     this.selectGame(list[0]);
     const err = this.startGame();
-    if (err) this.tour = null;
+    if (err) this.tour = null; else this.persist();
+    return err;
+  }
+
+  /** Continue a saved tournament (another day / after a restart): points are matched to the players in this room by account or name. */
+  async resumeTour(id: string): Promise<ErrorCode | null> {
+    const uid = this.ownerUserId();
+    if (!this.tourStore || !uid) return 'not_allowed';
+    if (this.phase !== 'lobby' && this.phase !== 'results') return 'in_game';
+    const raw = await this.tourStore.load(uid, id);
+    if (!raw) return 'not_allowed';
+    const saved = JSON.parse(raw) as { mode: TourState['mode']; idx: number; total: number; games: string[]; points: Record<string, { name: string; points: number }>; done: boolean; title?: string };
+    if (saved.done) return 'not_allowed';
+    const points: Record<string, number> = {}, seen = new Set<string>();
+    for (const p of this.players.values()) { const k = this.keyOf(p); points[p.info.id] = saved.points[k]?.points ?? 0; seen.add(k); }
+    const absent = Object.entries(saved.points).filter(([k]) => !seen.has(k)).map(([, v]) => v);
+    const nextIdx = Math.min(saved.idx + 1, saved.games.length - 1);
+    this.tourId = id; this.trophyGiven = false;
+    const alive = this.players.size ? [...this.players.keys()] : [];
+    this.tour = { mode: saved.mode, alive: saved.mode === 'knockout' ? alive : [], total: saved.total, idx: nextIdx, games: saved.games, points, nextAt: null, held: false, done: false, champion: null, id, title: saved.title, absent, skipped: [] };
+    this.selectGame(saved.games[nextIdx]);
+    const err = this.startGame();
+    if (err) this.tour = null; else { this.persist(); this.dirty = true; }
     return err;
   }
 
@@ -473,6 +563,7 @@ export class Room {
     const best = Object.entries(t.points).sort((a, b) => b[1] - a[1])[0];
     t.champion = t.mode === 'knockout' && t.alive.length === 1 ? t.alive[0] : best && this.players.has(best[0]) ? best[0] : null;
     this.dirty = true;
+    this.persist();
   }
 
   // ---------- game lifecycle ----------
@@ -563,6 +654,7 @@ export class Room {
         if (t.alive.length <= 1) this.endTour(); else t.nextAt = this.clock() + TIMING.TOUR_PAUSE_MS;
       } else if (this.tour.idx + 1 < this.tour.total) this.tour.nextAt = this.clock() + TIMING.TOUR_PAUSE_MS;
       else this.endTour();
+      if (this.tour && !this.tour.done) this.persist();
     }
     this.phase = 'results';
     this.game = null;
@@ -638,6 +730,7 @@ export class Room {
       countdownEndsAt: this.countdownEndsAt,
       results: this.results,
       hostConnected: this.hosts.size > 0,
+      chaos: this.chaos,
       tour: this.tour ? { ...this.tour, points: { ...this.tour.points }, alive: [...this.tour.alive] } : null,
     };
   }

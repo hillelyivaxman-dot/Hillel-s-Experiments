@@ -86,7 +86,7 @@ export const bumperRenderer: Renderer = {
       if (p.g) { // dodging: translucent after-images
         for (let k = 1; k <= 2; k++) drawCritter(g, p.x - Math.cos(p.a) * 16 * k, p.y - Math.sin(p.a) * 16 * k, p.r, info.color, info.avatar, { alpha: 0.18, t });
       }
-      drawCritter(g, p.x, p.y, p.r, info.color, info.avatar, { look: p.a, t, squash: p.d ? 0.6 : 0, alpha: p.g ? 0.5 : 1 });
+      drawCritter(g, p.x, p.y, p.r, info.color, info.avatar, { look: p.a, t, squash: p.d ? 0.6 : 0, alpha: p.iv ? 0.16 : p.g ? 0.5 : 1 });
       if (p.h) { // stored power orbits the head, ready to fire
         const oa = t * 4;
         const ox = p.x + Math.cos(oa) * (p.r + 10), oy = p.y - p.r * 0.4 + Math.sin(oa) * 8;
@@ -96,7 +96,7 @@ export const bumperRenderer: Renderer = {
         g.beginPath(); g.arc(ox, oy, 8, 0, Math.PI * 2); g.fill();
         g.shadowBlur = 0;
       }
-      nameTag(g, p.x, p.y - p.r - 30, info.name, info.color, 16);
+      if (!p.iv) nameTag(g, p.x, p.y - p.r - 30, info.name, info.color, 16);
       hearts(g, p.x, p.y - p.r - 52, p.l, Math.max(p.l, 1), 14);
     }
     fx.draw(g);

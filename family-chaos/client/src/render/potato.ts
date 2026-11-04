@@ -55,8 +55,8 @@ export const potatoRenderer: Renderer = {
         continue;
       }
       const hot = f.h === p.id;
-      drawCritter(g, p.x, p.y, 30, info.color, info.avatar, { t, squash: p.s ? 0.4 : 0, look: hot ? -Math.PI / 2 : Math.PI / 2 });
-      nameTag(g, p.x, p.y + 48, info.name, info.color, 15);
+      drawCritter(g, p.x, p.y, 30 * (p.sz ?? 1), info.color, info.avatar, { t, squash: p.s ? 0.4 : 0, look: hot ? -Math.PI / 2 : Math.PI / 2, alpha: p.iv ? 0.16 : 1 });
+      if (!p.iv) nameTag(g, p.x, p.y + 48 * (p.sz ?? 1), info.name, info.color, 15);
       if (hot && !(f.fl && f.fl.k < 1)) bomb(g, p.x, p.y - 58, f.heat, t);
     }
     if (f.fl && f.fl.k < 1) { // bomb flying in an arc from thrower to target

@@ -27,7 +27,7 @@ export function Pad({ layout, conn, settings }: { layout: ControllerLayout; conn
   const lastSent = useRef(0);
   const pending = useRef(0);
   const releasers = useRef(new Set<() => void>());
-  const cfg = useRef({ manual: false });
+  const cfg = useRef({ manual: false, abs: false });
   cfg.current.manual = layout.kind === 'wheel' && settings.gas === 'manual'; // read at send time (handlers keep old closures)
 
   const flush = () => {
@@ -35,7 +35,7 @@ export function Pad({ layout, conn, settings }: { layout: ControllerLayout; conn
     pending.current = 0;
     lastSent.current = performance.now();
     const s = state.current;
-    conn.send({ t: 'input', s: ++seqCounter, x: s.x, y: s.y, b: s.b | (cfg.current.manual ? BTN.M : 0) });
+    conn.send({ t: 'input', s: ++seqCounter, x: s.x, y: s.y, b: s.b | (cfg.current.manual || cfg.current.abs ? BTN.M : 0) });
   };
   const stickChanged = () => {
     const since = performance.now() - lastSent.current;
@@ -143,7 +143,9 @@ export function Pad({ layout, conn, settings }: { layout: ControllerLayout; conn
     <div className={`pad pad--${layout.kind}`} ref={root} onContextMenu={(e) => e.preventDefault()} data-w={Math.round(area.w)} data-h={Math.round(area.h)}>
       {layout.kind === 'stick' && L && (
         <>
-          <Stick region={L.stickRegion!} rest={L.stickRest} radius={L.stickRadius} onChange={setStick} releasers={releasers.current} />
+          {layout.pointer
+            ? <Touchpad area={area} onMove={(x, y, down) => { cfg.current.abs = down; state.current = { ...state.current, x, y }; flush(); }} releasers={releasers.current} />
+            : <Stick region={L.stickRegion!} rest={L.stickRest} radius={L.stickRadius} onChange={setStick} releasers={releasers.current} />}
           {layout.buttons.map((b, i) => <PadButton key={b.key} b={b} c={L.buttons[i]} primary={i === 0} onChange={setBtn} releasers={releasers.current} />)}
         </>
       )}
@@ -165,6 +167,36 @@ export function Pad({ layout, conn, settings }: { layout: ControllerLayout; conn
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+/** Air-hockey style touchpad: the finger position over the whole pad is sent as an absolute target (x, y in -1..1). */
+function Touchpad({ area, onMove, releasers }: { area: { w: number; h: number }; onMove: (x: number, y: number, down: boolean) => void; releasers: Set<() => void> }) {
+  const el = useRef<HTMLDivElement>(null);
+  const id = useRef<number | null>(null);
+  const [dot, setDot] = useState<{ x: number; y: number } | null>(null);
+  const report = (e: React.PointerEvent) => {
+    const r = el.current!.getBoundingClientRect();
+    const px = Math.max(-1, Math.min(1, ((e.clientX - r.left) / r.width) * 2 - 1)), py = Math.max(-1, Math.min(1, ((e.clientY - r.top) / r.height) * 2 - 1));
+    setDot({ x: e.clientX - r.left, y: e.clientY - r.top });
+    onMove(Math.round(px * 100) / 100, Math.round(py * 100) / 100, true);
+  };
+  const end = () => { id.current = null; setDot(null); onMove(0, 0, false); };
+  useEffect(() => { const reset = () => { if (id.current !== null) end(); }; releasers.add(reset); return () => { releasers.delete(reset); }; // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [releasers]);
+  return (
+    <div
+      ref={el} className="stick-zone touchpad" data-w={Math.round(area.w)} style={{ position: 'absolute', inset: 0 }}
+      onPointerDown={(e) => { if (id.current !== null) return; id.current = e.pointerId; try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* */ } e.preventDefault(); report(e); }}
+      onPointerMove={(e) => { if (e.pointerId === id.current) report(e); }}
+      onPointerUp={(e) => { if (e.pointerId === id.current) end(); }}
+      onPointerCancel={(e) => { if (e.pointerId === id.current) end(); }}
+      onLostPointerCapture={(e) => { if (e.pointerId === id.current) end(); }}
+    >
+      <i className="touchpad__mid" />
+      {dot && <i className="touchpad__dot" style={{ left: dot.x, top: dot.y }} />}
+      {!dot && <span className="touchpad__hint"><PadIcon id="tap" /></span>}
     </div>
   );
 }
