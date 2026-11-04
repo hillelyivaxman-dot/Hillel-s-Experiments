@@ -66,6 +66,8 @@ export class Room {
   results: ResultRow[] | null = null;
   tour: TourState | null = null;
   private lastRttPush = 0;
+  private phoneFx: unknown[] = [];
+  private phoneAcc = 0;
   private god = { freezeUntil: 0, scaleUntil: 0, scale: 1, mirrorUntil: 0 };
   godLog: { at: number; userId: number | null; power: string }[] = [];
   private fx: { k: string; [key: string]: unknown }[] = [];
@@ -189,12 +191,12 @@ export class Room {
         if (s <= p.seq) return; // duplicate / out of order
         p.seq = s;
         const prevB = p.input.b;
-        const b = Math.floor(num(m.b)) & 0xf;
+        const b = Math.floor(num(m.b)) & 0x1f;
         p.input = { x: clamp(num(m.x), -1, 1), y: clamp(num(m.y), -1, 1), b };
         const rising = b & ~prevB;
         if (rising && this.game && this.phase === 'playing' && this.participants.includes(p.info.id) && this.game.onPress) {
           const at = this.clock();
-          for (let bit = 1; bit <= 8; bit <<= 1) if (rising & bit) this.game.onPress(p.info.id, bit, at);
+          for (let bit = 1; bit <= 8; bit <<= 1) if (rising & bit) this.game.onPress(p.info.id, bit, at); // (bit 16 is a mode flag, not a press)
         }
         return;
       }
@@ -579,6 +581,19 @@ export class Room {
     const msg: S2C = { t: 'frame', g: this.gameId, n: ++this.frameNo, f };
     for (const h of this.hosts) h.send(msg);
     for (const w of this.watchers) w.send(msg);
+    // games with a personal 3D view (Kart Chaos): participants' phones get the world too, at a lower rate
+    const hz = GAMES[this.gameId]?.phoneHz;
+    if (hz) {
+      this.phoneFx.push(...(f as { ev: unknown[] }).ev);
+      if (this.phoneFx.length > 64) this.phoneFx.splice(0, this.phoneFx.length - 64);
+      this.phoneAcc += TIMING.TICK_MS / 1000;
+      if (this.phoneAcc >= 1 / hz - 1e-6) {
+        this.phoneAcc = 0;
+        const pm: S2C = { t: 'frame', g: this.gameId, n: this.frameNo, f: { ...f, ev: this.phoneFx } };
+        this.phoneFx = [];
+        for (const id of this.participants) this.players.get(id)?.client?.send(pm);
+      }
+    }
   }
 
   /** Called by the server loop ~30 times per second. */

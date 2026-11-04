@@ -5,7 +5,7 @@ export type Lang = 'he' | 'en';
 export type RoomPhase = 'lobby' | 'countdown' | 'playing' | 'paused' | 'results';
 
 /** Button bitmask positions used on the wire (input.b). */
-export const BTN = { A: 1, B: 2, C: 4, D: 8 } as const;
+export const BTN = { A: 1, B: 2, C: 4, D: 8, M: 16 } as const; // M = "manual gas" flag (racing: GAS only while A is held)
 export type ButtonKey = keyof typeof BTN;
 
 export interface PlayerInfo {

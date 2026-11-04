@@ -27,13 +27,15 @@ export function Pad({ layout, conn, settings }: { layout: ControllerLayout; conn
   const lastSent = useRef(0);
   const pending = useRef(0);
   const releasers = useRef(new Set<() => void>());
+  const cfg = useRef({ manual: false });
+  cfg.current.manual = layout.kind === 'wheel' && settings.gas === 'manual'; // read at send time (handlers keep old closures)
 
   const flush = () => {
     clearTimeout(pending.current);
     pending.current = 0;
     lastSent.current = performance.now();
     const s = state.current;
-    conn.send({ t: 'input', s: ++seqCounter, x: s.x, y: s.y, b: s.b });
+    conn.send({ t: 'input', s: ++seqCounter, x: s.x, y: s.y, b: s.b | (cfg.current.manual ? BTN.M : 0) });
   };
   const stickChanged = () => {
     const since = performance.now() - lastSent.current;
@@ -125,7 +127,8 @@ export function Pad({ layout, conn, settings }: { layout: ControllerLayout; conn
   };
 
   // racing: steering comes from the wheel / arrows / tilt and is sent as x; y stays 0
-  const setSteer = (x: number) => {
+  const setSteer = (raw: number) => {
+    const x = Math.max(-1, Math.min(1, Math.round(raw * settings.sens * 100) / 100));
     if (x === state.current.x && state.current.y === 0) return;
     state.current = { ...state.current, x, y: 0 };
     stickChanged();

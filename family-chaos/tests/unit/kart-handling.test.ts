@@ -12,7 +12,7 @@ function drive(seconds: number, bot: (t: number, s: S) => { x: number; b: number
   const log: S[] = [];
   runGame(kartGame, 1, { laps: 5, track }, (id, snap, t) => {
     const c = snap.c.find((q: any) => q.id === id);
-    const s = { t, x: c.x, y: c.y, a: c.a, st: c.st, dr: c.dr };
+    const s = { t, x: c.x, y: c.y, a: c.a, st: c.st, dr: c.dr ?? 0 };
     log.push(s);
     const o = bot(t, s);
     return { x: o.x, y: 0, b: o.b };
@@ -28,7 +28,7 @@ function driveFromSpeed(seconds: number, scenario: (rel: number, s: S) => { x: n
   const log: S[] = [];
   runGame(kartGame, 1, { laps: 9, track: 2 }, (id, snap, t) => {
     const c = snap.c.find((q: any) => q.id === id);
-    const s: S = { t, x: c.x, y: c.y, a: c.a, st: c.st, dr: c.dr };
+    const s: S = { t, x: c.x, y: c.y, a: c.a, st: c.st, dr: c.dr ?? 0 };
     const speed = prev ? Math.hypot(s.x - prev.x, s.y - prev.y) / DT : 0;
     prev = s;
     if (t0 >= 0) { const rel = { ...s, t: t - t0 }; log.push(rel); const o = scenario(t - t0, rel); return { x: o.x, y: 0, b: o.b }; }

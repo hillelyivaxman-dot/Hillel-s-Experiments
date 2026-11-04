@@ -7,10 +7,13 @@ export interface PadSettings {
   mirrored: boolean; // left-handed: stick on the right
   steer: 'wheel' | 'arrows' | 'tilt'; // racing games: how to steer
   tiltInvert: boolean;
+  cam: 'cockpit' | 'bumper' | 'chase'; // Kart Chaos personal 3D view
+  gas: 'auto' | 'manual'; // racing: accelerate by itself, or only while GAS is held
+  sens: number; // steering sensitivity multiplier (0.6 .. 1.5)
 }
 
 const KEY = 'fc.pad';
-const DEFAULTS: PadSettings = { size: 'm', mirrored: false, steer: 'arrows', tiltInvert: false };
+const DEFAULTS: PadSettings = { size: 'm', mirrored: false, steer: 'arrows', tiltInvert: false, cam: 'chase', gas: 'auto', sens: 1 };
 
 function load(): PadSettings {
   try {
@@ -20,6 +23,9 @@ function load(): PadSettings {
       mirrored: v.mirrored === true,
       steer: v.steer === 'wheel' || v.steer === 'tilt' ? v.steer : 'arrows',
       tiltInvert: v.tiltInvert === true,
+      cam: v.cam === 'cockpit' || v.cam === 'bumper' ? v.cam : 'chase',
+      gas: v.gas === 'manual' ? 'manual' : 'auto',
+      sens: typeof v.sens === 'number' ? Math.max(0.6, Math.min(1.5, v.sens)) : 1,
     };
   } catch {
     return DEFAULTS;

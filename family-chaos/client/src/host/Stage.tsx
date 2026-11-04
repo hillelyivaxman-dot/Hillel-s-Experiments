@@ -4,12 +4,13 @@ import { useEffect, useRef, useState } from 'react';
 import { getMeta } from '../../../shared/catalog';
 import type { AdminAction, PlayerInfo, RoomState } from '../../../shared/protocol';
 import { useT } from '../i18n';
-import type { Conn } from '../net';
+import { store, type Conn } from '../net';
 import { prefs } from '../prefs';
 import { FX } from '../render/fx';
 import { interpolate, RENDERERS } from '../render';
 import type { RenderInfo } from '../render/types';
 import { sfx } from '../sound';
+import { KartView } from '../ui/KartView';
 
 const FRAME_MS = 1000 / 30;
 
@@ -92,9 +93,15 @@ export function Stage({ room, conn, act, watch }: { room: RoomState; conn: Conn;
     return () => { off(); cancelAnimationFrame(raf); };
   }, [conn, gameId, renderer]);
 
+  const [view3d, setView3dRaw] = useState(() => store.get('fc.host3d') !== '0');
+  const setView3d = (f: (v: boolean) => boolean) => setView3dRaw((v) => { const n = f(v); store.set('fc.host3d', n ? '1' : '0'); return n; });
+  const [hostCam, setHostCam] = useState<'chase' | 'spectator' | 'bumper' | 'cockpit'>('chase');
+  const kart3d = gameId === 'kart' && view3d;
   return (
     <div className="stage">
-      <canvas ref={canvas} className="stage__canvas" data-testid="stage" />
+      <canvas ref={canvas} className="stage__canvas" data-testid="stage" style={kart3d ? { visibility: 'hidden' } : undefined} />
+      {kart3d && <KartView conn={conn} meId={null} players={room.players} cam={hostCam} host onCam={setHostCam} />}
+      {gameId === 'kart' && <div className="stage__view"><button className="chip" onClick={() => setView3d((v) => !v)} data-testid="view-toggle">{view3d ? '2D' : '3D'}</button></div>}
       {!watch && (
         <div className="stage__controls">
           {room.phase === 'paused'

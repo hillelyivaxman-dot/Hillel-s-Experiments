@@ -65,4 +65,6 @@ export interface GameInstance {
 export interface GameModule {
   id: string; // must match the catalog id in shared/catalog.ts
   create(ctx: GameContext): GameInstance;
+  /** If set, participants' phones receive world frames at this rate (Hz): the phone is also their personal screen. */
+  phoneHz?: number;
 }

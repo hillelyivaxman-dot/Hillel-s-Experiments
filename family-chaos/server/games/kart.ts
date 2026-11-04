@@ -40,6 +40,7 @@ interface Car {
   finished: number; // finish time, -1 if racing
   offTrack: boolean;
   air: number; airMax: number; jumpCd: number; surgeCd: number; combo: number; comboT: number; stumble: number; // boat / bike mechanics
+  lapStart: number; lastLap: number; bestLap: number; stuckT: number; recoverT: number;
   fcd: Record<string, number>; // per-feature cooldowns (rocks, hurdles, ramps...)
 }
 
@@ -76,6 +77,7 @@ export const RACER_TUNING: Record<string, Partial<Record<keyof typeof KART, numb
 function makeRacer(id: string): GameModule {
   return {
   id,
+  phoneHz: id === 'kart' ? 20 : undefined,
   create(ctx: GameContext): GameInstance {
     const K = { ...KART, ...RACER_TUNING[id] } as typeof KART;
     const laps = ctx.options.laps ?? 3;
@@ -100,7 +102,7 @@ function makeRacer(id: string): GameModule {
         id: p.id, x, y, a: Math.atan2(pt.ty, pt.tx), v: 0, idx: nr.idx, s: tr.cum[nr.idx],
         sector: K.SECTORS - 1, mask: 1 << (K.SECTORS - 1), lap: 0, cross: -1,
         item: '', boostT: 0, spinT: 0, shieldT: 0, turbo: 50, steer: 0, lat: 0, drift: false, finished: -1, offTrack: false,
-        air: 0, airMax: 1, jumpCd: 0, surgeCd: 0, combo: 0, comboT: 0, stumble: 0, fcd: {},
+        lapStart: 0, lastLap: 0, bestLap: 0, stuckT: 0, recoverT: 0, air: 0, airMax: 1, jumpCd: 0, surgeCd: 0, combo: 0, comboT: 0, stumble: 0, fcd: {},
       };
     });
     const byId = new Map(cars.map((c) => [c.id, c]));
@@ -164,7 +166,8 @@ function makeRacer(id: string): GameModule {
           const inp = ctx.input(c.id);
           const racing = c.finished < 0;
           const brake = racing && ((inp.b & BTN.B) !== 0 || inp.y > 0.65);
-          const gas = racing && c.stumble <= 0; // everybody accelerates by themselves: you steer, brake and use your special
+          const manual = (inp.b & BTN.M) !== 0; // phone option: gas only while GAS is held
+          const gas = racing && c.stumble <= 0 && (!manual || (inp.b & BTN.A) !== 0); // everybody accelerates by themselves: you steer, brake and use your special
           const wasAir = c.air > 0;
           c.air = Math.max(0, c.air - dt); if (wasAir && c.air <= 0 && Math.abs(c.steer) < 0.35 && mode === 'bike') { c.boostT = Math.max(c.boostT, 0.4); ctx.fx('land', { id: c.id }); } c.jumpCd = Math.max(0, c.jumpCd - dt); c.stumble = Math.max(0, c.stumble - dt);
           const hadSurge = c.surgeCd <= 0; c.surgeCd = Math.max(0, c.surgeCd - dt);
@@ -203,6 +206,12 @@ function makeRacer(id: string): GameModule {
             while (diff > Math.PI) diff -= 2 * Math.PI;
             while (diff < -Math.PI) diff += 2 * Math.PI;
             if (Math.abs(diff) < 1.2) dA += Math.max(-1, Math.min(1, diff * 2)) * K.ASSIST * (1 - Math.abs(steerIn)) * Math.sign(c.v) * dt;
+          }
+          if (c.recoverT > 0) {
+            c.recoverT -= dt;
+            const q0 = tr.pts[c.idx], q1 = tr.pts[(c.idx + 4) % tr.pts.length];
+            let dd = Math.atan2(q1.y - q0.y, q1.x - q0.x) - c.a; while (dd > Math.PI) dd -= 2 * Math.PI; while (dd < -Math.PI) dd += 2 * Math.PI;
+            dA += Math.max(-2.4, Math.min(2.4, dd * 5)) * (1 - Math.min(1, Math.abs(steerIn))) * dt; c.v = Math.max(c.v, 40) + 380 * dt;
           }
           if (c.spinT > 0) { dA += 7 * dt; c.v *= Math.exp(-1.9 * dt); c.spinT -= dt; }
           // rotate the velocity frame with the heading: the sideways part appears as slip
@@ -282,6 +291,9 @@ function makeRacer(id: string): GameModule {
             }
           }
 
+          // arcade recovery: a kart pinned against a wall for a second turns itself back onto the road (a quick, smooth turn)
+          if (racing && Math.abs(c.v) < 35 && c.spinT <= 0 && c.recoverT <= 0) c.stuckT += dt; else c.stuckT = 0;
+          if (c.stuckT > 1.0) { c.recoverT = 0.7; c.stuckT = 0; ctx.fx('recover', { id: c.id }); }
           // sectors & laps
           const sector = Math.min(K.SECTORS - 1, Math.floor((c.s / tr.length) * K.SECTORS));
           if (sector !== c.sector) {
@@ -289,6 +301,7 @@ function makeRacer(id: string): GameModule {
               c.cross++;
               if (c.mask === (1 << K.SECTORS) - 1 && racing) {
                 c.lap++;
+                c.lastLap = time - c.lapStart; c.lapStart = time; c.bestLap = c.bestLap ? Math.min(c.bestLap, c.lastLap) : c.lastLap;
                 if (c.lap >= laps) {
                   c.finished = time;
                   finishOrder.push(c.id);
@@ -296,7 +309,7 @@ function makeRacer(id: string): GameModule {
                   ctx.fx('finish', { id: c.id, place: finishOrder.length });
                   ctx.buzz(c.id, 400);
                 } else {
-                  ctx.fx('lap', { id: c.id, lap: c.lap + 1 });
+                  ctx.fx('lap', { id: c.id, lap: c.lap + 1, lt: r1(c.lastLap) });
                   ctx.buzz(c.id, 80);
                 }
               }
@@ -371,8 +384,8 @@ function makeRacer(id: string): GameModule {
           end: endAt === Infinity ? -1 : Math.max(0, Math.ceil(endAt - time)),
           c: cars.map((c) => ({
             id: c.id, x: Math.round(c.x), y: Math.round(c.y), a: Math.round(c.a * 100) / 100,
-            b: c.boostT > 0 ? 1 : 0, s: c.spinT > 0 ? 1 : 0, dr: c.drift ? 1 : 0, st: Math.round(c.steer * 10) / 10, h: c.shieldT > 0 ? 1 : 0,
-            lap: Math.min(c.lap + 1, laps), fin: c.finished >= 0 ? 1 : 0, it: c.item, ...(c.air > 0 ? { ar: Math.round(Math.sin((1 - c.air / c.airMax) * Math.PI) * 10) / 10 } : {}), ...(c.combo ? { cb: c.combo } : {}),
+            ...(c.boostT > 0 ? { b: 1 } : {}), ...(c.spinT > 0 ? { s: 1 } : {}), ...(c.drift ? { dr: 1 } : {}), st: Math.round(c.steer * 10) / 10, ...(c.shieldT > 0 ? { h: 1 } : {}),
+            lap: Math.min(c.lap + 1, laps), ...(c.finished >= 0 ? { fin: 1 } : {}), ...(c.item ? { it: c.item } : {}), v: Math.round(c.v), ...(c.lastLap ? { lt: r1(c.lastLap), bl: r1(c.bestLap) } : {}), tb: Math.round(c.turbo), ...(c.air > 0 ? { ar: Math.round(Math.sin((1 - c.air / c.airMax) * Math.PI) * 10) / 10 } : {}), ...(c.combo ? { cb: c.combo } : {}),
           })),
           ord: o.map((c) => c.id),
           bo: boxes.map((b) => (b.cd <= 0 ? 1 : 0)).join(''), // box on/off flags; positions come from the track
@@ -388,7 +401,7 @@ function makeRacer(id: string): GameModule {
         return order().map((c, i) => ({
           playerId: c.id,
           score: c.finished >= 0 ? Math.round(c.finished * 100) / 100 : 0,
-          detail: c.finished >= 0 ? `${c.finished.toFixed(2)}s` : `lap ${Math.min(c.lap + 1, laps)}/${laps}`,
+          detail: (c.finished >= 0 ? `${c.finished.toFixed(2)}s` : `lap ${Math.min(c.lap + 1, laps)}/${laps}`) + (c.bestLap ? ` · best ${c.bestLap.toFixed(1)}s` : ''),
           tie: i,
         }));
       },

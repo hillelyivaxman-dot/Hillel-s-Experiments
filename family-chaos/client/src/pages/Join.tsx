@@ -5,6 +5,7 @@ import { AVATAR_COUNT, PLAYER_COLORS, type AdminAction, type RoomState } from '.
 import { PadIcon } from '../controller/icons';
 import { Pad } from '../controller/Pad';
 import { usePadSettings } from '../controller/settings';
+import { KartView } from '../ui/KartView';
 import { useMe } from '../account';
 import { keepScreenOn } from '../compat';
 import { useT, type Key } from '../i18n';
@@ -152,7 +153,7 @@ export function Join({ initialCode }: { initialCode: string }) {
       <ConnBanner status={status} />
       {room.phase === 'lobby' && <PhoneLobby room={room} me={me!} conn={conn} act={act} isLeader={isLeader} />}
       {inMatch && !playing && <div className="center-screen"><CritterCanvas color={meInfo.color} variant={meInfo.avatar} size={140} /><p className="big-msg">{t('watchScreen')}</p></div>}
-      {playing && <PhoneGame room={room} conn={conn} hud={hud} isLeader={isLeader} act={act} />}
+      {playing && <PhoneGame room={room} conn={conn} hud={hud} isLeader={isLeader} act={act} meId={me} />}
       {room.phase === 'results' && <PhoneResults room={room} me={me!} isLeader={isLeader} act={act} />}
       {error && <div className="toast" role="alert" onClick={() => setError(null)}>{error}</div>}
     </div>
@@ -328,14 +329,20 @@ function PhoneIntro({ meta }: { meta: ReturnType<typeof getMeta> & object }) {
   );
 }
 
-function PhoneGame({ room, conn, hud, isLeader, act }: { room: RoomState; conn: Conn; hud: Hud; isLeader: boolean; act: (a: AdminAction) => void }) {
+function PhoneGame({ room, conn, hud, isLeader, act, meId }: { room: RoomState; conn: Conn; hud: Hud; isLeader: boolean; act: (a: AdminAction) => void; meId: string | null }) {
   const { t, l, lang } = useT();
   const meta = getMeta(room.gameId!)!;
   const v = hudView(meta.id, hud, t, lang === 'he');
   const [settings, setSettings] = usePadSettings();
   const [open, setOpen] = useState(false);
+  const is3d = meta.id === 'kart';
+  // racing with manual gas: add a GAS button in front (the phone also sends the "manual" flag, see Pad)
+  const layout = meta.controller.kind === 'wheel' && settings.gas === 'manual'
+    ? { ...meta.controller, buttons: [{ key: 'A' as const, label: { he: 'גז', en: 'GAS' }, color: '#5dfc8d', big: true, icon: 'gas' }, ...meta.controller.buttons.map((b) => ({ ...b, big: false }))] }
+    : meta.controller;
   return (
-    <div className={`phone-game tone-${v.tone}`}>
+    <div className={`phone-game tone-${v.tone} ${is3d ? 'phone-game--3d' : ''}`}>
+      {is3d && <KartView conn={conn} meId={meId} players={room.players} cam={settings.cam} onCam={(m) => setSettings({ cam: m as 'cockpit' | 'bumper' | 'chase' })} />}
       <div className="phone-game__hud">
         <span className="phone-game__title">{l(meta.name)}</span>
         <span className="phone-game__line" data-testid="hud"><Rich text={room.phase === 'countdown' ? '3 · 2 · 1' : room.phase === 'paused' ? `:pause: ${t('paused')}` : v.text} /></span>
@@ -349,7 +356,7 @@ function PhoneGame({ room, conn, hud, isLeader, act }: { room: RoomState; conn: 
         <button className="hud-btn" onClick={() => setOpen((x) => !x)} aria-label={t('padSettings')} data-testid="pad-settings"><Icon name="gear" /></button>
       </div>
       <div className="phone-game__pad">
-        <Pad layout={meta.controller} conn={conn} settings={settings} />
+        <Pad layout={layout} conn={conn} settings={settings} />
         {room.phase === 'countdown' && <PhoneIntro meta={meta} />}
       </div>
       {open && (
@@ -369,6 +376,20 @@ function PhoneGame({ room, conn, hud, isLeader, act }: { room: RoomState; conn: 
           </div>
           {meta.controller.kind === 'wheel' && (
             <>
+              <div className="pad-sheet__row">
+                <span>{l({ he: 'גז', en: 'Gas' })}</span>
+                {(['auto', 'manual'] as const).map((m) => <button key={m} className={`chip ${settings.gas === m ? 'is-on' : ''}`} data-gas-mode={m} onClick={() => setSettings({ gas: m })}>{m === 'auto' ? l({ he: 'אוטומטי', en: 'Auto' }) : l({ he: 'ידני', en: 'Manual' })}</button>)}
+              </div>
+              <div className="pad-sheet__row">
+                <span>{l({ he: 'רגישות היגוי', en: 'Steering' })}</span>
+                {[0.7, 1, 1.3].map((v2) => <button key={v2} className={`chip ${settings.sens === v2 ? 'is-on' : ''}`} data-sens={v2} onClick={() => setSettings({ sens: v2 })}>{v2 < 1 ? l({ he: 'עדין', en: 'Soft' }) : v2 > 1 ? l({ he: 'חד', en: 'Sharp' }) : l({ he: 'רגיל', en: 'Normal' })}</button>)}
+              </div>
+              {is3d && (
+                <div className="pad-sheet__row">
+                  <span>{l({ he: 'מצלמה', en: 'Camera' })}</span>
+                  {(['chase', 'bumper', 'cockpit'] as const).map((m) => <button key={m} className={`chip ${settings.cam === m ? 'is-on' : ''}`} data-cam={m} onClick={() => setSettings({ cam: m })}>{m === 'chase' ? l({ he: 'מאחור', en: 'Chase' }) : m === 'bumper' ? l({ he: 'פגוש', en: 'Bumper' }) : l({ he: 'תא נהג', en: 'Cockpit' })}</button>)}
+                </div>
+              )}
               <div className="pad-sheet__row">
                 <span>{t('steering')}</span>
                 {(['wheel', 'arrows', 'tilt'] as const).map((m) => (
