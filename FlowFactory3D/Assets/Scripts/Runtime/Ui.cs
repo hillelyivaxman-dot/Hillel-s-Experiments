@@ -69,12 +69,17 @@ namespace FlowFactory
             rect.anchoredPosition = offset;
         }
 
-        public static Image NewImage(string name, Transform parent, Color color)
+        public static Image NewImage(string name, Transform parent, Color color, bool rounded = false)
         {
             RectTransform rect = NewRect(name, parent);
             var image = rect.gameObject.AddComponent<Image>();
             image.color = color;
             image.raycastTarget = false;
+            if (rounded)
+            {
+                image.sprite = UiSprites.Rounded;
+                image.type = Image.Type.Sliced;
+            }
             return image;
         }
 
@@ -97,11 +102,22 @@ namespace FlowFactory
             return label;
         }
 
+        /// <summary>Adds a soft drop shadow behind a graphic.</summary>
+        public static void AddShadow(Graphic graphic, float distance = 8f, float alpha = 0.40f)
+        {
+            var shadow = graphic.gameObject.AddComponent<Shadow>();
+            shadow.effectColor = new Color(0f, 0f, 0f, alpha);
+            shadow.effectDistance = new Vector2(0f, -distance);
+        }
+
         public static Button NewButton(string name, Transform parent, string text, Color fill, int fontSize, UnityAction onClick)
         {
             RectTransform rect = NewRect(name, parent);
             var image = rect.gameObject.AddComponent<Image>();
             image.color = fill;
+            image.sprite = UiSprites.Rounded;
+            image.type = Image.Type.Sliced;
+            AddShadow(image);
             var button = rect.gameObject.AddComponent<Button>();
             button.targetGraphic = image;
 
@@ -112,10 +128,18 @@ namespace FlowFactory
             colors.disabledColor = new Color(0.6f, 0.6f, 0.6f);
             button.colors = colors;
 
+            // A light strip across the top half gives the button a glossy look.
+            Image gloss = NewImage("Gloss", rect, new Color(1f, 1f, 1f, 0.16f), true);
+            gloss.rectTransform.anchorMin = new Vector2(0.03f, 0.52f);
+            gloss.rectTransform.anchorMax = new Vector2(0.97f, 0.97f);
+            gloss.rectTransform.offsetMin = Vector2.zero;
+            gloss.rectTransform.offsetMax = Vector2.zero;
+
             Text label = NewLabel("Label", rect, text, fontSize, TextColor);
             Stretch(label.rectTransform);
             label.rectTransform.offsetMin = new Vector2(12f, 8f);
             label.rectTransform.offsetMax = new Vector2(-12f, -8f);
+            AddShadow(label, 4f, 0.35f);
 
             if (onClick != null) button.onClick.AddListener(onClick);
             return button;

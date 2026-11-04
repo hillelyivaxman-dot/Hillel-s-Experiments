@@ -30,6 +30,8 @@ namespace FlowFactory
         private GridManager grid;
         private ParcelController parcel;
         private FactoryAwakening awakening;
+        private Confetti confetti;
+        private Coroutine demoRoutine;
         private FpsCounter fps;
         private Camera cam;
         private readonly LevelManager manager = new LevelManager();
@@ -93,6 +95,13 @@ namespace FlowFactory
 
             awakening = new GameObject("Awakening").AddComponent<FactoryAwakening>();
             awakening.transform.SetParent(transform, false);
+
+            confetti = new GameObject("Confetti").AddComponent<Confetti>();
+            confetti.transform.SetParent(transform, false);
+
+            // The factory floor stays in place behind whatever board or menu demo is showing.
+            Primitives.Create(PrimitiveType.Cube, transform, new Vector3(0f, -0.62f, 0f), new Vector3(90f, 0.1f, 90f),
+                GameMaterials.GetGround(), Quaternion.identity, "Ground");
 
             fps = gameObject.AddComponent<FpsCounter>();
             fps.enabled = FpsCounter.Available;
@@ -183,7 +192,32 @@ namespace FlowFactory
         {
             LeaveLevel();
             screen = AppScreen.Menu;
+            StartDemo();
             ui.ShowMenu();
+        }
+
+        /// <summary>Behind the main menu: the last level, solved, with a parcel making its trip over and over.</summary>
+        private void StartDemo()
+        {
+            LevelData demo = levels[levels.Count - 1];
+            grid.Build(demo, demo.solution, false);
+            ConfigureCamera(demo, 0.57f);
+            demoRoutine = StartCoroutine(DemoLoop(demo, RouteValidator.Validate(demo, demo.solution)));
+        }
+
+        private IEnumerator DemoLoop(LevelData demo, RouteResult route)
+        {
+            List<Vector3> points = grid.BuildWaypoints(route);
+            Vector3 start = ParcelStartFor(demo, demo.solution);
+            GridPoint end = route.Path[route.Path.Count - 1];
+            while (true)
+            {
+                parcel.PlaceAt(start);
+                yield return new WaitForSeconds(0.8f);
+                yield return parcel.Travel(points, 3.4f);
+                yield return parcel.Deliver(grid.CellCenter(end));
+                yield return new WaitForSeconds(1.0f);
+            }
         }
 
         private void ShowLevelSelect()
@@ -201,7 +235,13 @@ namespace FlowFactory
 
         private void LeaveLevel()
         {
+            if (demoRoutine != null)
+            {
+                StopCoroutine(demoRoutine);
+                demoRoutine = null;
+            }
             StopRun();
+            confetti.Clear();
             ui.HideSuccess();
             awakening.Clear();
             parcel.Hide();
@@ -250,7 +290,7 @@ namespace FlowFactory
         // ---------------------------------------------------------------- camera
 
         /// <summary>Fixed isometric view: orthographic, 45 degrees around, tilted down, fitted to the board width.</summary>
-        private void ConfigureCamera(LevelData level)
+        private void ConfigureCamera(LevelData level, float boardScreenY = 0.55f)
         {
             lastScreenWidth = Screen.width;
             lastScreenHeight = Screen.height;
@@ -280,7 +320,7 @@ namespace FlowFactory
             float aspect = Mathf.Max(0.2f, (float)Screen.width / Mathf.Max(1, Screen.height));
             float size = Mathf.Max((maxX - minX) * 0.5f / aspect + 0.9f, (maxY - minY));
             cam.orthographicSize = size;
-            t.position += -t.up * (size * 0.10f);
+            t.position += -t.up * (size * 2f * (boardScreenY - 0.5f));
 
             Vector3 flatForward = new Vector3(t.forward.x, 0f, t.forward.z).normalized;
             // The factory goes in front of the board (towards the camera), where the screen is empty,
@@ -353,10 +393,15 @@ namespace FlowFactory
 
         private Vector3 ParcelStart()
         {
+            return ParcelStartFor(levels[levelIndex], manager.Rotations);
+        }
+
+        private Vector3 ParcelStartFor(LevelData level, int[] rotations)
+        {
             GridPoint source;
-            levels[levelIndex].TryFind(TileKind.Source, out source);
-            Direction side = TileGeometry.TerminalSide(manager.Rotations[levels[levelIndex].IndexOf(source.x, source.y)]);
-            return grid.CellCenter(source) + GridManager.WorldDirection(side) * 0.4f + Vector3.up * GridManager.ParcelHeight;
+            level.TryFind(TileKind.Source, out source);
+            Direction side = TileGeometry.TerminalSide(rotations[level.IndexOf(source.x, source.y)]);
+            return grid.CellCenter(source) + GridManager.WorldDirection(side) * 0.42f + Vector3.up * GridManager.ParcelHeight;
         }
 
         private void UpdateHint()
@@ -455,6 +500,7 @@ namespace FlowFactory
             {
                 yield return parcel.Deliver(grid.CellCenter(result.Path[result.Path.Count - 1]));
                 grid.FlashCell(result.Path[result.Path.Count - 1], Palette.FlashOk, 0.5f);
+                confetti.Burst(grid.CellCenter(result.Path[result.Path.Count - 1]) + Vector3.up * 0.4f);
                 audioService.Play(Sfx.Deliver);
                 audioService.Play(Sfx.Success);
                 manager.CompleteRun();

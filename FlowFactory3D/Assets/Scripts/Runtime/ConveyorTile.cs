@@ -110,6 +110,18 @@ namespace FlowFactory
             visual.localScale = new Vector3(scale, 1f, scale);
         }
 
+        // ------------------------------------------------------------ parts
+
+        private GameObject Box(Vector3 position, Vector3 scale, Color color, string name, TextureKind texture = TextureKind.None, Vector2? tiling = null)
+        {
+            return Primitives.Create(PrimitiveType.Cube, visual, position, scale, color, texture, tiling ?? Vector2.one, name);
+        }
+
+        private GameObject Cylinder(Vector3 position, Vector3 scale, Color color, string name, Quaternion? rotation = null)
+        {
+            return Primitives.Create(PrimitiveType.Cylinder, visual, position, scale, GameMaterials.Get(color), rotation ?? Quaternion.identity, name);
+        }
+
         private void BuildBelt(bool corner)
         {
             Color belt = Rotatable ? Palette.BeltRotatable : Palette.BeltFixed;
@@ -119,14 +131,19 @@ namespace FlowFactory
             // On a corner the rails facing the other arm are left out, otherwise they cross in the middle.
             AddArm(Vector3.forward, belt, rail, corner ? second : (Vector3?)null);
             AddArm(second, belt, rail, corner ? Vector3.forward : (Vector3?)null);
+
             if (corner)
             {
-                Primitives.Create(PrimitiveType.Cube, visual, new Vector3(0f, 0.07f, 0f), new Vector3(0.48f, 0.08f, 0.48f), belt, "Joint");
+                // A round turntable where the two arms meet.
+                Box(new Vector3(0f, 0.03f, 0f), new Vector3(0.58f, 0.06f, 0.58f), Palette.Frame, "Frame");
+                Cylinder(new Vector3(0f, 0.09f, 0f), new Vector3(0.52f, 0.03f, 0.52f), belt, "Turntable");
+                Cylinder(new Vector3(0f, 0.125f, 0f), new Vector3(0.30f, 0.01f, 0.30f), Color.Lerp(belt, Color.white, 0.25f), "TurntableCap");
             }
             if (Rotatable)
             {
-                // A knob tells the player this belt can be turned.
-                Primitives.Create(PrimitiveType.Cylinder, visual, new Vector3(0f, 0.15f, 0f), new Vector3(0.20f, 0.03f, 0.20f), Palette.Knob, "Knob");
+                // A dial tells the player this belt can be turned.
+                Cylinder(new Vector3(0f, 0.16f, 0f), new Vector3(0.22f, 0.03f, 0.22f), Palette.Knob, "Knob");
+                Box(new Vector3(0f, 0.195f, 0f), new Vector3(0.16f, 0.02f, 0.05f), Palette.KnobHandle, "KnobHandle");
             }
         }
 
@@ -134,41 +151,62 @@ namespace FlowFactory
         {
             Vector3 side = Vector3.Cross(Vector3.up, direction);
             bool alongZ = Mathf.Abs(direction.z) > 0.5f;
-            Vector3 beltScale = alongZ ? new Vector3(0.48f, 0.08f, 0.54f) : new Vector3(0.54f, 0.08f, 0.48f);
-            Vector3 railScale = alongZ ? new Vector3(0.05f, 0.14f, 0.54f) : new Vector3(0.54f, 0.14f, 0.05f);
+            Vector3 frameScale = alongZ ? new Vector3(0.58f, 0.06f, 0.54f) : new Vector3(0.54f, 0.06f, 0.58f);
+            Vector3 beltScale = alongZ ? new Vector3(0.44f, 0.04f, 0.54f) : new Vector3(0.54f, 0.04f, 0.44f);
+            Vector3 railScale = alongZ ? new Vector3(0.05f, 0.10f, 0.54f) : new Vector3(0.54f, 0.10f, 0.05f);
 
-            Primitives.Create(PrimitiveType.Cube, visual, direction * 0.25f + Vector3.up * 0.07f, beltScale, belt, "Arm");
+            Box(direction * 0.25f + Vector3.up * 0.03f, frameScale, Palette.Frame, "Frame");
+            Box(direction * 0.25f + Vector3.up * 0.085f, beltScale, belt, "Belt", alongZ ? TextureKind.Rollers : TextureKind.RollersH);
+
             bool skipPositive = skipRailToward.HasValue && Vector3.Dot(side, skipRailToward.Value) > 0.5f;
             bool skipNegative = skipRailToward.HasValue && Vector3.Dot(side, skipRailToward.Value) < -0.5f;
-            if (!skipPositive) Primitives.Create(PrimitiveType.Cube, visual, direction * 0.25f + side * 0.265f + Vector3.up * 0.09f, railScale, rail, "Rail");
-            if (!skipNegative) Primitives.Create(PrimitiveType.Cube, visual, direction * 0.25f - side * 0.265f + Vector3.up * 0.09f, railScale, rail, "Rail");
+            if (!skipPositive) Box(direction * 0.25f + side * 0.255f + Vector3.up * 0.10f, railScale, rail, "Rail");
+            if (!skipNegative) Box(direction * 0.25f - side * 0.255f + Vector3.up * 0.10f, railScale, rail, "Rail");
+
+            // A roller at the tile edge, so neighbouring belts look connected.
+            Quaternion axis = alongZ ? Quaternion.Euler(0f, 0f, 90f) : Quaternion.Euler(90f, 0f, 0f);
+            Cylinder(direction * 0.47f + Vector3.up * 0.085f, new Vector3(0.10f, 0.22f, 0.10f), Palette.Metal, "Roller", axis);
         }
 
         private void BuildSource()
         {
+            Box(new Vector3(0f, 0.04f, 0f), new Vector3(0.86f, 0.08f, 0.86f), Palette.Frame, "Plinth", TextureKind.Panel);
             // Low and set back so the waiting parcel is not hidden behind the machine in the isometric view.
-            Primitives.Create(PrimitiveType.Cube, visual, new Vector3(0f, 0.17f, -0.18f), new Vector3(0.72f, 0.30f, 0.50f), Palette.Source, "Machine");
-            Primitives.Create(PrimitiveType.Cylinder, visual, new Vector3(0f, 0.34f, -0.18f), new Vector3(0.40f, 0.03f, 0.40f), new Color(0.12f, 0.45f, 0.26f), "Hatch");
+            Box(new Vector3(0f, 0.23f, -0.17f), new Vector3(0.68f, 0.30f, 0.44f), Palette.Source, "Machine");
+            Box(new Vector3(0f, 0.30f, 0.055f), new Vector3(0.70f, 0.10f, 0.02f), Palette.SourceStripe, "Stripe");
+            Cylinder(new Vector3(-0.2f, 0.50f, -0.30f), new Vector3(0.14f, 0.14f, 0.14f), Palette.Metal, "Chimney");
+            Primitives.Create(PrimitiveType.Sphere, visual, new Vector3(0.2f, 0.42f, -0.28f), Vector3.one * 0.13f, Palette.Lamp, "Lamp");
             AddArm(Vector3.forward, Palette.BeltFixed, Palette.RailFixed);
         }
 
         private void BuildTarget()
         {
-            // An open bin with a frame: the parcel disappears into it.
-            Primitives.Create(PrimitiveType.Cube, visual, new Vector3(0f, 0.04f, 0f), new Vector3(0.80f, 0.08f, 0.80f), Palette.Target, "Pad");
-            Primitives.Create(PrimitiveType.Cube, visual, new Vector3(0f, 0.09f, 0f), new Vector3(0.46f, 0.05f, 0.46f), new Color(0.08f, 0.14f, 0.30f), "Hole");
-            Color wall = new Color(0.45f, 0.72f, 1f);
-            Primitives.Create(PrimitiveType.Cube, visual, new Vector3(0f, 0.20f, -0.30f), new Vector3(0.64f, 0.28f, 0.07f), wall, "WallS");
-            Primitives.Create(PrimitiveType.Cube, visual, new Vector3(-0.30f, 0.20f, 0f), new Vector3(0.07f, 0.28f, 0.54f), wall, "WallW");
-            Primitives.Create(PrimitiveType.Cube, visual, new Vector3(0.30f, 0.20f, 0f), new Vector3(0.07f, 0.28f, 0.54f), wall, "WallE");
-            Primitives.Create(PrimitiveType.Cube, visual, new Vector3(0f, 0.20f, 0.30f), new Vector3(0.64f, 0.12f, 0.07f), wall, "WallN");
+            // An open bin with a glowing drop zone: the parcel disappears into it.
+            Box(new Vector3(0f, 0.04f, 0f), new Vector3(0.88f, 0.08f, 0.88f), Palette.Target, "Pad", TextureKind.Panel);
+            Box(new Vector3(0f, 0.095f, 0f), new Vector3(0.46f, 0.03f, 0.46f), new Color(0.05f, 0.10f, 0.14f), "Hole");
+            Cylinder(new Vector3(0f, 0.115f, 0f), new Vector3(0.34f, 0.01f, 0.34f), Palette.TargetGlow, "Glow");
+            Color wall = Palette.TargetWall;
+            Box(new Vector3(0f, 0.19f, -0.31f), new Vector3(0.66f, 0.22f, 0.06f), wall, "WallS");
+            Box(new Vector3(-0.31f, 0.19f, 0f), new Vector3(0.06f, 0.22f, 0.56f), wall, "WallW");
+            Box(new Vector3(0.31f, 0.19f, 0f), new Vector3(0.06f, 0.22f, 0.56f), wall, "WallE");
+            Box(new Vector3(0f, 0.15f, 0.31f), new Vector3(0.66f, 0.10f, 0.06f), wall, "WallN");
+            Cylinder(new Vector3(-0.34f, 0.36f, -0.34f), new Vector3(0.03f, 0.17f, 0.03f), Palette.Metal, "Pole");
+            Box(new Vector3(-0.26f, 0.47f, -0.34f), new Vector3(0.16f, 0.10f, 0.02f), Palette.Knob, "Flag");
         }
 
         private void BuildCrate()
         {
-            Primitives.Create(PrimitiveType.Cube, visual, new Vector3(0f, 0.32f, 0f), new Vector3(0.72f, 0.62f, 0.72f), Palette.Crate, "Crate");
-            Primitives.Create(PrimitiveType.Cube, visual, new Vector3(0f, 0.32f, 0f), new Vector3(0.76f, 0.12f, 0.76f), Palette.CrateBand, "Band");
-            Primitives.Create(PrimitiveType.Cube, visual, new Vector3(0f, 0.32f, 0f), new Vector3(0.12f, 0.66f, 0.76f), Palette.CrateBand, "BandV");
+            Box(new Vector3(0f, 0.31f, 0f), new Vector3(0.68f, 0.56f, 0.68f), Palette.Crate, "Crate", TextureKind.Wood);
+            Color frame = Palette.CrateFrame;
+            foreach (float sx in new[] { -0.35f, 0.35f })
+            {
+                foreach (float sz in new[] { -0.35f, 0.35f })
+                {
+                    Box(new Vector3(sx, 0.31f, sz), new Vector3(0.08f, 0.62f, 0.08f), frame, "Post");
+                }
+            }
+            Box(new Vector3(0f, 0.60f, 0f), new Vector3(0.74f, 0.05f, 0.74f), frame, "Lid");
+            Box(new Vector3(0f, 0.03f, 0f), new Vector3(0.74f, 0.06f, 0.74f), frame, "Foot");
         }
     }
 }

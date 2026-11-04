@@ -20,6 +20,9 @@ namespace FlowFactory
             Primitives.Create(PrimitiveType.Cube, body, new Vector3(0f, 0.17f, 0f), new Vector3(0.36f, 0.34f, 0.36f), Palette.Parcel, "Box");
             Primitives.Create(PrimitiveType.Cube, body, new Vector3(0f, 0.17f, 0f), new Vector3(0.38f, 0.07f, 0.38f), Palette.ParcelTape, "TapeH");
             Primitives.Create(PrimitiveType.Cube, body, new Vector3(0f, 0.17f, 0f), new Vector3(0.07f, 0.36f, 0.38f), Palette.ParcelTape, "TapeV");
+            // A white shipping label with a dark barcode line on the side.
+            Primitives.Create(PrimitiveType.Cube, body, new Vector3(0.185f, 0.16f, 0.05f), new Vector3(0.02f, 0.14f, 0.18f), Palette.ParcelLabel, "Label");
+            Primitives.Create(PrimitiveType.Cube, body, new Vector3(0.195f, 0.14f, 0.05f), new Vector3(0.02f, 0.03f, 0.13f), Palette.Frame, "Barcode");
         }
 
         public void PlaceAt(Vector3 position)

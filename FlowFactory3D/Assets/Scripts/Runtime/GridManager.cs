@@ -24,7 +24,7 @@ namespace FlowFactory
             get { return level; }
         }
 
-        public void Build(LevelData data, int[] rotations)
+        public void Build(LevelData data, int[] rotations, bool props = true)
         {
             Clear();
             level = data;
@@ -34,8 +34,7 @@ namespace FlowFactory
             tiles = new ConveyorTile[data.CellCount];
             floors = new MeshRenderer[data.CellCount];
 
-            Primitives.Create(PrimitiveType.Cube, root,
-                new Vector3(0f, -0.28f, 0f), new Vector3(data.width + 0.5f, 0.4f, data.height + 0.5f), Palette.Slab, "Slab");
+            BuildFrame(data, props);
 
             for (int y = 0; y < data.height; y++)
             {
@@ -44,7 +43,8 @@ namespace FlowFactory
                     int i = data.IndexOf(x, y);
                     Vector3 center = CellCenter(x, y);
                     Color floor = (x + y) % 2 == 0 ? Palette.FloorLight : Palette.FloorDark;
-                    GameObject cell = Primitives.Create(PrimitiveType.Cube, root, center + Vector3.down * 0.04f, new Vector3(0.96f, 0.08f, 0.96f), floor, "Floor");
+                    GameObject cell = Primitives.Create(PrimitiveType.Cube, root, center + Vector3.down * 0.04f, new Vector3(0.96f, 0.08f, 0.96f),
+                        floor, TextureKind.Panel, Vector2.one, "Floor");
                     floors[i] = cell.GetComponent<MeshRenderer>();
 
                     TileSpec spec = data.tiles[i];
@@ -59,6 +59,90 @@ namespace FlowFactory
                     tiles[i] = tile;
                 }
             }
+        }
+
+        /// <summary>Slab, warning-stripe trim, corner lamps and a few props around the board.</summary>
+        private void BuildFrame(LevelData data, bool props)
+        {
+            float w = data.width;
+            float h = data.height;
+
+            Primitives.Create(PrimitiveType.Cube, root, new Vector3(0f, -0.34f, 0f), new Vector3(w + 1.0f, 0.5f, h + 1.0f), Palette.SlabBase, "SlabBase");
+            Primitives.Create(PrimitiveType.Cube, root, new Vector3(0f, -0.10f, 0f), new Vector3(w + 0.6f, 0.16f, h + 0.6f), Palette.Slab, "Slab");
+
+            // Warning-stripe trim around the plates (its top sits just under the floor plates).
+            float stripe = 0.3f;
+            Primitives.Create(PrimitiveType.Cube, root, new Vector3(0f, -0.03f, (h + stripe) * 0.5f), new Vector3(w + 0.6f, 0.04f, stripe), Color.white, TextureKind.Hazard, new Vector2((w + 0.6f) / 1.2f, 0.25f), "TrimN");
+            Primitives.Create(PrimitiveType.Cube, root, new Vector3(0f, -0.03f, -(h + stripe) * 0.5f), new Vector3(w + 0.6f, 0.04f, stripe), Color.white, TextureKind.Hazard, new Vector2((w + 0.6f) / 1.2f, 0.25f), "TrimS");
+            Primitives.Create(PrimitiveType.Cube, root, new Vector3((w + stripe) * 0.5f, -0.03f, 0f), new Vector3(stripe, 0.04f, h), Color.white, TextureKind.Hazard, new Vector2(0.25f, h / 1.2f), "TrimE");
+            Primitives.Create(PrimitiveType.Cube, root, new Vector3(-(w + stripe) * 0.5f, -0.03f, 0f), new Vector3(stripe, 0.04f, h), Color.white, TextureKind.Hazard, new Vector2(0.25f, h / 1.2f), "TrimW");
+            Primitives.Create(PrimitiveType.Cube, root, new Vector3(0f, -0.045f, 0f), new Vector3(w, 0.05f, h), Palette.SlabBase, "Gap");
+
+            foreach (int sx in new[] { -1, 1 })
+            {
+                foreach (int sz in new[] { -1, 1 })
+                {
+                    Vector3 corner = new Vector3(sx * (w * 0.5f + 0.32f), 0f, sz * (h * 0.5f + 0.32f));
+                    Primitives.Create(PrimitiveType.Cube, root, corner + Vector3.up * 0.30f, new Vector3(0.16f, 0.62f, 0.16f), Palette.Frame, "Post");
+                    Primitives.Create(PrimitiveType.Sphere, root, corner + Vector3.up * 0.70f, Vector3.one * 0.24f, Palette.Lamp, "Lamp");
+                }
+            }
+
+            if (props)
+            {
+                BuildProps(Mathf.Max(w, h) * 0.5f * 1.4142f);
+            }
+        }
+
+        /// <summary>Set dressing on the factory floor: barrels, a turning gear, a pipe and a crate stack.</summary>
+        private void BuildProps(float extent)
+        {
+            // Directions on the ground as the fixed camera sees them: forward = up the screen, right = right.
+            Vector3 f = new Vector3(0.7071f, 0f, 0.7071f);
+            Vector3 r = new Vector3(0.7071f, 0f, -0.7071f);
+            const float ground = -0.57f;
+
+            Vector3 barrelA = f * (extent + 0.95f) + r * 1.9f;
+            Vector3 barrelB = f * (extent + 1.2f) + r * 2.55f;
+            Barrel(barrelA, Palette.Barrel);
+            Barrel(barrelB, Palette.BarrelTeal);
+
+            // Gear
+            var gear = new GameObject("Gear").transform;
+            gear.SetParent(root, false);
+            gear.localPosition = f * (extent + 0.6f) - r * 2.5f + Vector3.up * (ground + 0.08f);
+            gear.gameObject.AddComponent<Spinner>().DegreesPerSecond = 20f;
+            Primitives.Create(PrimitiveType.Cylinder, gear, Vector3.zero, new Vector3(1.0f, 0.05f, 1.0f), Palette.Metal, "Disc");
+            Primitives.Create(PrimitiveType.Cylinder, gear, new Vector3(0f, 0.07f, 0f), new Vector3(0.30f, 0.04f, 0.30f), Palette.Frame, "Hub");
+            for (int i = 0; i < 10; i++)
+            {
+                Quaternion q = Quaternion.Euler(0f, i * 36f, 0f);
+                Primitives.Create(PrimitiveType.Cube, gear, q * new Vector3(0f, 0f, 0.55f), new Vector3(0.22f, 0.10f, 0.20f),
+                    GameMaterials.Get(Palette.Metal), q, "Tooth");
+            }
+
+            // Pipe running behind the board, with flanges.
+            Quaternion alongRight = Quaternion.Euler(0f, 135f, 0f) * Quaternion.Euler(90f, 0f, 0f);
+            Vector3 pipeCenter = f * (extent + 1.7f) + Vector3.up * (ground + 0.28f);
+            Primitives.Create(PrimitiveType.Cylinder, root, pipeCenter, new Vector3(0.28f, 2.4f, 0.28f), GameMaterials.Get(Palette.BarrelTeal), alongRight, "Pipe");
+            foreach (float along in new[] { -1.7f, 0f, 1.7f })
+            {
+                Primitives.Create(PrimitiveType.Cylinder, root, pipeCenter + r * along, new Vector3(0.36f, 0.06f, 0.36f), GameMaterials.Get(Palette.Metal), alongRight, "Flange");
+            }
+
+            // Crate stack in front, off to the left.
+            Vector3 stack = -f * (extent + 0.8f) - r * 2.7f;
+            Primitives.Create(PrimitiveType.Cube, root, stack + Vector3.up * (ground + 0.40f), Vector3.one * 0.8f, Palette.Crate, TextureKind.Wood, Vector2.one, "StackCrate");
+            Primitives.Create(PrimitiveType.Cube, root, stack + r * 0.9f + Vector3.up * (ground + 0.28f), Vector3.one * 0.56f, Palette.Crate, TextureKind.Wood, Vector2.one, "StackCrate");
+            Primitives.Create(PrimitiveType.Cube, root, stack + Vector3.up * (ground + 1.05f), Vector3.one * 0.5f, Palette.Crate, TextureKind.Wood, Vector2.one, "StackCrate");
+        }
+
+        private void Barrel(Vector3 position, Color color)
+        {
+            const float ground = -0.57f;
+            Primitives.Create(PrimitiveType.Cylinder, root, position + Vector3.up * (ground + 0.36f), new Vector3(0.40f, 0.36f, 0.40f), GameMaterials.Get(color), Quaternion.identity, "Barrel");
+            Primitives.Create(PrimitiveType.Cylinder, root, position + Vector3.up * (ground + 0.50f), new Vector3(0.42f, 0.03f, 0.42f), GameMaterials.Get(Palette.Frame), Quaternion.identity, "BarrelBand");
+            Primitives.Create(PrimitiveType.Cylinder, root, position + Vector3.up * (ground + 0.22f), new Vector3(0.42f, 0.03f, 0.42f), GameMaterials.Get(Palette.Frame), Quaternion.identity, "BarrelBand");
         }
 
         public void Clear()

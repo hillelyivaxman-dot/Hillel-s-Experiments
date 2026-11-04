@@ -122,26 +122,35 @@ namespace FlowFactory
 
         private void BuildMenu()
         {
-            menuScreen = NewScreen("Menu", new Color(Palette.Background.r, Palette.Background.g, Palette.Background.b, 0.97f));
+            // No opaque background: the 3D demo board shows through behind the title and buttons.
+            menuScreen = NewScreen("Menu", null);
             Transform t = menuScreen.transform;
 
-            Text title = Ui.NewLabel("Title", t, "FLOW\nFACTORY 3D", 120, Ui.TextColor);
-            Ui.PlaceCentered(title.rectTransform, new Vector2(0.5f, 0.8f), new Vector2(900f, 360f), Vector2.zero);
+            Image shade = Ui.NewImage("ButtonShade", t, new Color(0.02f, 0.06f, 0.09f, 0.60f), false);
+            shade.rectTransform.anchorMin = new Vector2(-1f, -1f);
+            shade.rectTransform.anchorMax = new Vector2(2f, 0.40f);
+            shade.rectTransform.offsetMin = Vector2.zero;
+            shade.rectTransform.offsetMax = Vector2.zero;
 
-            Text tag = Ui.NewLabel("Tagline", t, "Fix the belts. Send the parcels.", 46, Ui.TextDim, TextAnchor.MiddleCenter, FontStyle.Normal);
-            Ui.PlaceCentered(tag.rectTransform, new Vector2(0.5f, 0.66f), new Vector2(900f, 90f), Vector2.zero);
+            Text title = Ui.NewLabel("Title", t, "FLOW\n<color=#FFC85A>FACTORY</color> 3D", 120, Ui.TextColor);
+            Ui.PlaceCentered(title.rectTransform, new Vector2(0.5f, 0.90f), new Vector2(900f, 300f), Vector2.zero);
+            Ui.AddShadow(title, 8f, 0.55f);
+
+            Text tag = Ui.NewLabel("Tagline", t, "Fix the belts. Send the parcels.", 44, Ui.TextDim, TextAnchor.MiddleCenter, FontStyle.Normal);
+            Ui.PlaceCentered(tag.rectTransform, new Vector2(0.5f, 0.79f), new Vector2(900f, 80f), Vector2.zero);
+            Ui.AddShadow(tag, 4f, 0.5f);
 
             Button play = Btn("Play", t, "PLAY", Ui.Primary, 72, null, () => { if (PlayPressed != null) PlayPressed(); });
-            Ui.PlaceCentered((RectTransform)play.transform, new Vector2(0.5f, 0.48f), new Vector2(720f, 190f), Vector2.zero);
+            Ui.PlaceCentered((RectTransform)play.transform, new Vector2(0.5f, 0.31f), new Vector2(720f, 175f), Vector2.zero);
 
-            Button levels = Btn("Levels", t, "LEVELS", Ui.Secondary, 58, null, () => { if (LevelsPressed != null) LevelsPressed(); });
-            Ui.PlaceCentered((RectTransform)levels.transform, new Vector2(0.5f, 0.48f), new Vector2(720f, 160f), new Vector2(0f, -230f));
+            Button levels = Btn("Levels", t, "LEVELS", Ui.Secondary, 56, null, () => { if (LevelsPressed != null) LevelsPressed(); });
+            Ui.PlaceCentered((RectTransform)levels.transform, new Vector2(0.5f, 0.31f), new Vector2(720f, 140f), new Vector2(0f, -205f));
 
-            Button settings = Btn("Settings", t, "SETTINGS", Ui.Secondary, 58, null, () => { if (SettingsPressed != null) SettingsPressed(); });
-            Ui.PlaceCentered((RectTransform)settings.transform, new Vector2(0.5f, 0.48f), new Vector2(720f, 160f), new Vector2(0f, -430f));
+            Button settings = Btn("Settings", t, "SETTINGS", Ui.Secondary, 56, null, () => { if (SettingsPressed != null) SettingsPressed(); });
+            Ui.PlaceCentered((RectTransform)settings.transform, new Vector2(0.5f, 0.31f), new Vector2(720f, 140f), new Vector2(0f, -375f));
 
-            Text version = Ui.NewLabel("Version", t, "v0.1 prototype", 34, Ui.TextDim, TextAnchor.MiddleCenter, FontStyle.Normal);
-            Ui.PlaceCentered(version.rectTransform, new Vector2(0.5f, 0.04f), new Vector2(600f, 60f), Vector2.zero);
+            Text version = Ui.NewLabel("Version", t, "v0.1 prototype", 32, Ui.TextDim, TextAnchor.MiddleCenter, FontStyle.Normal);
+            Ui.PlaceCentered(version.rectTransform, new Vector2(0.5f, 0.03f), new Vector2(600f, 50f), Vector2.zero);
         }
 
         private void BuildLevelSelect()
@@ -178,8 +187,12 @@ namespace FlowFactory
 
             runButton = Btn("Run", t, "RUN", Ui.Primary, 84, null, () => { if (RunPressed != null) RunPressed(); });
             Ui.PlaceCentered((RectTransform)runButton.transform, new Vector2(0.5f, 0f), new Vector2(640f, 180f), new Vector2(0f, 170f));
+            Image runIcon = Ui.NewImage("Icon", runButton.transform, Color.white);
+            runIcon.sprite = UiSprites.Triangle;
+            Ui.PlaceCentered(runIcon.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(84f, 84f), new Vector2(-135f, 0f));
+            runButton.GetComponentInChildren<Text>().rectTransform.offsetMin = new Vector2(70f, 8f);
 
-            Image toastBg = Ui.NewImage("Toast", t, new Color(0.05f, 0.07f, 0.12f, 0.92f));
+            Image toastBg = Ui.NewImage("Toast", t, new Color(0.04f, 0.08f, 0.12f, 0.92f), true);
             Ui.PlaceCentered(toastBg.rectTransform, new Vector2(0.5f, 0f), new Vector2(920f, 140f), new Vector2(0f, 380f));
             toastText = Ui.NewLabel("Text", toastBg.transform, "", 46, Ui.TextColor);
             Ui.Stretch(toastText.rectTransform);
@@ -217,10 +230,12 @@ namespace FlowFactory
             successOverlay = NewScreen("Success", new Color(0f, 0f, 0f, 0.55f));
             Transform t = successOverlay.transform;
 
-            Image card = Ui.NewImage("Card", t, Ui.Panel);
+            Image card = Ui.NewImage("Card", t, Ui.Panel, true);
+            Ui.AddShadow(card, 14f, 0.5f);
             Ui.PlaceCentered(card.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(900f, 880f), Vector2.zero);
 
             successTitle = Ui.NewLabel("Title", card.transform, "DELIVERED!", 100, new Color(0.55f, 1f, 0.65f));
+            Ui.AddShadow(successTitle, 6f, 0.5f);
             Ui.PlaceCentered(successTitle.rectTransform, new Vector2(0.5f, 1f), new Vector2(800f, 180f), new Vector2(0f, -140f));
 
             successBody = Ui.NewLabel("Body", card.transform, "", 48, Ui.TextColor, TextAnchor.MiddleCenter, FontStyle.Normal);
