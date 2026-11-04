@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { PlayerInfo } from '../../../shared/protocol';
 import { getTrack } from '../../../shared/tracks';
 import { useT } from '../i18n';
-import type { Conn } from '../net';
+import { store, type Conn } from '../net';
 import type { CamMode, CarView, KartScene, Who } from '../render3d/kartScene';
 import { sfx } from '../sound';
 import { Icon } from './icons';
@@ -47,7 +47,7 @@ export function KartView({ conn, meId, players, cam, host = false, onCam }: { co
       const f = m.f as any, at = performance.now();
       ((window as unknown as { __fcKart?: Record<string, number> }).__fcKart ??= { frames: 0, calls: 0, cars: 0 }).msgs = (((window as unknown as { __fcKart: Record<string, number> }).__fcKart.msgs ?? 0) + 1); // test hook
       snaps.current.push({ at, f }); if (snaps.current.length > 6) snaps.current.shift();
-      if (trackId !== f.tr && !scene.current && !dead) { trackId = f.tr; start(f.tr); }
+      if (trackId !== f.tr && !scene.current && !dead) { trackId = f.tr; if (store.get('fc.no3d') === '1') { setFailed(true); } else start(f.tr); }
       for (const e of f.ev ?? []) {
         const fo = focusRef.current, S = scene.current;
         if (e.id && e.id === fo) {

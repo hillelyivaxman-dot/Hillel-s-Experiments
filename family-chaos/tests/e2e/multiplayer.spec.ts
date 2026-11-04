@@ -8,6 +8,7 @@ const sentInputs = new WeakMap<Page, { x: number; y: number; b: number }[]>(); /
 
 async function phone(browser: Browser, code: string, name: string) {
   const ctx = await browser.newContext({ viewport: { width: 412, height: 860 }, hasTouch: true, isMobile: true, locale: 'en-US' });
+  await ctx.addInitScript(() => { try { localStorage.setItem('fc.no3d', '1'); } catch { /* */ } });
   const p = await ctx.newPage();
   const sent: { x: number; y: number; b: number }[] = [];
   sentInputs.set(p, sent);
@@ -21,6 +22,7 @@ async function phone(browser: Browser, code: string, name: string) {
 
 async function hostPage(browser: Browser) {
   const ctx = await browser.newContext({ viewport: { width: 1600, height: 900 }, locale: 'en-US' });
+  await ctx.addInitScript(() => { try { localStorage.setItem('fc.host3d', '0'); } catch { /* */ } });
   const h = await ctx.newPage();
   const errors: string[] = [];
   h.on('pageerror', (e) => errors.push(String(e)));

@@ -45,7 +45,9 @@ export async function newHost(browser: Browser, base = HTTP, host3d = false) {
 export interface SentInput { x: number; y: number; b: number }
 
 export async function newPhone(browser: Browser, url: string, name: string, opts: object = {}): Promise<{ p: Page; ctx: BrowserContext; sockets: string[]; inputs: SentInput[] }> {
-  const ctx = await browser.newContext({ viewport: { width: 412, height: 860 }, hasTouch: true, isMobile: true, locale: 'en-US', ignoreHTTPSErrors: true, ...opts });
+  const { render3d, ...ctxOpts } = opts as { render3d?: boolean };
+  const ctx = await browser.newContext({ viewport: { width: 412, height: 860 }, hasTouch: true, isMobile: true, locale: 'en-US', ignoreHTTPSErrors: true, ...ctxOpts });
+  await ctx.addInitScript((v) => { try { localStorage.setItem('fc.no3d', v); } catch { /* */ } }, render3d ? '0' : '1'); // software WebGL is slow: only the 3D tests draw the world
   const p = await ctx.newPage();
   const sockets: string[] = [];
   const inputs: SentInput[] = []; // every controller message the phone actually sent

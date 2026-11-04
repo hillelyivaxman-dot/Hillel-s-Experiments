@@ -5,7 +5,7 @@ import { frame, HTTP, newHost, newPhone, waitPlaying } from './util';
 // Kart Chaos 3.0: the phone renders the race itself (Three.js, WebGL) from server snapshots; the host shows a 3D broadcast.
 // WebGL here is software (SwiftShader) in headless Chromium: this checks the pipeline, not real-GPU performance.
 
-const land = { viewport: { width: 891, height: 412 } }; // ~Galaxy S25 Ultra landscape (CSS pixels)
+const land = { viewport: { width: 891, height: 412 }, render3d: true }; // ~Galaxy S25 Ultra landscape (CSS pixels)
 const dbg = (p: Page) => p.evaluate(() => (window as any).__fcKart ?? { frames: 0, calls: 0, cars: 0 });
 
 test('Kart Chaos: the phone draws its own 3D world from live server frames, with HUD, camera switch and map', async ({ browser }) => {

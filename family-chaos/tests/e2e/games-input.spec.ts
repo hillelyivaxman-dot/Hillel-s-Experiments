@@ -44,8 +44,10 @@ test('every game: two phones, every control reaches the server, both players are
       if (c.kind === 'stick') { // joystick: a drag to the right must produce x > 0.3
         const s = await center(ph.p, '.stick-zone');
         await t('touchStart', [{ ...s, id: 1 }]);
-        await t('touchMove', [{ x: s.x + 60, y: s.y, id: 1 }]);
-        await t('touchMove', [{ x: s.x + 90, y: s.y, id: 1 }]);
+        // the air-hockey touchpad sends the finger's absolute position on the pad, so drag to its right-hand part
+        const reach = (c as any).pointer ? ((await ph.p.locator('.stick-zone').first().boundingBox())!.width * 0.4) : 90;
+        await t('touchMove', [{ x: s.x + reach * 0.66, y: s.y, id: 1 }]);
+        await t('touchMove', [{ x: s.x + reach, y: s.y, id: 1 }]);
         await expect.poll(() => Math.max(...ph.inputs.slice(before).map((i) => i.x), 0), { message: `${g}/${name} stick`, timeout: 5000 }).toBeGreaterThan(0.3);
         await t('touchEnd', []);
         await expect.poll(() => last(ph.inputs).x, { message: `${g}/${name} stick release` }).toBe(0);
