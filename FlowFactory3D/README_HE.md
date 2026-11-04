@@ -65,6 +65,10 @@ FlowFactory3D/
 - תצוגת FPS רק בעורך/Development build. `LocalTelemetry` כותב לקובץ מקומי בלבד, בלי מזהים אישיים:
   `session_start, tutorial_start, tutorial_complete, level_start, level_success, level_retry, session_end`.
 
+## התקנה מקומית אוטומטית (v0.3.1)
+
+`Tools/Install/install_flowfactory.ps1` (Windows) או `install_flowfactory.sh` (macOS/Linux) יוצרים פרויקט Universal 3D, מעתיקים את הקבצים, מריצים Setup Project ובדיקות ובונים APK אם אפשר, ומפיקים דוח אמת. פרטים: `docs/INSTALL_LOCAL_HE.md`.
+
 ## v0.3: אימות אמיתי ב-Unity (חשוב לקרוא)
 
 הדו"ח המלא: `docs/V0_3_REPORT_HE.md`. בקצרה: **עדיין לא הורץ ב-Unity** (לא היה חיבור לעורך). נוספו מסועים נעים, צל לחבילה, אפקט סיום, אנימציות כפתורים ומעברים, איחוד רשתות, הגדרות Android, בדיקות PlayMode, סיור צילומי מסך ודוח סביבה.

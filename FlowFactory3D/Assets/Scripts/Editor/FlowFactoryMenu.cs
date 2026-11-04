@@ -113,6 +113,20 @@ namespace FlowFactory.EditorTools
 
         // ------------------------------------------------------------ setup
 
+        /// <summary>Command line: Unity -batchmode -quit -projectPath . -executeMethod FlowFactory.EditorTools.FlowFactoryMenu.SetUpProjectBatch</summary>
+        public static void SetUpProjectBatch()
+        {
+            try
+            {
+                SetUpProject();
+            }
+            catch (Exception e)
+            {
+                Debug.LogError("[FlowFactory] Setup failed: " + e);
+                EditorApplication.Exit(1);
+            }
+        }
+
         [MenuItem("Flow Factory/Setup Project (portrait, Android, Main scene)")]
         public static void SetUpProject()
         {
@@ -131,7 +145,7 @@ namespace FlowFactory.EditorTools
             PlayerSettings.SetManagedStrippingLevel(NamedBuildTarget.Android, ManagedStrippingLevel.Medium);
             PlayerSettings.SetUseDefaultGraphicsAPIs(BuildTarget.Android, false);
             PlayerSettings.SetGraphicsAPIs(BuildTarget.Android, new[] { UnityEngine.Rendering.GraphicsDeviceType.OpenGLES3, UnityEngine.Rendering.GraphicsDeviceType.Vulkan });
-            PlayerSettings.bundleVersion = "0.3.0";
+            PlayerSettings.bundleVersion = "0.3.1";
             PlayerSettings.Android.bundleVersionCode = 3;
             PlayerSettings.gpuSkinning = false;
 
@@ -144,7 +158,8 @@ namespace FlowFactory.EditorTools
         {
             if (!File.Exists(ScenePath))
             {
-                if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo())
+                // In batch mode there is nobody to ask, and the freshly created project has nothing unsaved.
+                if (!Application.isBatchMode && !EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo())
                 {
                     return;
                 }
