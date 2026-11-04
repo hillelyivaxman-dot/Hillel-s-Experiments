@@ -8,21 +8,27 @@ using UnityEngine.UI;
 namespace FlowFactory
 {
     /// <summary>
-    /// All screens (menu, level select, in-game HUD, success card, settings), built from code on one
+    /// The game screens (menu, level select, in-game HUD, success card, settings), built from code on one
     /// canvas inside the safe area. Contains no game rules: it only raises events and shows what it is told.
+    /// Money-related screens live in <see cref="MonetizationUi"/>.
     /// </summary>
     public sealed class GameUIController : MonoBehaviour
     {
+        public const int LevelsPerWorld = 12;
+
         public event Action PlayPressed;
         public event Action LevelsPressed;
         public event Action SettingsPressed;
+        public event Action ShopPressed;
         public event Action MenuPressed;
         public event Action<int> LevelChosen;
         public event Action RunPressed;
+        public event Action HintPressed;
         public event Action ResetPressed;
         public event Action BackPressed;
         public event Action NextPressed;
         public event Action ReplayPressed;
+        public event Action DoubleCoinsPressed;
         public event Action SoundToggled;
         public event Action VolumeCycled;
         public event Action FpsToggled;
@@ -38,18 +44,32 @@ namespace FlowFactory
         private GameObject successOverlay;
 
         private RectTransform levelGrid;
+        private Text worldLabel;
+        private Button prevWorld;
+        private Button nextWorld;
+        private int worldPage;
+        private IList<LevelData> levelList;
+        private ProgressData levelProgress;
+
         private Text hudTitle;
         private Text hudHint;
         private Button runButton;
+        private Button hintButton;
+        private Text hintCost;
         private Button hudBackButton;
         private Button hudResetButton;
         private GameObject toast;
         private Text toastText;
         private float toastHideAt;
 
+        private readonly List<Text> coinLabels = new List<Text>();
+        private Image shopDot;
+
         private Text successTitle;
         private Text successBody;
         private Button nextButton;
+        private Button doubleButton;
+        private readonly Image[] successStars = new Image[3];
 
         private Button soundButton;
         private Button volumeButton;
@@ -58,6 +78,11 @@ namespace FlowFactory
         private bool resetArmed;
 
         private bool pulseRun;
+
+        public RectTransform SafeRoot
+        {
+            get { return safeRoot; }
+        }
 
         public bool OverlayOpen
         {
@@ -120,6 +145,11 @@ namespace FlowFactory
             return rect.gameObject;
         }
 
+        private static Color ScreenTint
+        {
+            get { return new Color(0.04f, 0.09f, 0.13f, 0.97f); }
+        }
+
         private void BuildMenu()
         {
             // No opaque background: the 3D demo board shows through behind the title and buttons.
@@ -140,32 +170,48 @@ namespace FlowFactory
             Ui.PlaceCentered(tag.rectTransform, new Vector2(0.5f, 0.79f), new Vector2(900f, 80f), Vector2.zero);
             Ui.AddShadow(tag, 4f, 0.5f);
 
+            coinLabels.Add(MonetizationUi.CreateCoinBadge(t, new Vector2(0f, 1f), new Vector2(180f, -70f), new Vector2(300f, 84f)));
+
             Button play = Btn("Play", t, "PLAY", Ui.Primary, 72, null, () => { if (PlayPressed != null) PlayPressed(); });
             Ui.PlaceCentered((RectTransform)play.transform, new Vector2(0.5f, 0.31f), new Vector2(720f, 175f), Vector2.zero);
 
             Button levels = Btn("Levels", t, "LEVELS", Ui.Secondary, 56, null, () => { if (LevelsPressed != null) LevelsPressed(); });
             Ui.PlaceCentered((RectTransform)levels.transform, new Vector2(0.5f, 0.31f), new Vector2(720f, 140f), new Vector2(0f, -205f));
 
-            Button settings = Btn("Settings", t, "SETTINGS", Ui.Secondary, 56, null, () => { if (SettingsPressed != null) SettingsPressed(); });
-            Ui.PlaceCentered((RectTransform)settings.transform, new Vector2(0.5f, 0.31f), new Vector2(720f, 140f), new Vector2(0f, -375f));
+            Button shop = Btn("Shop", t, "SHOP", new Color(0.85f, 0.50f, 0.15f), 50, null, () => { if (ShopPressed != null) ShopPressed(); });
+            Ui.PlaceCentered((RectTransform)shop.transform, new Vector2(0.5f, 0.31f), new Vector2(350f, 140f), new Vector2(-185f, -375f));
+            shopDot = Ui.NewImage("Dot", shop.transform, new Color(0.95f, 0.15f, 0.2f));
+            shopDot.sprite = UiSprites.Circle;
+            Ui.PlaceCentered(shopDot.rectTransform, new Vector2(1f, 1f), new Vector2(44f, 44f), new Vector2(-14f, -14f));
 
-            Text version = Ui.NewLabel("Version", t, "v0.1 prototype", 32, Ui.TextDim, TextAnchor.MiddleCenter, FontStyle.Normal);
+            Button settings = Btn("Settings", t, "SETTINGS", Ui.Secondary, 44, null, () => { if (SettingsPressed != null) SettingsPressed(); });
+            Ui.PlaceCentered((RectTransform)settings.transform, new Vector2(0.5f, 0.31f), new Vector2(350f, 140f), new Vector2(185f, -375f));
+
+            Text version = Ui.NewLabel("Version", t, "v0.2 prototype", 32, Ui.TextDim, TextAnchor.MiddleCenter, FontStyle.Normal);
             Ui.PlaceCentered(version.rectTransform, new Vector2(0.5f, 0.03f), new Vector2(600f, 50f), Vector2.zero);
         }
 
         private void BuildLevelSelect()
         {
-            levelScreen = NewScreen("LevelSelect", new Color(Palette.Background.r, Palette.Background.g, Palette.Background.b, 0.97f));
+            levelScreen = NewScreen("LevelSelect", ScreenTint);
             Transform t = levelScreen.transform;
 
             Text title = Ui.NewLabel("Title", t, "SELECT LEVEL", 84, Ui.TextColor);
-            Ui.PlaceCentered(title.rectTransform, new Vector2(0.5f, 0.92f), new Vector2(900f, 140f), Vector2.zero);
+            Ui.PlaceCentered(title.rectTransform, new Vector2(0.5f, 0.93f), new Vector2(900f, 130f), Vector2.zero);
+            Ui.AddShadow(title, 6f, 0.5f);
 
             levelGrid = Ui.NewRect("Grid", t);
-            Ui.PlaceCentered(levelGrid, new Vector2(0.5f, 0.52f), new Vector2(900f, 1200f), Vector2.zero);
+            Ui.PlaceCentered(levelGrid, new Vector2(0.5f, 0.54f), new Vector2(900f, 1200f), Vector2.zero);
+
+            prevWorld = Btn("Prev", t, "PREV", Ui.Secondary, 40, () => ChangeWorld(-1), null);
+            Ui.PlaceCentered((RectTransform)prevWorld.transform, new Vector2(0.5f, 0.155f), new Vector2(240f, 120f), new Vector2(-320f, 0f));
+            nextWorld = Btn("Next", t, "NEXT", Ui.Secondary, 40, () => ChangeWorld(1), null);
+            Ui.PlaceCentered((RectTransform)nextWorld.transform, new Vector2(0.5f, 0.155f), new Vector2(240f, 120f), new Vector2(320f, 0f));
+            worldLabel = Ui.NewLabel("World", t, "WORLD 1", 54, new Color(1f, 0.85f, 0.4f));
+            Ui.PlaceCentered(worldLabel.rectTransform, new Vector2(0.5f, 0.155f), new Vector2(380f, 110f), Vector2.zero);
 
             Button back = Btn("Back", t, "BACK", Ui.Secondary, 56, null, () => { if (MenuPressed != null) MenuPressed(); });
-            Ui.PlaceCentered((RectTransform)back.transform, new Vector2(0.5f, 0.06f), new Vector2(520f, 150f), Vector2.zero);
+            Ui.PlaceCentered((RectTransform)back.transform, new Vector2(0.5f, 0.06f), new Vector2(520f, 140f), Vector2.zero);
         }
 
         private void BuildHud()
@@ -181,15 +227,29 @@ namespace FlowFactory
 
             hudTitle = Ui.NewLabel("Title", t, "", 58, Ui.TextColor);
             Ui.PlaceCentered(hudTitle.rectTransform, new Vector2(0.5f, 1f), new Vector2(520f, 140f), new Vector2(0f, -95f));
+            Ui.AddShadow(hudTitle, 5f, 0.5f);
 
             hudHint = Ui.NewLabel("Hint", t, "", 44, new Color(1f, 0.93f, 0.55f));
-            Ui.PlaceCentered(hudHint.rectTransform, new Vector2(0.5f, 1f), new Vector2(940f, 130f), new Vector2(0f, -250f));
+            Ui.PlaceCentered(hudHint.rectTransform, new Vector2(0.5f, 1f), new Vector2(940f, 120f), new Vector2(0f, -240f));
+            Ui.AddShadow(hudHint, 4f, 0.5f);
+
+            coinLabels.Add(MonetizationUi.CreateCoinBadge(t, new Vector2(0.5f, 1f), new Vector2(0f, -345f), new Vector2(320f, 72f)));
+
+            // Hint button (left) and Run button (right) share the bottom row.
+            hintButton = Btn("Hint", t, "HINT", new Color(0.78f, 0.55f, 0.15f), 46, null, () => { if (HintPressed != null) HintPressed(); });
+            Ui.PlaceCentered((RectTransform)hintButton.transform, new Vector2(0.5f, 0f), new Vector2(270f, 180f), new Vector2(-330f, 170f));
+            hintButton.GetComponentInChildren<Text>().rectTransform.offsetMin = new Vector2(12f, 52f);
+            Image hintCoin = Ui.NewImage("Coin", hintButton.transform, new Color(1f, 0.80f, 0.22f));
+            hintCoin.sprite = UiSprites.Circle;
+            Ui.PlaceCentered(hintCoin.rectTransform, new Vector2(0.5f, 0f), new Vector2(40f, 40f), new Vector2(-34f, 40f));
+            hintCost = Ui.NewLabel("Cost", hintButton.transform, EconomyConfig.HintCost.ToString(), 38, Ui.TextColor);
+            Ui.PlaceCentered(hintCost.rectTransform, new Vector2(0.5f, 0f), new Vector2(110f, 56f), new Vector2(34f, 40f));
 
             runButton = Btn("Run", t, "RUN", Ui.Primary, 84, null, () => { if (RunPressed != null) RunPressed(); });
-            Ui.PlaceCentered((RectTransform)runButton.transform, new Vector2(0.5f, 0f), new Vector2(640f, 180f), new Vector2(0f, 170f));
+            Ui.PlaceCentered((RectTransform)runButton.transform, new Vector2(0.5f, 0f), new Vector2(560f, 180f), new Vector2(120f, 170f));
             Image runIcon = Ui.NewImage("Icon", runButton.transform, Color.white);
             runIcon.sprite = UiSprites.Triangle;
-            Ui.PlaceCentered(runIcon.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(84f, 84f), new Vector2(-135f, 0f));
+            Ui.PlaceCentered(runIcon.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(84f, 84f), new Vector2(-120f, 0f));
             runButton.GetComponentInChildren<Text>().rectTransform.offsetMin = new Vector2(70f, 8f);
 
             Image toastBg = Ui.NewImage("Toast", t, new Color(0.04f, 0.08f, 0.12f, 0.92f), true);
@@ -203,11 +263,12 @@ namespace FlowFactory
 
         private void BuildSettings()
         {
-            settingsScreen = NewScreen("Settings", new Color(Palette.Background.r, Palette.Background.g, Palette.Background.b, 0.97f));
+            settingsScreen = NewScreen("Settings", ScreenTint);
             Transform t = settingsScreen.transform;
 
             Text title = Ui.NewLabel("Title", t, "SETTINGS", 84, Ui.TextColor);
             Ui.PlaceCentered(title.rectTransform, new Vector2(0.5f, 0.88f), new Vector2(900f, 140f), Vector2.zero);
+            Ui.AddShadow(title, 6f, 0.5f);
 
             soundButton = Btn("Sound", t, "", Ui.Secondary, 54, null, () => { if (SoundToggled != null) SoundToggled(); });
             Ui.PlaceCentered((RectTransform)soundButton.transform, new Vector2(0.5f, 0.7f), new Vector2(760f, 160f), Vector2.zero);
@@ -218,8 +279,11 @@ namespace FlowFactory
             fpsButton = Btn("Fps", t, "", Ui.Secondary, 46, null, () => { if (FpsToggled != null) FpsToggled(); });
             Ui.PlaceCentered((RectTransform)fpsButton.transform, new Vector2(0.5f, 0.7f), new Vector2(760f, 140f), new Vector2(0f, -400f));
 
-            resetProgressButton = Btn("ResetProgress", t, "RESET PROGRESS", Ui.Danger, 46, OnResetProgressPressed, null);
+            resetProgressButton = Btn("ResetProgress", t, "RESET LEVELS", Ui.Danger, 46, OnResetProgressPressed, null);
             Ui.PlaceCentered((RectTransform)resetProgressButton.transform, new Vector2(0.5f, 0.7f), new Vector2(760f, 140f), new Vector2(0f, -590f));
+
+            Text note = Ui.NewLabel("Note", t, "Ads and purchases in this build are TEST ONLY.\nNo real money is charged.", 32, Ui.TextDim, TextAnchor.MiddleCenter, FontStyle.Normal);
+            Ui.PlaceCentered(note.rectTransform, new Vector2(0.5f, 0.2f), new Vector2(900f, 110f), Vector2.zero);
 
             Button back = Btn("Back", t, "BACK", Ui.Secondary, 56, null, () => { if (MenuPressed != null) MenuPressed(); });
             Ui.PlaceCentered((RectTransform)back.transform, new Vector2(0.5f, 0.08f), new Vector2(520f, 150f), Vector2.zero);
@@ -232,23 +296,34 @@ namespace FlowFactory
 
             Image card = Ui.NewImage("Card", t, Ui.Panel, true);
             Ui.AddShadow(card, 14f, 0.5f);
-            Ui.PlaceCentered(card.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(900f, 880f), Vector2.zero);
+            Ui.PlaceCentered(card.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(900f, 960f), Vector2.zero);
 
             successTitle = Ui.NewLabel("Title", card.transform, "DELIVERED!", 100, new Color(0.55f, 1f, 0.65f));
+            Ui.PlaceCentered(successTitle.rectTransform, new Vector2(0.5f, 1f), new Vector2(800f, 170f), new Vector2(0f, -115f));
             Ui.AddShadow(successTitle, 6f, 0.5f);
-            Ui.PlaceCentered(successTitle.rectTransform, new Vector2(0.5f, 1f), new Vector2(800f, 180f), new Vector2(0f, -140f));
 
-            successBody = Ui.NewLabel("Body", card.transform, "", 48, Ui.TextColor, TextAnchor.MiddleCenter, FontStyle.Normal);
-            Ui.PlaceCentered(successBody.rectTransform, new Vector2(0.5f, 1f), new Vector2(780f, 190f), new Vector2(0f, -320f));
+            for (int i = 0; i < 3; i++)
+            {
+                Image star = Ui.NewImage("Star" + i, card.transform, Color.white);
+                star.sprite = UiSprites.Star;
+                Ui.PlaceCentered(star.rectTransform, new Vector2(0.5f, 1f), new Vector2(150f, 150f), new Vector2((i - 1) * 170f, -290f));
+                successStars[i] = star;
+            }
+
+            successBody = Ui.NewLabel("Body", card.transform, "", 44, Ui.TextColor, TextAnchor.MiddleCenter, FontStyle.Normal);
+            Ui.PlaceCentered(successBody.rectTransform, new Vector2(0.5f, 1f), new Vector2(820f, 150f), new Vector2(0f, -455f));
+
+            doubleButton = Btn("Double", card.transform, "", new Color(0.85f, 0.50f, 0.15f), 44, null, () => { if (DoubleCoinsPressed != null) DoubleCoinsPressed(); });
+            Ui.PlaceCentered((RectTransform)doubleButton.transform, new Vector2(0.5f, 1f), new Vector2(740f, 125f), new Vector2(0f, -600f));
 
             nextButton = Btn("Next", card.transform, "NEXT LEVEL", Ui.Primary, 64, null, () => { if (NextPressed != null) NextPressed(); });
-            Ui.PlaceCentered((RectTransform)nextButton.transform, new Vector2(0.5f, 0f), new Vector2(700f, 160f), new Vector2(0f, 360f));
+            Ui.PlaceCentered((RectTransform)nextButton.transform, new Vector2(0.5f, 1f), new Vector2(740f, 140f), new Vector2(0f, -745f));
 
             Button replay = Btn("Replay", card.transform, "REPLAY", Ui.Secondary, 48, null, () => { if (ReplayPressed != null) ReplayPressed(); });
-            Ui.PlaceCentered((RectTransform)replay.transform, new Vector2(0.25f, 0f), new Vector2(380f, 130f), new Vector2(40f, 170f));
+            Ui.PlaceCentered((RectTransform)replay.transform, new Vector2(0.5f, 1f), new Vector2(360f, 120f), new Vector2(-190f, -895f));
 
             Button levels = Btn("Levels", card.transform, "LEVELS", Ui.Secondary, 48, null, () => { if (LevelsPressed != null) LevelsPressed(); });
-            Ui.PlaceCentered((RectTransform)levels.transform, new Vector2(0.75f, 0f), new Vector2(380f, 130f), new Vector2(-40f, 170f));
+            Ui.PlaceCentered((RectTransform)levels.transform, new Vector2(0.5f, 1f), new Vector2(360f, 120f), new Vector2(190f, -895f));
         }
 
         // ---------------------------------------------------------------- screens
@@ -269,37 +344,90 @@ namespace FlowFactory
             menuScreen.SetActive(true);
         }
 
+        public void SetShopBadge(bool visible)
+        {
+            if (shopDot != null) shopDot.gameObject.SetActive(visible);
+        }
+
+        public void SetCoins(int coins)
+        {
+            foreach (Text label in coinLabels)
+            {
+                label.text = coins.ToString();
+            }
+        }
+
         public void ShowLevelSelect(IList<LevelData> levels, ProgressData progress)
         {
             HideAll();
             levelScreen.SetActive(true);
+            levelList = levels;
+            levelProgress = progress;
+            worldPage = Mathf.Clamp((progress.LastLevel - 1) / LevelsPerWorld, 0, WorldCount - 1);
+            RebuildLevelGrid();
+        }
 
+        private int WorldCount
+        {
+            get { return Mathf.Max(1, (levelList.Count + LevelsPerWorld - 1) / LevelsPerWorld); }
+        }
+
+        private void ChangeWorld(int delta)
+        {
+            worldPage = Mathf.Clamp(worldPage + delta, 0, WorldCount - 1);
+            RebuildLevelGrid();
+        }
+
+        private void RebuildLevelGrid()
+        {
             foreach (Transform child in levelGrid)
             {
                 Destroy(child.gameObject);
             }
 
+            int first = worldPage * LevelsPerWorld;
+            int last = Mathf.Min(first + LevelsPerWorld, levelList.Count);
+            int worldStars = 0;
+            for (int i = first; i < last; i++) worldStars += levelProgress.StarsFor(levelList[i].id);
+            worldLabel.text = "WORLD " + (worldPage + 1) + "\n" + worldStars + "/" + ((last - first) * 3) + " stars";
+            prevWorld.interactable = worldPage > 0;
+            nextWorld.interactable = worldPage < WorldCount - 1;
+
             const int columns = 3;
             const float cell = 280f;
-            int rows = (levels.Count + columns - 1) / columns;
-            for (int i = 0; i < levels.Count; i++)
+            int rows = (last - first + columns - 1) / columns;
+            for (int i = first; i < last; i++)
             {
-                int id = levels[i].id;
-                int col = i % columns;
-                int row = i / columns;
-                bool unlocked = progress.IsUnlocked(id);
-                bool done = progress.IsCompleted(id);
+                int id = levelList[i].id;
+                int local = i - first;
+                int col = local % columns;
+                int row = local / columns;
+                bool unlocked = levelProgress.IsUnlocked(id);
+                bool done = levelProgress.IsCompleted(id);
 
                 Color fill = !unlocked ? Ui.Disabled : done ? Ui.Primary : Ui.Secondary;
                 Button button = Btn("Level" + id, levelGrid, id.ToString(), fill, 96, null, null);
                 Ui.PlaceCentered((RectTransform)button.transform, new Vector2(0.5f, 0.5f), new Vector2(250f, 250f),
                     new Vector2((col - (columns - 1) * 0.5f) * cell, ((rows - 1) * 0.5f - row) * cell));
                 button.interactable = unlocked;
-
-                // The caption repeats the colour so progress is readable without telling colours apart.
-                Text caption = Ui.NewLabel("Caption", button.transform, !unlocked ? "LOCKED" : done ? "DONE" : "PLAY", 34, Ui.TextColor);
-                Ui.PlaceCentered(caption.rectTransform, new Vector2(0.5f, 0f), new Vector2(230f, 60f), new Vector2(0f, 45f));
                 button.GetComponentInChildren<Text>().rectTransform.offsetMax = new Vector2(-12f, -45f);
+
+                if (!unlocked || !done)
+                {
+                    Text caption = Ui.NewLabel("Caption", button.transform, !unlocked ? "LOCKED" : "PLAY", 34, Ui.TextColor);
+                    Ui.PlaceCentered(caption.rectTransform, new Vector2(0.5f, 0f), new Vector2(230f, 60f), new Vector2(0f, 45f));
+                }
+                else
+                {
+                    // Earned stars (gold) and missing stars (dim) under the number.
+                    int stars = levelProgress.StarsFor(id);
+                    for (int s = 0; s < 3; s++)
+                    {
+                        Image star = Ui.NewImage("Star" + s, button.transform, s < stars ? new Color(1f, 0.82f, 0.2f) : new Color(0f, 0f, 0f, 0.35f));
+                        star.sprite = UiSprites.Star;
+                        Ui.PlaceCentered(star.rectTransform, new Vector2(0.5f, 0f), new Vector2(62f, 62f), new Vector2((s - 1) * 66f, 46f));
+                    }
+                }
 
                 int captured = id;
                 button.onClick.AddListener(() =>
@@ -325,7 +453,7 @@ namespace FlowFactory
             fpsButton.gameObject.SetActive(FpsCounter.Available);
             Ui.SetText(fpsButton, fpsOn ? "FPS display: ON" : "FPS display: OFF");
             resetArmed = false;
-            Ui.SetText(resetProgressButton, "RESET PROGRESS");
+            Ui.SetText(resetProgressButton, "RESET LEVELS");
         }
 
         private void OnResetProgressPressed()
@@ -348,7 +476,7 @@ namespace FlowFactory
             if (resetArmed)
             {
                 resetArmed = false;
-                Ui.SetText(resetProgressButton, "RESET PROGRESS");
+                Ui.SetText(resetProgressButton, "RESET LEVELS");
             }
         }
 
@@ -360,6 +488,7 @@ namespace FlowFactory
             hudTitle.text = "LEVEL " + level.id;
             hudHint.text = level.hint ?? "";
             runButton.interactable = true;
+            hintButton.interactable = true;
         }
 
         public void SetHint(string text)
@@ -376,6 +505,7 @@ namespace FlowFactory
         public void SetRunInteractable(bool interactable)
         {
             runButton.interactable = interactable;
+            hintButton.interactable = interactable;
         }
 
         public void ShowToast(string message, float seconds = 2.4f)
@@ -390,19 +520,61 @@ namespace FlowFactory
             toast.SetActive(false);
         }
 
-        public void ShowSuccess(LevelData level, bool hasNext, bool lastLevel)
+        public void ShowSuccess(LevelData level, bool hasNext, bool worldEnd, bool finalLevel, LevelReward reward, bool canDouble, string nudge)
         {
             successOverlay.SetActive(true);
             pulseRun = false;
-            successTitle.text = lastLevel ? "FACTORY AWAKE!" : "DELIVERED!";
-            successBody.text = lastLevel
-                ? "All 12 levels complete.\nThanks for playing!"
-                : "Level " + level.id + " complete.\n" + (hasNext ? "The next level is open." : "");
+            successTitle.text = worldEnd ? "FACTORY AWAKE!" : "DELIVERED!";
+
+            string coins = "<color=#FFD24A>+" + reward.Coins + " coins</color>" + (reward.FirstClear ? "" : "  (replay)");
+            string extra = finalLevel ? "All " + level.id + " levels complete!" : (string.IsNullOrEmpty(nudge) ? "" : nudge);
+            successBody.text = coins + (extra.Length > 0 ? "\n" + extra : "");
+
             nextButton.gameObject.SetActive(hasNext);
+            doubleButton.gameObject.SetActive(canDouble);
+            doubleButton.interactable = true;
+            Ui.SetFill(doubleButton, new Color(0.85f, 0.50f, 0.15f));
+            Ui.SetText(doubleButton, "x2 COINS  (watch test ad)");
+
+            StartCoroutine(PopStars(reward.Stars));
+        }
+
+        public void ShowDoubled(int coinsAdded)
+        {
+            doubleButton.interactable = false;
+            Ui.SetFill(doubleButton, Ui.Disabled);
+            Ui.SetText(doubleButton, "DOUBLED!  +" + coinsAdded);
+        }
+
+        private IEnumerator PopStars(int stars)
+        {
+            for (int i = 0; i < 3; i++)
+            {
+                successStars[i].color = i < stars ? new Color(1f, 0.82f, 0.2f) : new Color(1f, 1f, 1f, 0.18f);
+                successStars[i].rectTransform.localScale = Vector3.zero;
+            }
+            for (int i = 0; i < 3; i++)
+            {
+                if (i >= stars)
+                {
+                    successStars[i].rectTransform.localScale = Vector3.one;
+                    continue;
+                }
+                yield return new WaitForSecondsRealtime(0.22f);
+                for (float t = 0f; t < 0.22f; t += Time.unscaledDeltaTime)
+                {
+                    float k = t / 0.22f;
+                    float s = Mathf.Sin(k * Mathf.PI * 0.5f) * (1f + 0.25f * Mathf.Sin(k * Mathf.PI));
+                    successStars[i].rectTransform.localScale = Vector3.one * s;
+                    yield return null;
+                }
+                successStars[i].rectTransform.localScale = Vector3.one;
+            }
         }
 
         public void HideSuccess()
         {
+            StopAllCoroutines();
             successOverlay.SetActive(false);
         }
 
@@ -411,7 +583,8 @@ namespace FlowFactory
         {
             if (OverlayOpen) return true;
             if (!hudScreen.activeSelf) return false;
-            return Contains(hudBackButton, screenPosition) || Contains(hudResetButton, screenPosition) || Contains(runButton, screenPosition);
+            return Contains(hudBackButton, screenPosition) || Contains(hudResetButton, screenPosition) ||
+                   Contains(runButton, screenPosition) || Contains(hintButton, screenPosition);
         }
 
         private static bool Contains(Button button, Vector2 point)

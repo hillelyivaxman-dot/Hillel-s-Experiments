@@ -4,7 +4,7 @@ using System.Collections.Generic;
 namespace FlowFactory.Core
 {
     /// <summary>
-    /// Authoring source for the 12 levels of version 0.1, written as ASCII grids of the SOLVED board.
+    /// Authoring source for the 36 levels (3 worlds of 12), written as ASCII grids of the SOLVED board.
     /// The editor tool turns these into LevelDefinition assets; the game falls back to them if no
     /// assets were generated. Cells are separated by spaces:
     ///   .            empty cell                 #            decorative block
@@ -114,6 +114,176 @@ namespace FlowFactory.Core
                 ". ES:1 T< . V:1",
                 ". V:1 . # V:1",
                 ". NE:2 H:1 H:1 WN:1"),
+
+            // ---- World 2 (13-24) and World 3 (25-36): generated once with Tools/LevelGen/gen_levels.py and
+            // committed as static data. Longer routes, more turns, more decoys and crates.
+            new Spec("Overtime", "Trace the route from the source first.", false,
+                ". . . # .",
+                ". . . Tv .",
+                ". S> sw v #",
+                ". es WN:1 V:1 ES",
+                ". NE:3 H:1 WN:2 ."),
+
+            new Spec("Night Shift", "Count the turns before you tap.", false,
+                ". # . # SW:1",
+                "# v . . .",
+                "H:1 wn . ES:3 Sv",
+                "v es SW:3 ES:3 WN:3",
+                "ne T^ NE:3 WN:3 SW:1"),
+
+            new Spec("Loading Bay", "Belts that are already right can be left alone.", false,
+                ". # . NE:2 WN:3",
+                ". V v . .",
+                "ES:1 SW:1 ES:1 SW:2 .",
+                "S^ NE:3 WN:2 NE:2 T<",
+                "# . . . ."),
+
+            new Spec("Conveyor Maze", "Crates never move. Plan around them.", false,
+                "es S< ES:3 Tv #",
+                "NE:3 h SW:3 V:1 .",
+                ". NE:3 NE:3 WN:2 #",
+                ". wn # H:1 .",
+                ". . . H V:1"),
+
+            new Spec("Fast Lane", "Some belts only look useful.", false,
+                ". . # . .",
+                ". V:1 ES:2 SW:1 V",
+                "V:1 . V:1 NE:3 SW",
+                ". . ne SW:1 V:1",
+                ". sw S> WN:3 T^"),
+
+            new Spec("Sorting Hall", "Work backwards from the target.", false,
+                ". ES:1 # # .",
+                "WN:3 SW:3 V . .",
+                "ES:1 T< ES:1 SW:2 Sv",
+                "NE:1 SW:2 V NE:2 WN:1",
+                ". NE:1 WN:3 . ."),
+
+            new Spec("Detour", "A long way round can be the only way.", false,
+                "ES:1 H:1 h S< es",
+                "V:1 . ES:3 SW:1 .",
+                "NE:1 SW:2 . . .",
+                "T> WN:2 . # .",
+                ". . V:1 . ."),
+
+            new Spec("Zig Zag", "Fix the corners, then the straights.", false,
+                "ne ES:1 SW:2 # .",
+                "es WN:3 V:1 . .",
+                "V:1 NE V:1 ES:3 .",
+                "T^ v NE:2 H:1 S<",
+                ". . . V V:1"),
+
+            new Spec("Packing Line", "Trace the route from the source first.", false,
+                "WN:3 V:1 es SW:2 Tv",
+                ". H V:1 V:1 v",
+                ". S> wn V:1 V:1",
+                "v SW:3 . NE:3 WN:2",
+                "NE:3 ES . SW H"),
+
+            new Spec("Mixed Up", "Count the turns before you tap.", false,
+                ". ES # # V",
+                "h . V ES:1 SW:2",
+                ". . . T^ V:1",
+                ". . ES:1 S< V:1",
+                "v wn NE:3 H WN:2"),
+
+            new Spec("Tight Squeeze", "Belts that are already right can be left alone.", false,
+                "ES:2 SW:3 wn SW #",
+                "V:1 v S> SW:1 .",
+                "T^ V:1 . V h",
+                "sw NE:1 H:1 WN:1 .",
+                ". . # # ."),
+
+            new Spec("Grand Opening", "Crates never move. Plan around them.", false,
+                "h ES:3 H:1 S< .",
+                "ES:1 WN:3 . ES:3 H",
+                "NE:2 SW:2 V . WN:3",
+                "es v WN ES:2 SW:2",
+                "WN:1 NE:3 H:1 WN:3 T^"),
+
+            new Spec("Second Wind", "Some belts only look useful.", false,
+                "WN . # ES S<",
+                "H:1 NE:2 H:1 v .",
+                "T> H SW:1 NE:2 sw",
+                ". NE:3 ne sw V:1",
+                "V:1 es h NE:3 WN:1"),
+
+            new Spec("Rush Order", "Work backwards from the target.", false,
+                "ES:3 SW:2 ES:1 SW:1 SW:1",
+                "V NE:2 WN:2 NE:2 SW:2",
+                "V:1 H . S> WN",
+                "NE:2 T< sw H .",
+                "NE:1 . . H:1 H"),
+
+            new Spec("Back Alley", "A long way round can be the only way.", false,
+                "v . . ES SW:2",
+                "ES . . V:1 S^",
+                "ES:3 T< H:1 V:1 NE:1",
+                "NE:1 SW:2 V V:1 H:1",
+                "SW NE:2 H:1 WN:1 ."),
+
+            new Spec("Crossroads", "Fix the corners, then the straights.", false,
+                "h ES:2 V ES:3 SW:3",
+                "Tv . S> WN:3 v",
+                "NE:1 H:1 H:1 SW:3 V:1",
+                "H:1 . H:1 NE:3 WN:2",
+                ". # ES . #"),
+
+            new Spec("Spiral Stairs", "Trace the route from the source first.", false,
+                "# ne . h .",
+                "H:1 H:1 ES:2 SW:1 V",
+                "ES:3 H:1 WN NE SW:1",
+                "V:1 Tv H ES:3 WN:3",
+                "S^ NE:1 H:1 WN:1 ."),
+
+            new Spec("Long Haul", "Count the turns before you tap.", false,
+                "H WN:3 V:1 SW:3 WN:1",
+                "es S< WN . V",
+                "NE:3 H:1 SW:3 SW:1 .",
+                "ES:2 H:1 WN Tv ES",
+                "NE:1 H:1 H:1 WN V:1"),
+
+            new Spec("Hidden Path", "Belts that are already right can be left alone.", false,
+                "ES:3 SW:1 SW:3 . .",
+                "V:1 V:1 ES:2 H:1 SW:2",
+                "T^ NE:2 WN:2 NE:3 V:1",
+                "# . H:1 . S^",
+                ". # ne SW:3 ."),
+
+            new Spec("Clockwork", "Crates never move. Plan around them.", false,
+                "Sv ne ES:3 h SW:2",
+                "V:1 # V:1 ES:1 WN:2",
+                "V:1 ES:1 WN:2 V:1 NE:2",
+                "NE:3 WN:2 NE:2 NE:1 T<",
+                "NE:3 SW:1 V SW ."),
+
+            new Spec("Double Back", "Some belts only look useful.", false,
+                "ES:3 SW:2 ES SW:2 Sv",
+                "v NE:1 WN NE:2 WN",
+                "V:1 . es NE:2 wn",
+                "v v V V:1 SW:1",
+                "NE H:1 T< WN:2 V"),
+
+            new Spec("Foreman's Test", "Work backwards from the target.", false,
+                "SW:2 ES:2 SW:3 ES:1 SW:3",
+                "ES:1 WN NE WN:3 V",
+                "NE:3 SW:2 NE:3 V V:1",
+                "S> WN:3 . ES T^",
+                "# H:1 H:1 V:1 ."),
+
+            new Spec("Master Plan", "A long way round can be the only way.", false,
+                "SW:2 ES:2 ES:1 SW:3 ES:2",
+                ". . V:1 NE:2 SW:3",
+                "V ES:3 V T> WN:1",
+                "NE WN V:1 ES:3 SW",
+                "sw SW:3 NE:3 WN:1 S^"),
+
+            new Spec("Factory Legend", "Fix the corners, then the straights.", false,
+                "NE NE:3 H:1 . Tv",
+                "ES:3 SW H WN:2 V:1",
+                "V:1 S^ V:1 V:1 V:1",
+                "NE:2 H:1 SW:3 ES:1 WN:3",
+                "V h NE WN:3 ES"),
         };
 
         public static int Count

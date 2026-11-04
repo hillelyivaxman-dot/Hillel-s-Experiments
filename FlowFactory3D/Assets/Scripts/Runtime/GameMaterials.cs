@@ -67,6 +67,17 @@ namespace FlowFactory
             return material;
         }
 
+        /// <summary>Re-reads the ground colours after the theme changed.</summary>
+        public static void RefreshGround()
+        {
+            Material material;
+            if (Cache.TryGetValue("ground", out material) && material != null && material.HasProperty("_Inner"))
+            {
+                material.SetColor("_Inner", Palette.GroundInner);
+                material.SetColor("_Outer", Palette.GroundOuter);
+            }
+        }
+
         private static Shader FindShader()
         {
             if (shader != null)
@@ -139,17 +150,17 @@ namespace FlowFactory
     {
         // Warm "toy factory" palette: cream floor plates on a teal slab, coral machines, amber parcels.
         public static readonly Color Background = new Color(0.05f, 0.10f, 0.14f);
-        public static readonly Color GroundInner = new Color(0.24f, 0.40f, 0.46f);
-        public static readonly Color GroundOuter = new Color(0.04f, 0.09f, 0.12f);
-        public static readonly Color FloorLight = new Color(0.97f, 0.93f, 0.84f);
-        public static readonly Color FloorDark = new Color(0.88f, 0.83f, 0.73f);
-        public static readonly Color Slab = new Color(0.10f, 0.25f, 0.31f);
-        public static readonly Color SlabBase = new Color(0.07f, 0.17f, 0.22f);
+        public static Color GroundInner = new Color(0.24f, 0.40f, 0.46f);
+        public static Color GroundOuter = new Color(0.04f, 0.09f, 0.12f);
+        public static Color FloorLight = new Color(0.97f, 0.93f, 0.84f);
+        public static Color FloorDark = new Color(0.88f, 0.83f, 0.73f);
+        public static Color Slab = new Color(0.10f, 0.25f, 0.31f);
+        public static Color SlabBase = new Color(0.07f, 0.17f, 0.22f);
         public static readonly Color Frame = new Color(0.17f, 0.19f, 0.23f);
         public static readonly Color BeltFixed = new Color(0.36f, 0.38f, 0.43f);
-        public static readonly Color BeltRotatable = new Color(0.10f, 0.58f, 0.78f);
+        public static Color BeltRotatable = new Color(0.10f, 0.58f, 0.78f);
         public static readonly Color RailFixed = new Color(0.62f, 0.64f, 0.68f);
-        public static readonly Color RailRotatable = new Color(1.00f, 0.80f, 0.20f);
+        public static Color RailRotatable = new Color(1.00f, 0.80f, 0.20f);
         public static readonly Color Knob = new Color(1.00f, 0.50f, 0.15f);
         public static readonly Color KnobHandle = new Color(1.00f, 0.95f, 0.85f);
         public static readonly Color Source = new Color(0.92f, 0.38f, 0.30f);
@@ -159,13 +170,13 @@ namespace FlowFactory
         public static readonly Color TargetGlow = new Color(1.00f, 0.86f, 0.30f);
         public static readonly Color Crate = new Color(0.78f, 0.55f, 0.32f);
         public static readonly Color CrateFrame = new Color(0.42f, 0.28f, 0.16f);
-        public static readonly Color Parcel = new Color(0.96f, 0.64f, 0.18f);
-        public static readonly Color ParcelTape = new Color(0.98f, 0.92f, 0.78f);
+        public static Color Parcel = new Color(0.96f, 0.64f, 0.18f);
+        public static Color ParcelTape = new Color(0.98f, 0.92f, 0.78f);
         public static readonly Color ParcelLabel = new Color(0.99f, 0.99f, 0.97f);
         public static readonly Color FlashFail = new Color(0.92f, 0.22f, 0.22f);
         public static readonly Color FlashOk = new Color(0.30f, 0.90f, 0.45f);
         public static readonly Color Hint = new Color(1.00f, 0.92f, 0.25f);
-        public static readonly Color Lamp = new Color(1.00f, 0.88f, 0.45f);
+        public static Color Lamp = new Color(1.00f, 0.88f, 0.45f);
         public static readonly Color Barrel = new Color(0.85f, 0.32f, 0.28f);
         public static readonly Color BarrelTeal = new Color(0.16f, 0.55f, 0.62f);
         public static readonly Color Metal = new Color(0.55f, 0.60f, 0.66f);

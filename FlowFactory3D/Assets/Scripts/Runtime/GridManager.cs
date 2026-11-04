@@ -94,7 +94,7 @@ namespace FlowFactory
             }
         }
 
-        /// <summary>Set dressing on the factory floor: barrels, a turning gear, a pipe and a crate stack.</summary>
+        /// <summary>Set dressing on the factory floor: barrels, a turning gear and a crate stack.</summary>
         private void BuildProps(float extent)
         {
             // Directions on the ground as the fixed camera sees them: forward = up the screen, right = right.
@@ -102,15 +102,15 @@ namespace FlowFactory
             Vector3 r = new Vector3(0.7071f, 0f, -0.7071f);
             const float ground = -0.57f;
 
-            Vector3 barrelA = f * (extent + 0.95f) + r * 1.9f;
-            Vector3 barrelB = f * (extent + 1.2f) + r * 2.55f;
+            Vector3 barrelA = f * (extent + 0.55f) + r * 1.9f;
+            Vector3 barrelB = f * (extent + 0.85f) + r * 2.6f;
             Barrel(barrelA, Palette.Barrel);
             Barrel(barrelB, Palette.BarrelTeal);
 
             // Gear
             var gear = new GameObject("Gear").transform;
             gear.SetParent(root, false);
-            gear.localPosition = f * (extent + 0.6f) - r * 2.5f + Vector3.up * (ground + 0.08f);
+            gear.localPosition = f * (extent + 0.3f) - r * 2.6f + Vector3.up * (ground + 0.08f);
             gear.gameObject.AddComponent<Spinner>().DegreesPerSecond = 20f;
             Primitives.Create(PrimitiveType.Cylinder, gear, Vector3.zero, new Vector3(1.0f, 0.05f, 1.0f), Palette.Metal, "Disc");
             Primitives.Create(PrimitiveType.Cylinder, gear, new Vector3(0f, 0.07f, 0f), new Vector3(0.30f, 0.04f, 0.30f), Palette.Frame, "Hub");
@@ -119,15 +119,6 @@ namespace FlowFactory
                 Quaternion q = Quaternion.Euler(0f, i * 36f, 0f);
                 Primitives.Create(PrimitiveType.Cube, gear, q * new Vector3(0f, 0f, 0.55f), new Vector3(0.22f, 0.10f, 0.20f),
                     GameMaterials.Get(Palette.Metal), q, "Tooth");
-            }
-
-            // Pipe running behind the board, with flanges.
-            Quaternion alongRight = Quaternion.Euler(0f, 135f, 0f) * Quaternion.Euler(90f, 0f, 0f);
-            Vector3 pipeCenter = f * (extent + 1.7f) + Vector3.up * (ground + 0.28f);
-            Primitives.Create(PrimitiveType.Cylinder, root, pipeCenter, new Vector3(0.28f, 2.4f, 0.28f), GameMaterials.Get(Palette.BarrelTeal), alongRight, "Pipe");
-            foreach (float along in new[] { -1.7f, 0f, 1.7f })
-            {
-                Primitives.Create(PrimitiveType.Cylinder, root, pipeCenter + r * along, new Vector3(0.36f, 0.06f, 0.36f), GameMaterials.Get(Palette.Metal), alongRight, "Flange");
             }
 
             // Crate stack in front, off to the left.

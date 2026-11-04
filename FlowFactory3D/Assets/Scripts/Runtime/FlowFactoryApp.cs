@@ -24,6 +24,11 @@ namespace FlowFactory
 
         private IList<LevelData> levels;
         private SaveService save;
+        private PlayerEconomy economy;
+        private MonetizationUi monetizationUi;
+        private MonetizationController money;
+        private LevelReward lastReward;
+        private bool dailyOffered;
         private LocalTelemetry telemetry;
         private AudioService audioService;
         private GameUIController ui;
@@ -69,6 +74,8 @@ namespace FlowFactory
 
             levels = LevelRepository.LoadAll();
             save = new SaveService(new PlayerPrefsStore(), levels.Count);
+            economy = new PlayerEconomy(save);
+            ThemeCatalog.Apply(save.Data.Theme, save.Data.Parcel);
             telemetry = new LocalTelemetry();
             telemetry.Log("session_start", "version=0.1 levels=" + levels.Count);
 
@@ -83,6 +90,13 @@ namespace FlowFactory
             ui = new GameObject("UI").AddComponent<GameUIController>();
             ui.transform.SetParent(transform, false);
             ui.Build();
+
+            monetizationUi = new GameObject("MonetizationUi").AddComponent<MonetizationUi>();
+            monetizationUi.transform.SetParent(transform, false);
+            monetizationUi.Build(ui.SafeRoot);
+            money = new MonetizationController(economy, monetizationUi, ui, new SimulatedAdService(monetizationUi),
+                new SimulatedStoreService(monetizationUi), telemetry, audioService);
+
             HookUi();
 
             grid = new GameObject("Grid").AddComponent<GridManager>();
@@ -92,6 +106,8 @@ namespace FlowFactory
             parcel.transform.SetParent(transform, false);
             parcel.Build();
             parcel.Hide();
+            money.AppearanceChanged += () => parcel.Build();
+            money.ShopClosed += ShowMenu;
 
             awakening = new GameObject("Awakening").AddComponent<FactoryAwakening>();
             awakening.transform.SetParent(transform, false);
@@ -151,6 +167,9 @@ namespace FlowFactory
             ui.PlayPressed += OnPlay;
             ui.LevelsPressed += ShowLevelSelect;
             ui.SettingsPressed += ShowSettings;
+            ui.ShopPressed += () => money.OpenShop();
+            ui.HintPressed += OnHint;
+            ui.DoubleCoinsPressed += OnDoubleCoins;
             ui.MenuPressed += ShowMenu;
             ui.LevelChosen += id => StartLevel(id - 1);
             ui.RunPressed += OnRun;
@@ -179,8 +198,7 @@ namespace FlowFactory
             };
             ui.ProgressResetConfirmed += () =>
             {
-                save.ResetAll();
-                save.Save();
+                save.ResetLevelProgress();
                 tutorialStartLogged = false;
                 tutorialCompleteLogged = false;
             };
@@ -194,6 +212,12 @@ namespace FlowFactory
             screen = AppScreen.Menu;
             StartDemo();
             ui.ShowMenu();
+            money.RefreshBadges();
+            if (!dailyOffered && money.DailyAvailable)
+            {
+                dailyOffered = true;
+                money.ShowDailyGift();
+            }
         }
 
         /// <summary>Behind the main menu: the last level, solved, with a parcel making its trip over and over.</summary>
@@ -334,12 +358,12 @@ namespace FlowFactory
 
         private void Update()
         {
-            if (InputBridge.BackPressed())
+            if (InputBridge.BackPressed() && !money.OverlayOpen)
             {
                 HandleBack();
             }
 
-            if (screen != AppScreen.Playing)
+            if (screen != AppScreen.Playing || money.OverlayOpen)
             {
                 return;
             }
@@ -421,20 +445,60 @@ namespace FlowFactory
             }
 
             // Tutorial: point at the next belt that still faces the wrong way, then at the Run button.
+            GridPoint cell;
+            if (TryFindHintTile(out cell))
+            {
+                grid.ShowHint(cell);
+                ui.SetHint("Tap the glowing belt to turn it.");
+                ui.SetRunPulse(false);
+                return;
+            }
+            grid.HideHint();
+            ui.SetHint("Now press RUN!");
+            ui.SetRunPulse(true);
+        }
+
+        /// <summary>The first belt that does not yet match the known solution.</summary>
+        private bool TryFindHintTile(out GridPoint cell)
+        {
+            LevelData level = manager.Level;
             for (int i = 0; i < level.tiles.Length; i++)
             {
                 TileSpec tile = level.tiles[i];
                 if (tile.rotatable && TileGeometry.Openings(tile.kind, manager.Rotations[i]) != TileGeometry.Openings(tile.kind, level.solution[i]))
                 {
-                    grid.ShowHint(new GridPoint(i % level.width, i / level.width));
-                    ui.SetHint("Tap the glowing belt to turn it.");
-                    ui.SetRunPulse(false);
-                    return;
+                    cell = new GridPoint(i % level.width, i / level.width);
+                    return true;
                 }
             }
-            grid.HideHint();
-            ui.SetHint("Now press RUN!");
-            ui.SetRunPulse(true);
+            cell = default(GridPoint);
+            return false;
+        }
+
+        private void OnHint()
+        {
+            if (screen != AppScreen.Playing || manager.State != LevelState.Idle)
+            {
+                return;
+            }
+
+            GridPoint cell;
+            bool available = TryFindHintTile(out cell);
+            money.RequestHint(available, () =>
+            {
+                // Recompute: the board is unchanged while the dialog was open, but stay safe.
+                GridPoint target;
+                if (manager.State == LevelState.Idle && TryFindHintTile(out target))
+                {
+                    grid.ShowHint(target);
+                    ui.SetHint("Tap the glowing belt to turn it.");
+                }
+            });
+        }
+
+        private void OnDoubleCoins()
+        {
+            money.OfferDoubleCoins(lastReward.Coins, added => ui.ShowDoubled(added));
         }
 
         private void OnRun()
@@ -505,9 +569,11 @@ namespace FlowFactory
                 audioService.Play(Sfx.Success);
                 manager.CompleteRun();
 
-                save.CompleteLevel(level.id);
+                lastReward = economy.AwardLevel(level, manager.TapCount);
+                money.RefreshBadges();
+                audioService.Play(Sfx.Coin);
                 telemetry.Log("level_success", "level=" + level.id + " seconds=" + (Time.realtimeSinceStartup - levelStartTime).ToString("0.0") +
-                                               " attempts=" + manager.Attempts + " taps=" + manager.TapCount);
+                                               " attempts=" + manager.Attempts + " taps=" + manager.TapCount + " stars=" + lastReward.Stars + " coins=" + lastReward.Coins);
                 if (level.id == TutorialLastLevel && !tutorialCompleteLogged)
                 {
                     tutorialCompleteLogged = true;
@@ -515,7 +581,8 @@ namespace FlowFactory
                 }
 
                 bool last = levelIndex == levels.Count - 1;
-                if (last)
+                bool worldEnd = level.id % GameUIController.LevelsPerWorld == 0;
+                if (worldEnd)
                 {
                     awakeningRunning = true;
                     yield return awakening.Play(awakeningPosition);
@@ -525,7 +592,7 @@ namespace FlowFactory
                 {
                     yield return new WaitForSeconds(0.45f);
                 }
-                ui.ShowSuccess(level, !last, last);
+                ui.ShowSuccess(level, !last, worldEnd, last, lastReward, money.CanOfferAd() && lastReward.Coins > 0, money.ShopNudge());
             }
             else
             {

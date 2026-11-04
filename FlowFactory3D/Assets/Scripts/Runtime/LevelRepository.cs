@@ -31,9 +31,14 @@ namespace FlowFactory
                     }
                     list.Add(data);
                 }
-                if (valid)
+                if (valid && list.Count == LevelCatalog.Count)
                 {
                     return list;
+                }
+                if (valid)
+                {
+                    Debug.LogWarning("[FlowFactory] Only " + list.Count + " of " + LevelCatalog.Count + " level assets exist. " +
+                                     "Run Flow Factory > Generate Level Assets (create missing). Using the built-in catalog for now.");
                 }
                 Debug.LogWarning("[FlowFactory] Using the built-in level catalog instead of the assets.");
             }

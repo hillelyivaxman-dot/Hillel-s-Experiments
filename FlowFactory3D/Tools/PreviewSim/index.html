@@ -19,6 +19,11 @@ const W=540,H=960;
 const ui=document.getElementById('ui');
 // ---- palette (mirrors Palette in GameMaterials.cs)
 const P={bg:[.05,.10,.14],gIn:[.24,.40,.46],gOut:[.04,.09,.12],floorL:[.97,.93,.84],floorD:[.88,.83,.73],slab:[.10,.25,.31],slabBase:[.07,.17,.22],frame:[.17,.19,.23],beltF:[.36,.38,.43],beltR:[.10,.58,.78],railF:[.62,.64,.68],railR:[1,.8,.2],knob:[1,.5,.15],knobH:[1,.95,.85],source:[.92,.38,.30],stripe:[.98,.92,.85],target:[.20,.72,.58],tWall:[.55,.92,.80],tGlow:[1,.86,.30],crate:[.78,.55,.32],crateF:[.42,.28,.16],parcel:[.96,.64,.18],tape:[.98,.92,.78],label:[.99,.99,.97],fail:[.92,.22,.22],ok:[.30,.90,.45],hint:[1,.92,.25],lamp:[1,.88,.45],barrel:[.85,.32,.28],barrelT:[.16,.55,.62],metal:[.55,.60,.66],white:[1,1,1],hole:[.05,.10,.14]};
+const THEMES={candy:{floorL:[1,.91,.94],floorD:[.96,.80,.87],slab:[.78,.35,.55],slabBase:[.52,.20,.38],beltR:[.20,.74,.62],railR:[1,.55,.75],gIn:[.58,.34,.52],gOut:[.20,.09,.20],lamp:[1,.80,.90]},
+ midnight:{floorL:[.34,.38,.52],floorD:[.26,.29,.42],slab:[.08,.09,.17],slabBase:[.04,.05,.11],beltR:[.10,.78,.98],railR:[.95,.25,.85],gIn:[.14,.16,.32],gOut:[.02,.02,.07],lamp:[.5,.95,1]},
+ gold:{floorL:[.96,.93,.86],floorD:[.85,.81,.72],slab:[.62,.46,.15],slabBase:[.36,.26,.08],beltR:[.68,.16,.22],railR:[1,.86,.38],gIn:[.38,.30,.19],gOut:[.08,.06,.04],lamp:[1,.9,.5]}};
+const PARCELS={gift:{parcel:[.86,.16,.22],tape:[1,.82,.30]},ocean:{parcel:[.2,.55,.88],tape:[.95,.98,1]},gold:{parcel:[.98,.8,.25],tape:[1,.96,.72]}};
+if(THEMES[q.get('theme')])Object.assign(P,THEMES[q.get('theme')]);if(PARCELS[q.get('parcel')])Object.assign(P,PARCELS[q.get('parcel')]);
 const noise=(x,y,s)=>{let h=(Math.imul(x,374761393)+Math.imul(y,668265263)+Math.imul(s,144665))>>>0;h=Math.imul(h^(h>>>13),1274126177)>>>0;return ((h^(h>>>16))&1023)/1023;};
 function texSample(kind,x,y,u,v){
  const g=a=>[a,a,a];
@@ -47,7 +52,7 @@ const scene=new THREE.Scene(); scene.background=new THREE.Color().setRGB(...P.bg
 const G={box:new THREE.BoxGeometry(1,1,1),cyl:new THREE.CylinderGeometry(.5,.5,2,24),sph:new THREE.SphereGeometry(.5,24,16)};
 function add(geo,[x,y,z],[sx,sy,sz],c,o={},parent=scene){const m=new THREE.Mesh(G[geo],o.mat||mat(c,o.tex,o.tile));m.position.set(x,y,-z);m.scale.set(sx,sy,sz);if(o.q)m.quaternion.copy(o.q);parent.add(m);return m;}
 const rotU=(v,deg)=>{const a=deg*Math.PI/180;return[v[0]*Math.cos(a)+v[2]*Math.sin(a),v[1],-v[0]*Math.sin(a)+v[2]*Math.cos(a)];};
-const demo=screenName==='menu';
+const demo=screenName==='menu'||screenName==='daily';
 const Ldata=demo?levels[11]:L;
 const w=Ldata.w,h=Ldata.h;
 const cell=(x,y)=>[x-(w-1)/2,0,-(y-(h-1)/2)];
@@ -96,11 +101,9 @@ for(let y=0;y<h;y++)for(let x=0;x<w;x++){const c=cell(x,y);const fl=failCell&&fa
 if(!demo){const ext=Math.max(w,h)*.5*1.4142;const f=[.7071,0,.7071],r=[.7071,0,-.7071],gr=-.57;
  const at=(a,b,k,l)=>[f[0]*a+r[0]*b,0,f[2]*a+r[2]*b];
  const barrel=(p,c)=>{add('cyl',[p[0],gr+.36,p[2]],[.40,.36,.40],c);add('cyl',[p[0],gr+.50,p[2]],[.42,.03,.42],P.frame);add('cyl',[p[0],gr+.22,p[2]],[.42,.03,.42],P.frame);};
- barrel(at(ext+.95,1.9),P.barrel);barrel(at(ext+1.2,2.55),P.barrelT);
- const gp=at(ext+.6,-2.5);add('cyl',[gp[0],gr+.08,gp[2]],[1,.05,1],P.metal);add('cyl',[gp[0],gr+.15,gp[2]],[.3,.04,.3],P.frame);
+ barrel(at(ext+.55,1.9),P.barrel);barrel(at(ext+.85,2.6),P.barrelT);
+ const gp=at(ext+.3,-2.6);add('cyl',[gp[0],gr+.08,gp[2]],[1,.05,1],P.metal);add('cyl',[gp[0],gr+.15,gp[2]],[.3,.04,.3],P.frame);
  for(let i=0;i<10;i++){const o=rotU([0,0,.55],i*36);const q=new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0),-i*36*Math.PI/180);add('box',[gp[0]+o[0],gr+.08,gp[2]+o[2]],[.22,.10,.20],P.metal,{q});}
- const pc=at(ext+1.7,0);const dir=new THREE.Vector3(r[0],0,-r[2]).normalize();const qp=new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0,1,0),dir);
- add('cyl',[pc[0],gr+.28,pc[2]],[.28,2.4,.28],P.barrelT,{q:qp});for(const a of[-1.7,0,1.7])add('cyl',[pc[0]+r[0]*a,gr+.28,pc[2]+r[2]*a],[.36,.06,.36],P.metal,{q:qp});
  const sp=at(-(ext+.8),-2.7);const sx=sp[0],sz=sp[2];
  add('box',[sx,gr+.40,sz],[.8,.8,.8],P.crate,{tex:'wood'});add('box',[sx+r[0]*.9,gr+.28,sz+r[2]*.9],[.56,.56,.56],P.crate,{tex:'wood'});add('box',[sx,gr+1.05,sz],[.5,.5,.5],P.crate,{tex:'wood'});}
 // camera
@@ -142,43 +145,104 @@ else if(screenName==='game'||screenName==='success'){
   [[.8,2.2],[.95,2.9],[1.1,3.5]].forEach(([dx,dy],i)=>f('sph',[dx,dy,.25],[.35+i*.12,.35+i*.12,.35+i*.12],[.88,.9,.94]));}
 }
 const renderer=new THREE.WebGLRenderer({antialias:true,preserveDrawingBuffer:true});renderer.setPixelRatio(2);renderer.setSize(W,H);renderer.domElement.className='gl';document.getElementById('wrap').prepend(renderer.domElement);
-if(screenName!=='select')renderer.render(scene,cam);
+if(['game','success','menu','daily'].includes(screenName))renderer.render(scene,cam);
 // ---------- HTML UI approximating the uGUI layout (1080x1920 reference)
 const E=(css,html='',cls='abs')=>{const d=document.createElement('div');d.className=cls;d.style.cssText=css;d.innerHTML=html;ui.appendChild(d);return d;};
-const btn=(l,t,w,h,fill,fs,txt,icon)=>{const d=E(`left:${l}px;top:${t}px;width:${w}px;height:${h}px;background:${fill};font-size:${fs}px;`,`<div class="gloss"></div>${icon||''}<span>${txt}</span>`,'abs btn');return d;};
-const C={prim:'rgb(51,166,102)',sec:'rgb(64,87,140)',dan:'rgb(191,71,71)',dis:'rgb(56,64,82)',panel:'rgba(33,43,69,.96)'};
-const tri=`<div style="position:absolute;left:${640/2-135-42}px;top:${(180-84)/2}px;width:0;height:0;border-left:70px solid #fff;border-top:42px solid transparent;border-bottom:42px solid transparent;"></div>`;
+const btn=(l,t,w,h,fill,fs,txt,icon)=>E(`left:${l}px;top:${t}px;width:${w}px;height:${h}px;background:${fill};font-size:${fs}px;`,`<div class="gloss"></div>${icon||''}<span>${txt}</span>`,'abs btn');
+const C={prim:'rgb(51,166,102)',sec:'rgb(64,87,140)',dan:'rgb(191,71,71)',dis:'rgb(56,64,82)',panel:'rgba(33,43,69,.96)',shop:'rgb(217,128,38)'};
 const shadowTxt='text-shadow:0 6px 0 rgba(0,0,0,.5);';
-if(screenName==='select'){E('left:0;top:0;width:1080px;height:1920px;background:#0b1820;');}
-if(screenName==='menu'){
+const coinSvg=(s)=>`<div style="width:${s}px;height:${s}px;border-radius:50%;background:#ffcc38;display:flex;align-items:center;justify-content:center"><div style="width:${s*.6}px;height:${s*.6}px;border-radius:50%;background:#fff2a6"></div></div>`;
+const starSvg=(s,on)=>`<svg width="${s}" height="${s}" viewBox="-32 -32 64 64"><polygon fill="${on?'#ffd133':'rgba(255,255,255,.18)'}" points="${[...Array(10)].map((_,i)=>{const r=i%2?13:30,a=Math.PI/2+i*Math.PI/5;return (Math.cos(a)*r).toFixed(1)+','+(-Math.sin(a)*r).toFixed(1)}).join(' ')}"/></svg>`;
+const coinBadge=(l,t,w,h,amount)=>E(`left:${l}px;top:${t}px;width:${w}px;height:${h}px;background:rgba(8,18,28,.8);border-radius:24px;font-size:${h*.55}px;justify-content:flex-start;padding-left:${h*.2}px;gap:${h*.18}px`,`${coinSvg(h*.66)}<span>${amount}</span>`);
+const COINS=+(q.get('coins')||240);
+if(screenName==='select'||screenName==='shop'||screenName==='ad')E('left:0;top:0;width:1080px;height:1920px;background:'+(screenName==='ad'?'#050506':'#0a1721')+';');
+if(screenName==='menu'||screenName==='daily'){
  E('left:0;top:1152px;width:1080px;height:768px;background:rgba(5,15,23,.6);');
  E(`left:90px;top:42px;width:900px;height:300px;font-size:120px;line-height:1.1;white-space:nowrap;${shadowTxt}`,'<div>FLOW<br><span style="color:#FFC85A">FACTORY</span> 3D</div>');
  E(`left:90px;top:${1920*.21-40}px;width:900px;height:80px;font-size:44px;font-weight:normal;color:#b3c2e0;${shadowTxt}`,'Fix the belts. Send the parcels.');
+ coinBadge(30,28,300,84,COINS);
  const cy=1920*.69;
- btn(180,cy-87,720,175,C.prim,72,'PLAY');btn(180,cy+205-70,720,140,C.sec,56,'LEVELS');btn(180,cy+375-70,720,140,C.sec,56,'SETTINGS');
- E(`left:240px;top:${1920*.97-25}px;width:600px;height:50px;font-size:32px;font-weight:normal;color:#b3c2e0;`,'v0.1 prototype');
+ btn(180,cy-87,720,175,C.prim,72,'PLAY');btn(180,cy+205-70,720,140,C.sec,56,'LEVELS');
+ const sb=btn(180,cy+375-70,350,140,C.shop,50,'SHOP');E('left:'+(180+350-58)+'px;top:'+(cy+375-70-14)+'px;width:44px;height:44px;border-radius:50%;background:#f22633;');
+ btn(550,cy+375-70,350,140,C.sec,44,'SETTINGS');
+ E(`left:240px;top:${1920*.97-25}px;width:600px;height:50px;font-size:32px;font-weight:normal;color:#b3c2e0;`,'v0.2 prototype');
+}
+const modal=(title,body,primary,secondary)=>{E('left:0;top:0;width:1080px;height:1920px;background:rgba(0,0,0,.62);');E('left:110px;top:640px;width:860px;height:640px;background:'+C.panel+';','','abs card');
+ E(`left:160px;top:${640+30}px;width:760px;height:120px;font-size:70px;color:#ffd966;${shadowTxt}`,title);
+ E('left:160px;top:'+(640+150)+'px;width:760px;height:220px;font-size:44px;font-weight:normal;line-height:1.25;',body);
+ btn(200,1280-220-65,680,130,C.prim,52,primary);if(secondary)btn(300,1280-75-50,480,100,C.sec,44,secondary);};
+if(screenName==='daily'){modal('DAILY GIFT','Day 3 of 7<br><span style="color:#ffd24a">+30 coins</span><br>Come back tomorrow for more!','CLAIM');}
+if(screenName==='ad'){
+ E(`left:90px;top:${1920*.38-90}px;width:900px;height:180px;font-size:110px;color:#ffd966;`,'TEST AD');
+ E(`left:90px;top:${1920*.48-80}px;width:900px;height:160px;font-size:40px;font-weight:normal;color:#b3c2e0;`,'Simulated screen: no ad SDK, no network.<br>A real rewarded ad would play here.');
+ E(`left:340px;top:${1920*.60-110}px;width:400px;height:220px;font-size:160px;`,'2');
+ btn(190,1920*.76-75,700,150,'rgb(64,87,140)',56,'CLAIM REWARD').style.opacity='.35';btn(280,1920*.86-50,520,100,C.sec,36,'SKIP (no reward)');
 }
 if(screenName==='select'){
- E(`left:90px;top:${1920*.08-70}px;width:900px;height:140px;font-size:84px;${shadowTxt}`,'SELECT LEVEL');
- for(let i=0;i<12;i++){const c=i%3,r=Math.floor(i/3);const id=i+1;const done=id<=3,unl=id<=4;const cx=540+(c-1)*280,cy=1920*.48+(r-1.5)*280;
-  btn(cx-125,cy-125,250,250,!unl?C.dis:done?C.prim:C.sec,96,`<div style="margin-top:-40px;${unl?'':'opacity:.55'}">${id}</div>`);
-  E(`left:${cx-115}px;top:${cy+125-75}px;width:230px;height:60px;font-size:34px;${unl?'':'opacity:.55'}`,!unl?'LOCKED':done?'DONE':'PLAY');}
- btn(280,1920*.94-75,520,150,C.sec,56,'BACK');
+ const page=+(q.get('page')||0);const stars=[3,3,2,3,1,3,2,3,0,0,0,0];
+ E(`left:90px;top:${1920*.07-65}px;width:900px;height:130px;font-size:84px;${shadowTxt}`,'SELECT LEVEL');
+ for(let i=0;i<12;i++){const c=i%3,r=Math.floor(i/3);const id=page*12+i+1;const cx=540+(c-1)*280,cy=1920*.46+(r-1.5)*280;
+  const done=page===0&&i<8,unl=page===0&&i<=8;
+  const b=btn(cx-125,cy-125,250,250,!unl?C.dis:done?C.prim:C.sec,96,`<div style="margin-top:-45px;${unl?'':'opacity:.55'}">${id}</div>`);
+  if(done)E(`left:${cx-105}px;top:${cy+125-85}px;width:210px;height:62px;gap:4px`,[0,1,2].map(s=>starSvg(62,s<stars[i])).join(''));
+  else E(`left:${cx-115}px;top:${cy+125-75}px;width:230px;height:60px;font-size:34px;${unl?'':'opacity:.55'}`,!unl?'LOCKED':'PLAY');}
+ btn(540-320-120,1920*.845-60,240,120,page>0?C.sec:C.dis,40,'PREV');btn(540+320-120,1920*.845-60,240,120,page<2?C.sec:C.dis,40,'NEXT');
+ E(`left:350px;top:${1920*.845-55}px;width:380px;height:110px;font-size:54px;color:#ffd966;line-height:1.1;`,`WORLD ${page+1}<br><span style="font-size:36px;color:#b3c2e0">${page===0?'20':'0'}/36 stars</span>`);
+ btn(280,1920*.94-70,520,140,C.sec,56,'BACK');
+}
+if(screenName==='shop'){
+ const tab=q.get('tab')||'coins';
+ E(`left:290px;top:35px;width:500px;height:130px;font-size:84px;${shadowTxt}`,'SHOP');coinBadge(725,55,330,90,COINS);
+ ['coins','themes','parcels'].forEach((t,i)=>btn(540+(i-1)*310-145,270-60,290,120,t===tab?C.prim:C.sec,44,t.toUpperCase()));
+ const cards=[];
+ const swatch=(c,l,t,sz)=>`<div style="position:absolute;left:${l}px;top:${t}px;width:${sz}px;height:${sz}px;background:${c};border-radius:14px"></div>`;
+ const css=a=>`rgb(${a.map(v=>Math.round(v*255)).join(',')})`;
+ const card=(i,inner,action,fill,badge)=>{const top=400+i*250;const d=E(`left:70px;top:${top}px;width:940px;height:230px;background:#213249;border-radius:24px;box-shadow:0 8px 0 rgba(0,0,0,.35);justify-content:flex-start`,inner);
+  btn(940+70-150-125-70+70-0,top+115+12-60,250,120,fill,44,action);
+  if(badge)E(`left:${70+940-245}px;top:${top-4}px;width:220px;height:52px;background:#ff7333;border-radius:24px;font-size:30px;`,badge);};
+ const text=(x,n,d,w=430)=>`<div style="position:absolute;left:${x-w/2}px;top:${115-38-35}px;width:${w}px;height:70px;font-size:44px;text-align:left;justify-content:flex-start;display:flex;align-items:center">${n}</div><div style="position:absolute;left:${x-w/2}px;top:${115+34-32}px;width:${w}px;height:64px;font-size:30px;font-weight:normal;color:#b3c2e0;display:flex;align-items:center;text-align:left">${d}</div>`;
+ const coinBig=`<div style="position:absolute;left:50px;top:55px">${coinSvg(120)}</div>`;
+ const priceBtn=(p)=>`<span style="display:flex;align-items:center;gap:12px">${coinSvg(46)}${p}</span>`;
+ if(tab==='coins'){
+  card(0,coinBig+text(450,'Free Coins','+30 coins for a short test ad (5 left today)'),'WATCH',C.prim);
+  card(1,coinBig+text(450,'Pile of Coins','500 coins'),'$0.99',C.prim);
+  card(2,coinBig+text(450,'Crate of Coins','1500 coins + 300 bonus'),'$2.99',C.prim,'BEST VALUE');
+  card(3,coinBig+text(450,'Starter Pack','1000 coins + Candy theme + Gift Box'),'$1.99',C.prim,'ONE TIME');
+ } else if(tab==='themes'){
+  [['classic','Classic','Warm cream plates on teal.',0,'IN USE'],['candy','Candy','Pink and mint sweets factory.',150,'EQUIP'],['midnight','Midnight','Dark plates with neon belts.',250,priceBtn(250)],['gold','Golden Age','Brass and marble luxury.',500,priceBtn(500)]].forEach((t,i)=>{
+   const th=t[0]==='classic'?{floorL:[.97,.93,.84],slab:[.10,.25,.31],beltR:[.10,.58,.78]}:THEMES[t[0]];
+   const sw=swatch(css(th.floorL),38,83,64)+swatch(css(th.slab),113,83,64)+swatch(css(th.beltR),188,83,64);
+   const fill=i===0?C.dis:i===1?C.sec:(COINS>=t[3]?C.prim:'rgb(115,89,46)');
+   card(i,sw+text(470,t[1],t[2],360),t[4],fill,i===3?'RARE':null);});
+ } else {
+  [['box','Classic Box','The original delivery.','IN USE',[.96,.64,.18],[.98,.92,.78]],['gift','Gift Box','Red wrapping, gold ribbon.','EQUIP',...[PARCELS.gift.parcel,PARCELS.gift.tape]],['ocean','Ocean Box','Cool blue crate.',priceBtn(120),...[PARCELS.ocean.parcel,PARCELS.ocean.tape]],['gold','Golden Parcel','Shiny and proud.',priceBtn(300),...[PARCELS.gold.parcel,PARCELS.gold.tape]]].forEach((t,i)=>{
+   const sw=swatch(css(t[4]),52,67,96)+swatch(css(t[5]),85,100,30);
+   card(i,sw+text(480,t[1],t[2],370),t[3],i===0?C.dis:i===1?C.sec:(COINS>=(i===2?120:300)?C.prim:'rgb(115,89,46)'),i===3?'RARE':null);});
+ }
+ btn(280,1920-120-75,520,150,C.sec,56,'BACK');
+ if(q.get('modal')==='coins')modal('NOT ENOUGH COINS','Golden Age costs 500. You have '+COINS+'.<br>Earn coins by playing levels, from the daily gift, or get a coin pack.','GET COINS','CLOSE');
+ if(q.get('modal')==='buy')modal('TEST PURCHASE','Crate of Coins for $2.99<br><span style="font-size:34px;color:#b3c2e0">(simulated: no real money is charged)</span>','BUY','CANCEL');
 }
 if(screenName==='game'||screenName==='success'){
  btn(25,25,140,140,C.sec,80,'&lt;');btn(1080-120-95-25,25,190,140,C.dan,36,'RESET');
  E(`left:280px;top:25px;width:520px;height:140px;font-size:58px;${shadowTxt}`,'LEVEL '+L.id);
  const hint=state==='init'&&L.tutorial?'Tap the glowing belt to turn it.':(state==='run'&&L.tutorial?'':L.hint);
- E('left:70px;top:185px;width:940px;height:130px;font-size:44px;color:rgb(255,237,140);text-shadow:0 4px 0 rgba(0,0,0,.5);',hint);
- const rb=btn(220,1920-170-90,640,180,C.prim,84,'RUN',tri);rb.style.opacity=(state==='run')?'.6':'1';rb.querySelector('span').style.marginLeft='70px';
+ E('left:70px;top:180px;width:940px;height:120px;font-size:44px;color:rgb(255,237,140);text-shadow:0 4px 0 rgba(0,0,0,.5);',hint);
+ coinBadge(380,309,320,72,COINS);
+ const tri=`<div style="position:absolute;left:${560/2-120-42+0}px;top:${(180-84)/2}px;width:0;height:0;border-left:70px solid #fff;border-top:42px solid transparent;border-bottom:42px solid transparent;"></div>`;
+ const hb=btn(75,1660,270,180,'rgb(199,140,38)',46,'HINT');hb.querySelector('span').style.marginTop='-34px';
+ E(`left:${75+135-95}px;top:${1660+180-62}px;width:190px;height:50px;gap:10px;font-size:38px`,`${coinSvg(40)}<span>15</span>`);
+ const rb=btn(380,1920-170-90,560,180,C.prim,84,'RUN',tri);rb.style.opacity=(state==='run')?'.6':'1';rb.querySelector('span').style.marginLeft='70px';
  if(state==='fail'){E('left:80px;top:'+(1920-380-70)+'px;width:920px;height:140px;background:rgba(10,20,31,.92);font-size:46px;padding:10px 20px;border-radius:24px;','The belts don\'t line up here. Try turning one!');}
 }
 if(screenName==='success'){
  E('left:0;top:0;width:1080px;height:1920px;background:rgba(0,0,0,.55);');
- E('left:90px;top:520px;width:900px;height:880px;background:'+C.panel+';','','abs card');
- E(`left:140px;top:570px;width:800px;height:180px;font-size:100px;color:rgb(140,255,166);${shadowTxt}`,'DELIVERED!');
- E('left:150px;top:'+(960-440+235)+'px;width:780px;height:190px;font-size:48px;font-weight:normal;',`Level ${L.id} complete.<br>The next level is open.`);
- btn(190,1400-360-80,700,160,C.prim,64,'NEXT LEVEL');btn(540-380-40,1400-170-65,380,130,C.sec,48,'REPLAY');btn(540+40,1400-170-65,380,130,C.sec,48,'LEVELS');
+ E('left:90px;top:480px;width:900px;height:960px;background:'+C.panel+';','','abs card');
+ E(`left:140px;top:${480+30}px;width:800px;height:170px;font-size:100px;color:rgb(140,255,166);${shadowTxt}`,'DELIVERED!');
+ [0,1,2].forEach(i=>E(`left:${540+(i-1)*170-75}px;top:${480+290-75}px;width:150px;height:150px`,starSvg(150,i<(+q.get('stars')||3))));
+ E(`left:130px;top:${480+455-75}px;width:820px;height:150px;font-size:44px;font-weight:normal;line-height:1.3;`,'<div><span style="color:#ffd24a;font-weight:bold">+35 coins</span><br>You can afford Candy in the shop!</div>');
+ btn(170,480+600-62,740,125,C.shop,44,'x2 COINS  (watch test ad)');btn(170,480+745-70,740,140,C.prim,64,'NEXT LEVEL');
+ btn(540-190-180,480+895-60,360,120,C.sec,48,'REPLAY');btn(540+190-180,480+895-60,360,120,C.sec,48,'LEVELS');
 }
 window.READY=true;
 </script></body></html>

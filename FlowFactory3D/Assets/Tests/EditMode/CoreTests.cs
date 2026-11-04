@@ -121,10 +121,10 @@ namespace FlowFactory.Tests
     public class LevelCatalogTests
     {
         [Test]
-        public void Has12ValidLevels_WithKnownSolutions()
+        public void Has36ValidLevels_WithKnownSolutions()
         {
             IList<LevelData> levels = LevelCatalog.BuildAll();
-            Assert.AreEqual(12, levels.Count);
+            Assert.AreEqual(36, levels.Count);
             for (int i = 0; i < levels.Count; i++)
             {
                 Assert.AreEqual(i + 1, levels[i].id);
@@ -138,7 +138,7 @@ namespace FlowFactory.Tests
         {
             IList<LevelData> levels = LevelCatalog.BuildAll();
             for (int i = 0; i < 4; i++) Assert.AreEqual(4, levels[i].width, "level " + (i + 1));
-            for (int i = 4; i < 12; i++) Assert.AreEqual(5, levels[i].width, "level " + (i + 1));
+            for (int i = 4; i < levels.Count; i++) Assert.AreEqual(5, levels[i].width, "level " + (i + 1));
             foreach (LevelData level in levels) Assert.AreEqual(level.width, level.height);
         }
 

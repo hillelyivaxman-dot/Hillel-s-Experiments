@@ -32,10 +32,10 @@ namespace FlowFactory.Tests
         }
 
         [Test]
-        public void Repository_ProvidesTwelveValidLevels()
+        public void Repository_ProvidesAllValidLevels()
         {
             IList<LevelData> levels = LevelRepository.LoadAll();
-            Assert.AreEqual(12, levels.Count);
+            Assert.AreEqual(LevelCatalog.Count, levels.Count);
             for (int i = 0; i < levels.Count; i++)
             {
                 Assert.AreEqual(i + 1, levels[i].id);
@@ -52,7 +52,7 @@ namespace FlowFactory.Tests
                 Assert.Ignore("No level assets yet: run the menu Flow Factory > Generate Level Assets.");
             }
 
-            Assert.AreEqual(12, assets.Length);
+            Assert.AreEqual(LevelCatalog.Count, assets.Length);
             foreach (LevelDefinition asset in assets)
             {
                 CollectionAssert.IsEmpty(LevelValidator.Validate(asset.ToLevelData()), asset.name);

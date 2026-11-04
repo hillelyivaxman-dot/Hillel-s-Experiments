@@ -9,7 +9,8 @@ namespace FlowFactory
         Run,
         Deliver,
         Success,
-        Fail
+        Fail,
+        Coin
     }
 
     /// <summary>Plays short procedurally generated sounds (no audio files needed). Respects the saved settings.</summary>
@@ -30,13 +31,14 @@ namespace FlowFactory
             source.playOnAwake = false;
             source.spatialBlend = 0f;
 
-            clips = new AudioClip[6];
+            clips = new AudioClip[7];
             clips[(int)Sfx.Click] = Tone("click", 0.05f, 880f, 880f);
             clips[(int)Sfx.Rotate] = Tone("rotate", 0.07f, 520f, 640f);
             clips[(int)Sfx.Run] = Tone("run", 0.22f, 260f, 520f);
             clips[(int)Sfx.Deliver] = Tone("deliver", 0.16f, 330f, 200f);
             clips[(int)Sfx.Success] = Arpeggio("success", new[] { 523.25f, 659.25f, 783.99f, 1046.5f }, 0.11f);
             clips[(int)Sfx.Fail] = Tone("fail", 0.30f, 220f, 110f);
+            clips[(int)Sfx.Coin] = Arpeggio("coin", new[] { 987.77f, 1318.5f }, 0.07f);
         }
 
         public void Play(Sfx sfx)
