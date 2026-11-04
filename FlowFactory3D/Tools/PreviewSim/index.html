@@ -1,0 +1,132 @@
+<!doctype html><html><head><meta charset="utf-8"><style>
+html,body{margin:0;background:#171f31;overflow:hidden}
+#wrap{position:relative;width:540px;height:960px;overflow:hidden;font-family:Arial,Helvetica,sans-serif}
+canvas{position:absolute;left:0;top:0;width:540px;height:960px}
+#ui{position:absolute;left:0;top:0;width:1080px;height:1920px;transform:scale(.5);transform-origin:0 0;color:#f5f7ff;font-weight:bold}
+.abs{position:absolute;display:flex;align-items:center;justify-content:center;text-align:center;box-sizing:border-box}
+.btn{border-radius:14px}
+</style></head><body><div id="wrap"><div id="ui"></div></div>
+<script type="module">
+import * as THREE from './node_modules/three/build/three.module.js';
+const q=new URLSearchParams(location.search);
+const screenName=q.get('screen')||'game', levelId=+(q.get('level')||1), state=q.get('state')||'init', frac=parseFloat(q.get('t')||'0.5');
+const levels=await (await fetch('levels.json')).json();
+const L=levels[levelId-1];
+const W=540,H=960;
+const ui=document.getElementById('ui');
+const hex=(r,g,b)=>new THREE.Color(r,g,b);
+const P={bg:[.09,.12,.19],floorL:[.80,.83,.89],floorD:[.70,.74,.82],slab:[.17,.20,.28],beltF:[.30,.32,.37],beltR:[.16,.45,.80],railF:[.50,.52,.57],railR:[.97,.77,.15],knob:[1,.55,.12],source:[.20,.72,.42],target:[.25,.55,.95],crate:[.58,.40,.24],band:[.40,.27,.16],parcel:[.96,.64,.18],tape:[.98,.92,.78],fail:[.92,.22,.22],ok:[.30,.90,.45],hint:[1,.92,.25]};
+const toCss=c=>`rgb(${c.map(v=>Math.round(v*255)).join(',')})`;
+function mat(c){return new THREE.ShaderMaterial({uniforms:{c:{value:new THREE.Vector3(...c)}},vertexShader:`varying vec3 n;void main(){n=normalize(mat3(modelMatrix)*normal);gl_Position=projectionMatrix*viewMatrix*modelMatrix*vec4(position,1.);}`,fragmentShader:`uniform vec3 c;varying vec3 n;void main(){vec3 l=normalize(vec3(-.35,.85,.4));float s=clamp(dot(normalize(n),l),0.,1.)*.55+.45;vec3 lin=pow(c,vec3(2.2))*s;gl_FragColor=vec4(pow(lin,vec3(1./2.2)),1.);}`});}
+const scene=new THREE.Scene(); scene.background=new THREE.Color().setRGB(...P.bg,THREE.SRGBColorSpace);
+const G={box:new THREE.BoxGeometry(1,1,1),cyl:new THREE.CylinderGeometry(.5,.5,2,24),sph:new THREE.SphereGeometry(.5,24,16)};
+function add(geo,[x,y,z],[sx,sy,sz],c,parent=scene){const m=new THREE.Mesh(G[geo],mat(c));m.position.set(x,y,-z);m.scale.set(sx,sy,sz);parent.add(m);return m;}
+const rotU=(v,deg)=>{const a=deg*Math.PI/180;return[v[0]*Math.cos(a)+v[2]*Math.sin(a),v[1],-v[0]*Math.sin(a)+v[2]*Math.cos(a)];};
+const w=L.w,h=L.h;
+const cell=(x,y)=>[x-(w-1)/2,0,-(y-(h-1)/2)];
+// rotations for state
+const rots=L.tiles.map((t,i)=>t.r);
+if(state!=='init'){L.tiles.forEach((t,i)=>{if(t.rot)rots[i]=L.solution[i];});}
+const tileParts=[];
+function tile(i,x,y){const t=L.tiles[i];if(t.k===0)return;const base=cell(x,y);const deg=rots[i]*90;const odd=rots[i]%2===1;
+ const parts=[];const flashed=state==='fail'&&L.initFail.cell[0]===x&&L.initFail.cell[1]===y;
+ const part=(geo,pos,sc,c)=>{const r=rotU(pos,deg);const s=(odd&&geo!=='cyl'&&geo!=='sph')?[sc[2]*0+sc[2],sc[1],sc[0]]:sc;const sc2=odd&&geo==='box'?[sc[2],sc[1],sc[0]]:sc;
+  parts.push(add(geo,[base[0]+r[0],r[1],base[2]+r[2]],sc2,flashed?P.fail:c));};
+ const arm=(d,belt,rail,skip)=>{const sdir=[1*d[2],0,-1*d[0]];
+  const alongZ=Math.abs(d[2])>.5;const bs=alongZ?[.48,.08,.54]:[.54,.08,.48],rs=alongZ?[.05,.14,.54]:[.54,.14,.05];
+  part('box',[d[0]*.25,.07,d[2]*.25],bs,belt);
+  const dp=skip?(sdir[0]*skip[0]+sdir[2]*skip[2]):0;
+  if(!(dp>.5))part('box',[d[0]*.25+sdir[0]*.265,.09,d[2]*.25+sdir[2]*.265],rs,rail);
+  if(!(dp<-.5))part('box',[d[0]*.25-sdir[0]*.265,.09,d[2]*.25-sdir[2]*.265],rs,rail);};
+ if(t.k===1||t.k===2){const belt=t.rot?P.beltR:P.beltF,rail=t.rot?P.railR:P.railF;{const sec=t.k===2?[1,0,0]:[0,0,-1];arm([0,0,1],belt,rail,t.k===2?sec:null);arm(sec,belt,rail,t.k===2?[0,0,1]:null);}
+  if(t.k===2)part('box',[0,.07,0],[.48,.08,.48],belt);if(t.rot)part('cyl',[0,.15,0],[.20,.03,.20],P.knob);}
+ if(t.k===3){part('box',[0,.17,-.18],[.72,.30,.50],P.source);part('cyl',[0,.34,-.18],[.4,.03,.4],[.12,.45,.26]);arm([0,0,1],P.beltF,P.railF);}
+ if(t.k===4){part('box',[0,.04,0],[.8,.08,.8],P.target);part('box',[0,.09,0],[.46,.05,.46],[.08,.14,.30]);const wl=[.45,.72,1];
+  part('box',[0,.2,-.3],[.64,.28,.07],wl);part('box',[-.3,.2,0],[.07,.28,.54],wl);part('box',[.3,.2,0],[.07,.28,.54],wl);part('box',[0,.2,.3],[.64,.12,.07],wl);}
+ if(t.k===5){part('box',[0,.32,0],[.72,.62,.72],P.crate);part('box',[0,.32,0],[.76,.12,.76],P.band);part('box',[0,.32,0],[.12,.66,.76],P.band);}
+}
+add('box',[0,-.28,0],[w+.5,.4,h+.5],P.slab);
+for(let y=0;y<h;y++)for(let x=0;x<w;x++){const c=cell(x,y);const fl=(state==='fail'&&L.initFail.cell[0]===x&&L.initFail.cell[1]===y&&L.tiles[y*w+x].k===0);
+ add('box',[c[0],-.04,c[2]],[.96,.08,.96],fl?P.fail:((x+y)%2===0?P.floorL:P.floorD));tile(y*w+x,x,y);}
+// camera (mirrors FlowFactoryApp.ConfigureCamera)
+const pitch=52*Math.PI/180,yaw=45*Math.PI/180;
+const fwd=[Math.sin(yaw)*Math.cos(pitch),-Math.sin(pitch),Math.cos(yaw)*Math.cos(pitch)];
+const right=[Math.cos(yaw),0,-Math.sin(yaw)];
+const up=[Math.sin(yaw)*Math.sin(pitch),Math.cos(pitch),Math.cos(yaw)*Math.sin(pitch)];
+const dot=(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2];
+let minX=1e9,maxX=-1e9,minY=1e9,maxY=-1e9;
+for(const cx of[-1,1])for(const cz of[-1,1])for(const y of[-.5,1.2]){const p=[cx*w/2,y,cz*h/2];const lx=dot(p,right),ly=dot(p,up);minX=Math.min(minX,lx);maxX=Math.max(maxX,lx);minY=Math.min(minY,ly);maxY=Math.max(maxY,ly);}
+const aspect=W/H;
+const size=Math.max((maxX-minX)*.5/aspect+.9,(maxY-minY));
+const pos=[-fwd[0]*40-up[0]*size*.10,-fwd[1]*40-up[1]*size*.10,-fwd[2]*40-up[2]*size*.10];
+const cam=new THREE.OrthographicCamera(-size*aspect,size*aspect,size,-size,.1,120);
+cam.position.set(pos[0],pos[1],-pos[2]);
+cam.up.set(up[0],up[1],-up[2]);
+cam.lookAt(cam.position.x+fwd[0],cam.position.y+fwd[1],cam.position.z-fwd[2]);
+// parcel
+function parcelAt(p,headingDeg,scale=1){const g=new THREE.Group();g.position.set(p[0],p[1],-p[2]);g.rotation.y=headingDeg*Math.PI/180*(-1)*(-1);scene.add(g);
+ const a=(geo,pp,s,c)=>add(geo,pp,s.map(v=>v*scale),c,g);a('box',[0,.17*scale,0].map(v=>v),[.36,.34,.36],P.parcel);a('box',[0,.17*scale,0],[.38,.07,.38],P.tape);a('box',[0,.17*scale,0],[.07,.36,.38],P.tape);return g;}
+const pts=L.path.map(([x,y])=>cell(x,y));
+function along(points,t){const segs=[];let tot=0;for(let i=1;i<points.length;i++){const d=Math.hypot(points[i][0]-points[i-1][0],points[i][2]-points[i-1][2]);segs.push(d);tot+=d;}
+ let d=t*tot;for(let i=0;i<segs.length;i++){if(d<=segs[i]||i===segs.length-1){const k=Math.min(1,d/segs[i]);const a=points[i],b=points[i+1];
+  return {p:[a[0]+(b[0]-a[0])*k,.2,a[2]+(b[2]-a[2])*k],hd:Math.atan2(b[0]-a[0],b[2]-a[2])*180/Math.PI};}d-=segs[i];}}
+if(screenName==='game'){
+ if(state==='run'||state==='solved'){const r=along(pts,state==='solved'?1:frac);if(state==='run')parcelAt(r.p,r.hd);}
+ else{ // init/fail: parcel at source
+  const s=L.path[0]?L.initPath[0]:null;const sc=cell(...s);const sk=L.tiles[s[1]*w+s[0]];const side=[[0,0,1],[1,0,0],[0,0,-1],[-1,0,0]][sk.r];
+  if(state==='fail'){const last=L.initPath[L.initPath.length-1];const lc=cell(...last);const dr=[[0,0,1],[1,0,0],[0,0,-1],[-1,0,0]][L.initFail.dir];parcelAt([lc[0]+dr[0]*.3,.2,lc[2]+dr[2]*.3],[0,90,180,270][L.initFail.dir]);}
+  else parcelAt([sc[0]+side[0]*.4,.2,sc[2]+side[2]*.4],sk.r*90);}
+ if(state==='init'&&L.tutorial){for(let i=0;i<L.tiles.length;i++){const t=L.tiles[i];if(t.rot){const c=cell(i%w,Math.floor(i/w));const g=new THREE.Group();scene.add(g);add('sph',[c[0],1.02,c[2]],[.28,.28,.28],P.hint);add('cyl',[c[0],.76,c[2]],[.06,.14,.06],P.hint);break;}}}
+ if(state==='solved'&&levelId===12){const ff=Math.hypot(fwd[0],fwd[2]);const fx=fwd[0]/ff,fz=fwd[2]/ff,dist=Math.max(w,h)*.62+2.2;const o=[-fx*(Math.max(w,h)*.55+2.4),0,-fz*(Math.max(w,h)*.55+2.4)];
+  const f=(geo,pp,s,c)=>add(geo,[o[0]+pp[0],pp[1],o[2]+pp[2]],s,c);
+  f('box',[0,.45,0],[2.2,.9,1.4],[.62,.66,.74]);f('box',[0,1,0],[2.3,.2,1.5],[.78,.28,.22]);f('cyl',[.7,1.55,.25],[.38,.65,.38],[.45,.30,.26]);
+  for(const x of[-.65,0,.65])f('box',[x,.55,-.72],[.38,.30,.05],[1,.92,.45]);
+  [[.8,2.2],[.95,2.9],[1.1,3.5]].forEach(([dx,dy],i)=>f('sph',[dx,dy,.25],[.35+i*.12,.35+i*.12,.35+i*.12],[.88,.9,.94]));}
+}
+const renderer=new THREE.WebGLRenderer({antialias:true,preserveDrawingBuffer:true});renderer.setPixelRatio(2);renderer.setSize(W,H);document.getElementById('wrap').prepend(renderer.domElement);
+if(screenName==='game')renderer.render(scene,cam);
+// ---------- HTML UI (approximation of the uGUI layout, 1080x1920 reference)
+const E=(css,html='',cls='abs')=>{const d=document.createElement('div');d.className=cls;d.style.cssText=css;d.innerHTML=html;ui.appendChild(d);return d;};
+const btn=(l,t,w,h,fill,fs,txt)=>E(`left:${l}px;top:${t}px;width:${w}px;height:${h}px;background:${fill};font-size:${fs}px;`,txt,'abs btn');
+const C={prim:'rgb(51,166,102)',sec:'rgb(64,87,140)',dan:'rgb(191,71,71)',dis:'rgb(56,64,82)',panel:'rgba(33,43,69,.96)'};
+if(screenName!=='game'&&screenName!=='success'){E('left:0;top:0;width:1080px;height:1920px;background:#171f31;');}
+if(screenName==='menu'){
+ E('left:90px;top:300px;width:900px;height:420px;font-size:120px;line-height:1.1;white-space:nowrap;','FLOW<br>FACTORY 3D');
+ E('left:90px;top:1190px;width:900px;height:90px;font-size:46px;font-weight:normal;color:#b3c2e0;','Fix the belts. Send the parcels.');
+ // positions per anchors: tagline y=.66 -> from top 0.34*1920
+ ui.lastChild.style.top=(1920*.34-45)+'px';
+ btn(180,1920*.52-95,720,190,C.prim,72,'PLAY');btn(180,1920*.52-95+230-15,720,160,C.sec,58,'LEVELS');btn(180,1920*.52-95+430-15,720,160,C.sec,58,'SETTINGS');
+ E('left:240px;top:'+(1920*.96-30)+'px;width:600px;height:60px;font-size:34px;font-weight:normal;color:#b3c2e0;','v0.1 prototype');
+ ui.children[1].style.top=(1920*.2-210)+'px';
+}
+if(screenName==='select'){
+ E('left:90px;top:'+(1920*.08-70)+'px;width:900px;height:140px;font-size:84px;','SELECT LEVEL');
+ const cellp=280;for(let i=0;i<12;i++){const c=i%3,r=Math.floor(i/3);const id=i+1;const done=id<=3,unl=id<=4;
+  const x=540+(c-1)*cellp-125,y=1920*.48+((3*.5)-r)*cellp*-1+ (3*.5-1.5)*0 - 125 ; }
+ for(let i=0;i<12;i++){const c=i%3,r=Math.floor(i/3);const id=i+1;const done=id<=3,unl=id<=4;
+  const cx=540+(c-1)*280,cy=1920*.48+(r-1.5)*280;
+  const b=btn(cx-125,cy-125,250,250,!unl?C.dis:done?C.prim:C.sec,96,`<div style="margin-top:-40px;${unl?'':'opacity:.55'}">${id}</div>`);
+  E(`left:${cx-115}px;top:${cy+125-75}px;width:230px;height:60px;font-size:34px;${unl?'':'opacity:.55'}`,!unl?'LOCKED':done?'DONE':'PLAY');}
+ btn(280,1920*.94-75,520,150,C.sec,56,'BACK');
+}
+if(screenName==='game'||screenName==='success'){
+ btn(25,25,140,140,C.sec,80,'&lt;');
+ btn(1080-120-95-25+0,25,190,140,C.dan,36,'RESET');
+ E('left:280px;top:25px;width:520px;height:140px;font-size:58px;','LEVEL '+L.id);
+ const hint=state==='init'&&L.tutorial?'Tap the glowing belt to turn it.':(state==='run'&&L.tutorial?'':L.hint);
+ E('left:70px;top:185px;width:940px;height:130px;font-size:44px;color:rgb(255,237,140);',hint);
+ const runPulse=(state==='solved'&&L.tutorial)?1:1;
+ btn(220,1920-170-90,640,180,screenName==='success'||state==='run'?C.prim:C.prim,84,'RUN').style.opacity=(state==='run')?'.6':'1';
+ if(state==='fail'){const t=E('left:80px;top:'+(1920-380-70)+'px;width:920px;height:140px;background:rgba(13,18,31,.92);font-size:46px;padding:10px 20px;','The belts don\'t line up here. Try turning one!');}
+}
+if(screenName==='success'){
+ E('left:0;top:0;width:1080px;height:1920px;background:rgba(0,0,0,.55);');
+ E('left:90px;top:'+(960-440)+'px;width:900px;height:880px;background:'+C.panel+';');
+ E('left:140px;top:'+(960-440+50)+'px;width:800px;height:180px;font-size:100px;color:rgb(140,255,166);','DELIVERED!');
+ E('left:150px;top:'+(960-440+235)+'px;width:780px;height:190px;font-size:48px;font-weight:normal;',`Level ${L.id} complete.<br>The next level is open.`);
+ btn(190,1400-360-80,700,160,C.prim,64,'NEXT LEVEL');
+ btn(540-380-40+0,1400-170-65,380,130,C.sec,48,'REPLAY');btn(540+40,1400-170-65,380,130,C.sec,48,'LEVELS');
+}
+if(screenName==='success')renderer.render(scene,cam);
+window.READY=true;
+</script></body></html>

@@ -125,8 +125,8 @@ namespace FlowFactory
             menuScreen = NewScreen("Menu", new Color(Palette.Background.r, Palette.Background.g, Palette.Background.b, 0.97f));
             Transform t = menuScreen.transform;
 
-            Text title = Ui.NewLabel("Title", t, "FLOW\nFACTORY 3D", 150, Ui.TextColor);
-            Ui.PlaceCentered(title.rectTransform, new Vector2(0.5f, 0.8f), new Vector2(900f, 420f), Vector2.zero);
+            Text title = Ui.NewLabel("Title", t, "FLOW\nFACTORY 3D", 120, Ui.TextColor);
+            Ui.PlaceCentered(title.rectTransform, new Vector2(0.5f, 0.8f), new Vector2(900f, 360f), Vector2.zero);
 
             Text tag = Ui.NewLabel("Tagline", t, "Fix the belts. Send the parcels.", 46, Ui.TextDim, TextAnchor.MiddleCenter, FontStyle.Normal);
             Ui.PlaceCentered(tag.rectTransform, new Vector2(0.5f, 0.66f), new Vector2(900f, 90f), Vector2.zero);
@@ -224,16 +224,16 @@ namespace FlowFactory
             Ui.PlaceCentered(successTitle.rectTransform, new Vector2(0.5f, 1f), new Vector2(800f, 180f), new Vector2(0f, -140f));
 
             successBody = Ui.NewLabel("Body", card.transform, "", 48, Ui.TextColor, TextAnchor.MiddleCenter, FontStyle.Normal);
-            Ui.PlaceCentered(successBody.rectTransform, new Vector2(0.5f, 1f), new Vector2(780f, 190f), new Vector2(0f, -330f));
+            Ui.PlaceCentered(successBody.rectTransform, new Vector2(0.5f, 1f), new Vector2(780f, 190f), new Vector2(0f, -320f));
 
             nextButton = Btn("Next", card.transform, "NEXT LEVEL", Ui.Primary, 64, null, () => { if (NextPressed != null) NextPressed(); });
-            Ui.PlaceCentered((RectTransform)nextButton.transform, new Vector2(0.5f, 0f), new Vector2(700f, 160f), new Vector2(0f, 450f));
+            Ui.PlaceCentered((RectTransform)nextButton.transform, new Vector2(0.5f, 0f), new Vector2(700f, 160f), new Vector2(0f, 360f));
 
             Button replay = Btn("Replay", card.transform, "REPLAY", Ui.Secondary, 48, null, () => { if (ReplayPressed != null) ReplayPressed(); });
-            Ui.PlaceCentered((RectTransform)replay.transform, new Vector2(0.25f, 0f), new Vector2(380f, 130f), new Vector2(40f, 250f));
+            Ui.PlaceCentered((RectTransform)replay.transform, new Vector2(0.25f, 0f), new Vector2(380f, 130f), new Vector2(40f, 170f));
 
             Button levels = Btn("Levels", card.transform, "LEVELS", Ui.Secondary, 48, null, () => { if (LevelsPressed != null) LevelsPressed(); });
-            Ui.PlaceCentered((RectTransform)levels.transform, new Vector2(0.75f, 0f), new Vector2(380f, 130f), new Vector2(-40f, 250f));
+            Ui.PlaceCentered((RectTransform)levels.transform, new Vector2(0.75f, 0f), new Vector2(380f, 130f), new Vector2(-40f, 170f));
         }
 
         // ---------------------------------------------------------------- screens

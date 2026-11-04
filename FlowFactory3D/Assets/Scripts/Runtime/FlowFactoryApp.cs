@@ -283,7 +283,9 @@ namespace FlowFactory
             t.position += -t.up * (size * 0.10f);
 
             Vector3 flatForward = new Vector3(t.forward.x, 0f, t.forward.z).normalized;
-            awakeningPosition = flatForward * (Mathf.Max(level.width, level.height) * 0.62f + 2.2f);
+            // The factory goes in front of the board (towards the camera), where the screen is empty,
+            // so it does not cover the title and hint at the top.
+            awakeningPosition = -flatForward * (Mathf.Max(level.width, level.height) * 0.55f + 2.4f);
         }
 
         private Vector3 awakeningPosition;
@@ -354,7 +356,7 @@ namespace FlowFactory
             GridPoint source;
             levels[levelIndex].TryFind(TileKind.Source, out source);
             Direction side = TileGeometry.TerminalSide(manager.Rotations[levels[levelIndex].IndexOf(source.x, source.y)]);
-            return grid.CellCenter(source) + GridManager.WorldDirection(side) * 0.3f + Vector3.up * GridManager.ParcelHeight;
+            return grid.CellCenter(source) + GridManager.WorldDirection(side) * 0.4f + Vector3.up * GridManager.ParcelHeight;
         }
 
         private void UpdateHint()

@@ -115,8 +115,10 @@ namespace FlowFactory
             Color belt = Rotatable ? Palette.BeltRotatable : Palette.BeltFixed;
             Color rail = Rotatable ? Palette.RailRotatable : Palette.RailFixed;
 
-            AddArm(Vector3.forward, belt, rail);
-            AddArm(corner ? Vector3.right : Vector3.back, belt, rail);
+            Vector3 second = corner ? Vector3.right : Vector3.back;
+            // On a corner the rails facing the other arm are left out, otherwise they cross in the middle.
+            AddArm(Vector3.forward, belt, rail, corner ? second : (Vector3?)null);
+            AddArm(second, belt, rail, corner ? Vector3.forward : (Vector3?)null);
             if (corner)
             {
                 Primitives.Create(PrimitiveType.Cube, visual, new Vector3(0f, 0.07f, 0f), new Vector3(0.48f, 0.08f, 0.48f), belt, "Joint");
@@ -128,7 +130,7 @@ namespace FlowFactory
             }
         }
 
-        private void AddArm(Vector3 direction, Color belt, Color rail)
+        private void AddArm(Vector3 direction, Color belt, Color rail, Vector3? skipRailToward = null)
         {
             Vector3 side = Vector3.Cross(Vector3.up, direction);
             bool alongZ = Mathf.Abs(direction.z) > 0.5f;
@@ -136,14 +138,17 @@ namespace FlowFactory
             Vector3 railScale = alongZ ? new Vector3(0.05f, 0.14f, 0.54f) : new Vector3(0.54f, 0.14f, 0.05f);
 
             Primitives.Create(PrimitiveType.Cube, visual, direction * 0.25f + Vector3.up * 0.07f, beltScale, belt, "Arm");
-            Primitives.Create(PrimitiveType.Cube, visual, direction * 0.25f + side * 0.265f + Vector3.up * 0.09f, railScale, rail, "Rail");
-            Primitives.Create(PrimitiveType.Cube, visual, direction * 0.25f - side * 0.265f + Vector3.up * 0.09f, railScale, rail, "Rail");
+            bool skipPositive = skipRailToward.HasValue && Vector3.Dot(side, skipRailToward.Value) > 0.5f;
+            bool skipNegative = skipRailToward.HasValue && Vector3.Dot(side, skipRailToward.Value) < -0.5f;
+            if (!skipPositive) Primitives.Create(PrimitiveType.Cube, visual, direction * 0.25f + side * 0.265f + Vector3.up * 0.09f, railScale, rail, "Rail");
+            if (!skipNegative) Primitives.Create(PrimitiveType.Cube, visual, direction * 0.25f - side * 0.265f + Vector3.up * 0.09f, railScale, rail, "Rail");
         }
 
         private void BuildSource()
         {
-            Primitives.Create(PrimitiveType.Cube, visual, new Vector3(0f, 0.30f, -0.08f), new Vector3(0.72f, 0.52f, 0.62f), Palette.Source, "Machine");
-            Primitives.Create(PrimitiveType.Cylinder, visual, new Vector3(0f, 0.62f, -0.08f), new Vector3(0.40f, 0.05f, 0.40f), new Color(0.12f, 0.45f, 0.26f), "Hatch");
+            // Low and set back so the waiting parcel is not hidden behind the machine in the isometric view.
+            Primitives.Create(PrimitiveType.Cube, visual, new Vector3(0f, 0.17f, -0.18f), new Vector3(0.72f, 0.30f, 0.50f), Palette.Source, "Machine");
+            Primitives.Create(PrimitiveType.Cylinder, visual, new Vector3(0f, 0.34f, -0.18f), new Vector3(0.40f, 0.03f, 0.40f), new Color(0.12f, 0.45f, 0.26f), "Hatch");
             AddArm(Vector3.forward, Palette.BeltFixed, Palette.RailFixed);
         }
 
