@@ -7,6 +7,8 @@ import type { GameContext, GameInstance, GameModule, StandingRow } from './types
 export const RUSHC = {
   RUN: 330, GRAV: 2200, JUMP: 820, DASH_V: 740, DASH_T: 0.18, DASH_CD: 2.5, SHOVE_CD: 5,
   HALF_W: 18, HEIGHT: 52, MAX_TIME: 110, GRACE: 25,
+  // pressure forward: the screen only moves ahead. Whoever is left behind its left edge has OFF_LIMIT seconds to come back, or is out.
+  EDGE_LEAD: 812, CREEP_FROM: 8, CREEP_V: 42, OFF_LIMIT: 3,
 } as const;
 
 interface P {
@@ -14,6 +16,8 @@ interface P {
   g: boolean; coy: number; jumpBuf: number; jumping: boolean; onPlat: number;
   dashT: number; dashCd: number; shoveCd: number; stun: number; inv: number;
   cp: number; best: number; fin: number; hits: number;
+  off: number; // seconds spent behind the screen edge
+  out: number; // time of elimination, -1 while running
 }
 
 const approach = (v: number, target: number, step: number) => (v < target ? Math.min(target, v + step) : Math.max(target, v - step));
@@ -34,22 +38,30 @@ export const rushGame: GameModule = {
 
     const ps: P[] = ctx.players.map((pl, i) => ({
       id: pl.id, x: 20 + (i % 4) * 46, y: G, vx: 0, vy: 0, face: 1, g: true, coy: 0.1, jumpBuf: 0, jumping: false, onPlat: -1,
-      dashT: 0, dashCd: 0, shoveCd: 0, stun: 0, inv: 0, cp: 0, best: 0, fin: -1, hits: 0,
+      dashT: 0, dashCd: 0, shoveCd: 0, stun: 0, inv: 0, cp: 0, best: 0, fin: -1, hits: 0, off: 0, out: -1,
     }));
     const byId = new Map(ps.map((p) => [p.id, p]));
     const pct = (p: P) => Math.max(0, Math.min(100, Math.round((p.best / lv.finishX) * 100)));
-    const order = () => [...ps].sort((a, b) => (a.fin >= 0 && b.fin >= 0 ? a.fin - b.fin : a.fin >= 0 ? -1 : b.fin >= 0 ? 1 : b.best - a.best));
+    let edge = -120; // left edge of the screen (world x); never moves back
+    const rank = (p: P) => (p.fin >= 0 ? 0 : p.out < 0 ? 1 : 2);
+    const order = () => [...ps].sort((a, b) => {
+      if (rank(a) !== rank(b)) return rank(a) - rank(b);
+      if (a.fin >= 0) return a.fin - b.fin;
+      if (a.out >= 0) return b.out - a.out || b.best - a.best; // eliminated later = placed higher
+      return b.best - a.best;
+    });
+    const running = (p: P) => p.fin < 0 && p.out < 0;
 
     function hud(p: P) {
       const o = order();
-      ctx.hud(p.id, { place: o.indexOf(p) + 1, of: ps.length, pct: pct(p), dash: p.dashCd <= 0 ? 1 : 0, shove: p.shoveCd <= 0 ? 1 : 0, done: p.fin >= 0 ? 1 : 0 });
+      ctx.hud(p.id, { place: o.indexOf(p) + 1, of: ps.length, pct: pct(p), dash: p.dashCd <= 0 ? 1 : 0, shove: p.shoveCd <= 0 ? 1 : 0, done: p.fin >= 0 ? 1 : 0, out: p.out >= 0 ? 1 : 0, warn: p.off > 0 ? Math.max(1, Math.ceil(C.OFF_LIMIT - p.off)) : 0 });
     }
     ps.forEach(hud);
 
     function hit(p: P, kind: string) {
       if (p.inv > 0 || p.fin >= 0) return;
       p.hits++;
-      p.x = lv.checkpoints[p.cp];
+      p.x = Math.max(lv.checkpoints[p.cp], edge + 160); // never respawn off screen
       p.y = G - 160;
       p.vx = 0; p.vy = 0; p.g = false; p.onPlat = -1; p.dashT = 0;
       p.stun = 0.35; p.inv = 1.3;
@@ -60,7 +72,7 @@ export const rushGame: GameModule = {
     return {
       onPress(pid, btn) {
         const p = byId.get(pid);
-        if (!p || p.fin >= 0) return;
+        if (!p || p.fin >= 0 || p.out >= 0) return;
         if (btn === BTN.A) { p.jumpBuf = 0.12; return; }
         if (p.stun > 0) return;
         if (btn === BTN.B && p.dashCd <= 0) {
@@ -71,7 +83,7 @@ export const rushGame: GameModule = {
           p.shoveCd = C.SHOVE_CD;
           let n = 0;
           for (const q of ps) {
-            if (q === p || q.fin >= 0 || q.inv > 0) continue;
+            if (q === p || q.fin >= 0 || q.out >= 0 || q.inv > 0) continue;
             if (Math.abs(q.x - p.x) < 180 && Math.abs(q.y - p.y) < 110) {
               q.vx = (q.x >= p.x ? 1 : -1) * 680; q.vy = -330; q.g = false; q.onPlat = -1; q.stun = 0.4; q.dashT = 0;
               ctx.buzz(q.id, 120);
@@ -87,7 +99,11 @@ export const rushGame: GameModule = {
         time += dt;
         lv.plats.forEach((pl, i) => { const nx = platX(pl, time); dPX[i] = nx - prevPX[i]; prevPX[i] = nx; });
 
+        // the screen edge follows the front runner (like the camera) and creeps forward on its own, so nobody can hang back for ever
+        const leadBest = Math.max(-Infinity, ...ps.filter(running).map((p) => p.best));
+        if (leadBest > -Infinity) edge = Math.max(edge, Math.min(lv.length - RUSH.VIEW_W + 60, Math.max(leadBest - C.EDGE_LEAD, time > C.CREEP_FROM ? (time - C.CREEP_FROM) * C.CREEP_V - 120 : -120)));
         for (const p of ps) {
+          if (p.out >= 0) continue; // eliminated: out of the race
           if (p.fin >= 0) { p.vx *= 0.9; if (Math.abs(p.vx) < 5) p.vx = 0; p.x += p.vx * dt; continue; }
           const inp = ctx.input(p.id);
           const had = [p.dashCd <= 0, p.shoveCd <= 0];
@@ -133,6 +149,20 @@ export const rushGame: GameModule = {
 
           if (p.y > G + 170) { hit(p, 'pit'); continue; }
 
+          // left behind the screen? warn, count down, eliminate
+          if (p.x + C.HALF_W < edge + 30) {
+            const before = Math.ceil(C.OFF_LIMIT - p.off);
+            p.off += dt;
+            if (p.off >= C.OFF_LIMIT) {
+              p.out = time; p.vx = 0; p.vy = 0;
+              ctx.fx('out', { id: p.id, x: Math.round(p.x), y: Math.round(p.y) });
+              ctx.buzz(p.id, 500);
+              hud(p);
+              continue;
+            }
+            if (Math.ceil(C.OFF_LIMIT - p.off) !== before || p.off === dt) { ctx.fx('warn', { id: p.id, n: Math.ceil(C.OFF_LIMIT - p.off) }); ctx.buzz(p.id, 80); hud(p); }
+          } else if (p.off > 0) { p.off = 0; hud(p); }
+
           // hazards
           if (p.inv <= 0) {
             for (const sp of lv.spikes) {
@@ -171,20 +201,25 @@ export const rushGame: GameModule = {
           p: ps.map((p) => ({
             id: p.id, x: Math.round(p.x), y: Math.round(p.y), f: p.face, g: p.g ? 1 : 0, d: p.dashT > 0 ? 1 : 0,
             i: p.inv > 0 ? 1 : 0, k: p.stun > 0 ? 1 : 0, c: p.fin >= 0 ? 1 : 0, cp: p.cp,
+            ...(p.out >= 0 ? { e: 1 } : p.off > 0 ? { w: Math.max(1, Math.ceil(C.OFF_LIMIT - p.off)) } : {}),
           })),
+          ed: Math.round(edge),
           o: order().map((p) => p.id),
         };
       },
 
       isOver() {
-        return time >= C.MAX_TIME || time >= endAt || ps.every((p) => p.fin >= 0);
+        const active = ps.filter(running).length;
+        if (active === 0) return true;
+        if (active === 1 && ps.length > 1 && ps.some((p) => p.out >= 0) && endAt === Infinity) endAt = time + 4; // last runner standing: let them finish or run out the clock
+        return time >= C.MAX_TIME || time >= endAt;
       },
 
       standings(): StandingRow[] {
         return order().map((p, i) => ({
           playerId: p.id,
           score: p.fin >= 0 ? Math.round(p.fin * 100) / 100 : pct(p),
-          detail: p.fin >= 0 ? `${p.fin.toFixed(1)}s` : `${pct(p)}%`,
+          detail: p.fin >= 0 ? `${p.fin.toFixed(1)}s` : p.out >= 0 ? `OUT · ${pct(p)}%` : `${pct(p)}%`,
           tie: i,
         }));
       },

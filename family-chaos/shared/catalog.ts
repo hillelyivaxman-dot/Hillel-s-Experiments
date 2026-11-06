@@ -119,8 +119,8 @@ const BASE_GAMES: GameMeta[] = [
     name: { he: 'כאוס ראש', en: 'Chaos Rush' },
     tagline: { he: 'רצים, קופצים, דוחפים — ומגיעים ראשונים!', en: 'Run, jump, shove — first to the finish!' },
     howTo: {
-      he: 'רצים ימינה וקופצים מעל בורות, קוצים ומסורים. הסתערות מאיצה, דחיפה זורקת יריבים אחורה. פגיעה מחזירה לנקודת שמירה.',
-      en: 'Run right and jump pits, spikes and saws. DASH to speed up, SHOVE to knock rivals back. A hit sends you to the last checkpoint.',
+      he: 'רצים ימינה וקופצים מעל בורות, קוצים ומסורים. הסתערות מאיצה, דחיפה זורקת יריבים אחורה. פגיעה מחזירה לנקודת שמירה. המסך זז קדימה — מי שנשאר מאחוריו יותר מ־3 שניות מפסיד!',
+      en: 'Run right and jump pits, spikes and saws. DASH to speed up, SHOVE to knock rivals back. A hit sends you to the last checkpoint. The screen only moves forward: stay behind it for 3 seconds and you are out!',
     },
     category: 'arcade', minPlayers: 1, maxPlayers: 8, status: 'playable',
     accent: ['#f472b6', '#a855f7'],

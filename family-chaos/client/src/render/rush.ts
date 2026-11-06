@@ -53,7 +53,7 @@ export const rushRenderer: Renderer = {
     const G = RUSH.GROUND;
     const racing = f.p.filter((p: any) => !p.c);
     const lead = Math.max(...(racing.length ? racing : f.p).map((p: any) => p.x));
-    const target = Math.max(-120, Math.min(lv.length - RUSH.VIEW_W + 60, lead - RUSH.VIEW_W * 0.58));
+    const target = typeof f.ed === 'number' ? f.ed : Math.max(-120, Math.min(lv.length - RUSH.VIEW_W + 60, lead - RUSH.VIEW_W * 0.58)); // the server's screen edge: leaving it is what eliminates
     if (f.t < lastT - 0.5) cam = target;
     lastT = f.t;
     cam += (target - cam) * 0.12;
@@ -142,11 +142,21 @@ export const rushRenderer: Renderer = {
       const info = players.get(p.id);
       if (!info || p.x < x0 - 60 || p.x > x1 + 60) continue;
       if (p.i && Math.floor(t * 14) % 2) continue;
+      if (p.e) { // eliminated: a faded ghost where they fell behind
+        drawCritter(g, p.x, p.y - 26, 22, info.color, info.avatar, { alpha: 0.25, t: 0, hurt: true });
+        nameTag(g, p.x, p.y - 70, `${info.name} · OUT`, '#9a8fc4', 14);
+        continue;
+      }
       if (p.d) {
         for (let k = 1; k <= 3; k++) drawCritter(g, p.x - p.f * k * 22, p.y - 26, 22, info.color, info.avatar, { alpha: 0.16, t });
       }
       drawCritter(g, p.x, p.y - 26, 24, info.color, info.avatar, { look: p.f > 0 ? 0 : Math.PI, t: p.g ? t : 0, hurt: !!p.k, squash: p.g ? 0 : -0.1 });
       nameTag(g, p.x, p.y - 74 - (slot++ % 3) * 20, info.name, info.color, 15); // staggered so stacked runners stay readable
+      if (p.w) { // about to be eliminated: a big countdown over the runner
+        const pulse = 1 + 0.12 * Math.sin(t * 14);
+        hudText(g, `${p.w}`, p.x, p.y - 130, 64 * pulse, '#ff4d6d');
+        hudText(g, '▶', p.x + 40, p.y - 40, 40, '#ff4d6d');
+      }
     }
     fx.draw(g);
     g.restore();
@@ -154,6 +164,12 @@ export const rushRenderer: Renderer = {
 
   hud(g, f, { players, lang }, W, H) {
     const lv = makeLevel(f.sd, f.ln);
+    // the screen edge is the line of death: it glows red on the left while anybody is falling behind it
+    const warned = f.p.filter((p: any) => p.w);
+    const danger = g.createLinearGradient(0, 0, W * 0.18, 0);
+    danger.addColorStop(0, `rgba(255,40,80,${warned.length ? 0.55 + 0.25 * Math.sin(Date.now() / 90) : 0.22})`); danger.addColorStop(1, 'rgba(255,40,80,0)');
+    g.fillStyle = danger; g.fillRect(0, 0, W * 0.18, H);
+    if (warned.length) hudText(g, lang === 'he' ? 'חזרו למסך!' : 'GET BACK ON SCREEN!', W / 2, 100, 40, '#ff4d6d');
     hudText(g, f.end >= 0 ? `:flag: ${f.end}` : `${f.left}`, W / 2, 44, 44, f.end >= 0 || f.left <= 15 ? '#ff4d6d' : '#fff');
     // standings (left)
     f.o.slice(0, 8).forEach((id: string, i: number) => {
@@ -188,6 +204,8 @@ export const rushRenderer: Renderer = {
         if (p) { fx.burst(p.x, p.y - 20, col, 30, 380, 7, 500); fx.text(p.x, p.y - 80, e.kind === 'pit' ? 'SPLAT!' : 'OUCH!', col, 36); }
         fx.kick(7); sfx.bad();
         break;
+      case 'out': if (p) { fx.burst(p.x, p.y - 20, '#9a8fc4', 40, 300, 6, 600); fx.text(p.x, p.y - 90, 'OUT!', '#ff4d6d', 54); } fx.kick(9); sfx.bad(); break;
+      case 'warn': sfx.bad(); break;
       case 'dash': sfx.dash(); break;
       case 'shove': fx.kick(5); sfx.bump(); break;
       case 'checkpoint': fx.text(e.x, 380, ':check:', '#5dfc8d', 44); sfx.coin(); break;

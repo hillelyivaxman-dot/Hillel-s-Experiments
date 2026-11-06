@@ -298,6 +298,8 @@ function hudView(game: string, h: Hud, t: ReturnType<typeof useT>['t'], he: bool
       return h.alive ? { text: `${L('נותרו', 'LEFT')} ${h.left}`, tone: 'normal', chips: [{ icon: 'jump', on: !!h.jump, label: L('קפיצה', 'JUMP') }, { icon: 'shove', on: !!h.dash, label: L('חבטה', 'SHOVE') }] } : { text: L('נפלתם! צפו בסוף', 'You fell! Watch the end'), tone: 'bad' };
     case 'rush':
       if (h.done) return { text: `${t('finished')} #${h.place}`, tone: 'good' };
+      if (h.out) return { text: L('הפסדתם — נשארתם מאחור', 'You are out — left behind'), tone: 'bad' };
+      if (h.warn) return { text: `${L('חזור למסך!', 'GET BACK ON SCREEN!')} ${h.warn}`, tone: 'bad', chips: [{ icon: 'dash', on: !!h.dash, label: L('הסתערות', 'DASH') }, { icon: 'jump', on: true, label: L('קפיצה', 'JUMP') }] };
       return {
         text: `#${h.place ?? '-'}/${h.of ?? '-'} · ${h.pct ?? 0}%`, tone: 'normal',
         chips: [{ icon: 'dash', on: !!h.dash, label: L('הסתערות', 'DASH') }, { icon: 'shove', on: !!h.shove, label: L('דחיפה', 'SHOVE') }],
