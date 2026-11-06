@@ -1,0 +1,88 @@
+/* =====================================================================================================
+   FAMILY CHAOS design v4 — "arcade cabinet": squarer, framed, console-like. Loaded after design.css and overrides its roundness.
+   - Corners: 4–8 px, never pills. Panels are framed boxes (ink outline + inner light edge + hard drop edge) with a title strip.
+   - Buttons: rectangular keys with a bevel (light top edge, dark bottom edge), not bubbles.
+   - Background: a dark blueprint grid with scanlines and a vignette instead of floating confetti.
+   - Controller: action buttons are rounded squares (kept big), the stick stays round (it is a stick).
+   ===================================================================================================== */
+:root {
+  --r-xs: 3px; --r-sm: 5px; --r-md: 8px; --r-lg: 10px;
+  --frame: inset 0 0 0 2px rgba(255,255,255,.07), inset 0 3px 0 rgba(255,255,255,.09);
+  --bevel: inset 0 3px 0 rgba(255,255,255,.34), inset 0 -4px 0 rgba(20,11,46,.28);
+  --grid: rgba(139,92,246,.10);
+}
+body {
+  background:
+    radial-gradient(130% 80% at 50% -10%, rgba(139,92,246,.35), transparent 60%),
+    repeating-linear-gradient(0deg, rgba(0,0,0,.14) 0 1px, transparent 1px 4px),
+    linear-gradient(var(--grid) 1px, transparent 1px) 0 0 / 56px 56px,
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px) 0 0 / 56px 56px,
+    radial-gradient(120% 100% at 50% 40%, #1f1247 0%, #12092c 70%, #0b0620 100%) fixed;
+  background-attachment: fixed;
+}
+
+/* buttons: bevelled keys */
+.btn { border-radius: var(--r-md); box-shadow: var(--bevel), 0 6px 0 var(--ink); letter-spacing: 0.01em; }
+.btn:hover:not(:disabled) { box-shadow: var(--bevel), 0 8px 0 var(--ink); }
+.btn:active:not(:disabled) { box-shadow: inset 0 3px 0 rgba(20,11,46,.25), 0 1px 0 var(--ink); }
+.btn:disabled { box-shadow: 0 3px 0 var(--ink); }
+.chip, .mini, .hud-btn { border-radius: var(--r-sm); }
+.chip { box-shadow: 0 3px 0 var(--ink), inset 0 2px 0 rgba(255,255,255,.12); }
+.hud-chip, .game-card__soon, .game-card__cat, .game-card__tag, .phone-intro li, .k3-pill, .k3-host, .admin-ping, .chaos-banner { border-radius: var(--r-sm); }
+:focus-visible { border-radius: var(--r-sm); }
+
+/* panels: framed boxes with a title strip */
+.card, .lobby__join, .selected-game, .results__side, .admin-card, .tour-panel, .crown__menu, .admin-step, .ach, .player-tile, .qr-frame, .toast, .podium__block {
+  border-radius: var(--r-lg); box-shadow: var(--frame), 0 6px 0 var(--ink);
+}
+.card > h2:first-child, .lobby__join > h2:first-child, .results__side > h3:first-child, .tour-panel > h3:first-child, .selected-game > h3:first-child {
+  margin: -1px -1px 8px; padding: 6px 12px; background: rgba(0,0,0,.28); border-bottom: 3px solid var(--ink);
+  border-radius: var(--r-md) var(--r-md) 0 0; font-size: 1.05rem; letter-spacing: .02em;
+}
+.results__rest li, .leaderboard li, .phone-players li, .admin-select, .admin-power, .admin-players li, .admin-alert, .avatar-opt, .room-code span, .k3-speed, .k3-laps small { border-radius: var(--r-sm); }
+input, select, textarea { border-radius: var(--r-sm); }
+
+/* game tiles: framed cartridges, no tilt */
+.game-card { border-radius: var(--r-lg); border-width: 3px; box-shadow: var(--frame), 0 7px 0 var(--ink); }
+.game-card:hover:not(:disabled) { transform: translateY(-4px); box-shadow: var(--frame), 0 11px 0 var(--ink); }
+.game-card.is-selected { transform: translateY(-6px); outline: 4px solid var(--sun); outline-offset: 2px; animation: none; box-shadow: var(--frame), 0 13px 0 var(--ink); }
+.lobby__games .game-card.is-selected { transform: translateY(-5px) scale(1.03); }
+.game-card::before { transform: skewY(-5deg); }
+.game-card__name { text-transform: none; }
+.player-tile { border-width: 3px; }
+
+/* top bar as a console header */
+.topbar { border-bottom: 3px solid var(--ink); background: linear-gradient(180deg, rgba(0,0,0,.35), rgba(0,0,0,.18)); box-shadow: 0 3px 0 rgba(139,92,246,.35); }
+.logo__chaos { text-shadow: 0 4px 0 var(--ink); }
+
+/* phone controller: rounded-square action keys, bevelled */
+.pad-btn { border-radius: 26% !important; }
+.pad-btn--primary, .pad-btn--huge { border-radius: 22% !important; }
+.arrow-btn, .pad__choices .pad-btn { border-radius: 18px !important; }
+.touchpad, .stick-zone::after { border-radius: 14px; }
+.phone-lobby .btn, .phone .btn { border-radius: var(--r-md); }
+.phone-results__tour { border-radius: var(--r-sm); }
+.crash { border-radius: var(--r-lg); }
+.pad-btn {
+  border: 3px solid var(--ink);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--bc) 62%, #fff) 0%, var(--bc) 30%, color-mix(in srgb, var(--bc) 78%, #000) 100%);
+  box-shadow: 0 6px 0 var(--ink), inset 0 3px 0 rgba(255,255,255,.45), inset 0 -4px 0 rgba(20,11,46,.22);
+}
+.pad-btn.is-down { box-shadow: 0 1px 0 var(--ink), inset 0 3px 0 rgba(20,11,46,.25); }
+
+/* ---- home ---- */
+.how__steps li { border-radius: var(--r-md); border: 3px solid var(--ink); background: var(--board); box-shadow: var(--frame), 0 5px 0 var(--ink); }
+.how__steps span { border-radius: var(--r-sm); border: 2px solid var(--ink); }
+.hero__cta input, .search, .library__tools input { border-radius: var(--r-sm); }
+.library { margin-top: 1.4rem; }
+.library > h2, .how > h2 { display: inline-block; padding: 4px 16px; background: var(--board-2); border: 3px solid var(--ink); border-radius: var(--r-sm); box-shadow: 0 4px 0 var(--ink); font-size: 1.3rem; }
+
+/* ---- host lobby: every area is a framed panel with a title strip ---- */
+.lobby__main { gap: 16px; padding: 14px 20px 8px; }
+.lobby__players { background: var(--board); border: 3px solid var(--ink); border-radius: var(--r-lg); box-shadow: var(--frame), 0 6px 0 var(--ink); padding: 0 0 10px; overflow: hidden; }
+.lobby__players h2, .lobby__join > h2 { margin: 0; padding: 7px 14px; background: rgba(0,0,0,.3); border-bottom: 3px solid var(--ink); font-size: clamp(1rem, 2.6vh, 1.4rem); }
+.lobby__join > h2 { align-self: stretch; margin: -10px -14px 6px; }
+.lobby__players .player-grid { padding: 12px 14px 4px; grid-template-columns: repeat(auto-fill, minmax(clamp(120px, 13vw, 190px), 1fr)); }
+.lobby__players .tour-pick { margin: 6px 12px 0; padding: 8px 10px; background: rgba(0,0,0,.25); border: 2px solid var(--ink); border-radius: var(--r-md); }
+.lobby__players .player-tile { min-height: clamp(96px, 16vh, 150px); }
+.selected-game h3 { font-size: 1.5rem; }
