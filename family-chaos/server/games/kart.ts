@@ -10,14 +10,15 @@ export const KART = {
   BOOST_MAX: 740,
   REVERSE: -160,
   // arcade handling
-  TURN_LOW: 2.9, // max yaw rate (rad/s) at low speed ...
-  TURN_HIGH: 1.7, // ... falling to this at top speed: no snap turns when fast
+  TURN_LOW: 2.65, // max yaw rate (rad/s) at low speed ...
+  TURN_HIGH: 1.55, // ... falling to this at top speed: no snap turns when fast
   STEER_IN: 6.5, // steering smoothing (1/s): wheel/arrow input ramps instead of jumping
   STEER_OUT: 10,
   GRIP: 9, // lateral grip (1/s); the car slides a little instead of turning on rails
   GRIP_DRIFT: 3.2, // while braking in a turn
   CORNER_DRAG: 150, // speed lost per second at full lock and full speed
   ASSIST: 1.15, // rad/s pull towards the track direction when not steering
+  CATCHUP: 0.07, // trailing karts get up to +7 % top speed (rubber band) so a small group stays close
   CAR_R: 22,
   WALL: 48, // extra room beyond the asphalt before the wall
   SECTORS: 8,
@@ -38,7 +39,7 @@ interface Car {
   lat: number; // sideways velocity (px/s, + = right of heading)
   drift: boolean;
   finished: number; // finish time, -1 if racing
-  offTrack: boolean;
+  offTrack: boolean; edge: number; // edge: 0 = on the centre line .. 1 = at the kerb
   air: number; airMax: number; jumpCd: number; surgeCd: number; combo: number; comboT: number; stumble: number; // boat / bike mechanics
   lapStart: number; lastLap: number; bestLap: number; stuckT: number; recoverT: number;
   fcd: Record<string, number>; // per-feature cooldowns (rocks, hurdles, ramps...)
@@ -101,7 +102,7 @@ function makeRacer(id: string): GameModule {
       return {
         id: p.id, x, y, a: Math.atan2(pt.ty, pt.tx), v: 0, idx: nr.idx, s: tr.cum[nr.idx],
         sector: K.SECTORS - 1, mask: 1 << (K.SECTORS - 1), lap: 0, cross: -1,
-        item: '', boostT: 0, spinT: 0, shieldT: 0, turbo: 50, steer: 0, lat: 0, drift: false, finished: -1, offTrack: false,
+        item: '', boostT: 0, spinT: 0, shieldT: 0, turbo: 50, steer: 0, lat: 0, drift: false, finished: -1, offTrack: false, edge: 0,
         lapStart: 0, lastLap: 0, bestLap: 0, stuckT: 0, recoverT: 0, air: 0, airMax: 1, jumpCd: 0, surgeCd: 0, combo: 0, comboT: 0, stumble: 0, fcd: {},
       };
     });
@@ -162,6 +163,7 @@ function makeRacer(id: string): GameModule {
 
       tick(dt) {
         time += dt;
+        let leadDist = 0; for (const q of cars) if (q.finished < 0) leadDist = Math.max(leadDist, raceDist(q));
         for (const c of cars) {
           const inp = ctx.input(c.id);
           const racing = c.finished < 0;
@@ -175,7 +177,9 @@ function makeRacer(id: string): GameModule {
           c.comboT = Math.max(0, c.comboT - dt); if (c.comboT <= 0 && c.combo) { c.combo = 0; sendHud(); }
           for (const k in c.fcd) if (c.fcd[k] > 0) c.fcd[k] -= dt;
           const steerIn = racing ? Math.max(-1, Math.min(1, inp.x)) * (c.air > 0 ? 0.3 : 1) : 0; // no real steering in the air
-          const max = (c.boostT > 0 ? K.BOOST_MAX : K.MAX) * (c.offTrack && c.air <= 0 ? 0.55 : 1) * (1 + 0.04 * c.combo);
+          const gap = Math.max(0, leadDist - raceDist(c)); // how far behind the leader (px along the track)
+          const catchUp = racing && mode === 'kart' && cars.length > 1 ? 1 + K.CATCHUP * Math.min(1, gap / 900) : 1;
+          const max = (c.boostT > 0 ? K.BOOST_MAX : K.MAX) * (c.offTrack && c.air <= 0 ? 0.55 : 1) * (1 + 0.04 * c.combo) * catchUp;
 
           // --- steering input smoothing (wheel, arrows and tilt all feel the same) ---
           const rate = Math.abs(steerIn) > Math.abs(c.steer) ? K.STEER_IN : K.STEER_OUT;
@@ -186,7 +190,7 @@ function makeRacer(id: string): GameModule {
           const sp = Math.min(1.2, Math.abs(c.v) / K.MAX);
           if (c.boostT > 0) c.v += 1300 * dt;
           else if (gas) c.v += K.ACC * (1 - 0.6 * Math.min(1, c.v / K.MAX) ** 2) * (brake ? 0.35 : 1) * dt;
-          if (brake) c.v -= (c.v > 15 ? 720 : 320) * dt;
+          if (brake) c.v -= (c.v > 15 ? 820 : 320) * dt;
           if (!gas && !brake && c.boostT <= 0) c.v *= Math.exp(-1.05 * dt);
           if (c.offTrack) c.v *= Math.exp(-0.9 * dt);
           if (!racing) c.v *= Math.exp(-1.6 * dt);
@@ -201,11 +205,13 @@ function makeRacer(id: string): GameModule {
           let dA = c.steer * yawMax * dirK * dt;
           // gentle straight-line assist towards the track direction when the player is not steering
           if (racing && Math.abs(c.v) > 80 && c.spinT <= 0) {
-            const p0 = tr.pts[c.idx], p1 = tr.pts[(c.idx + 3) % tr.pts.length];
+            // look further ahead the faster we go, and pull harder the closer we are to the kerb: the kart is hard to lose, still easy to steer
+            const ahead = 3 + Math.round(Math.min(1, Math.abs(c.v) / K.MAX) * 6);
+            const p0 = tr.pts[c.idx], p1 = tr.pts[(c.idx + ahead) % tr.pts.length];
             let diff = Math.atan2(p1.y - p0.y, p1.x - p0.x) - c.a;
             while (diff > Math.PI) diff -= 2 * Math.PI;
             while (diff < -Math.PI) diff += 2 * Math.PI;
-            if (Math.abs(diff) < 1.2) dA += Math.max(-1, Math.min(1, diff * 2)) * K.ASSIST * (1 - Math.abs(steerIn)) * Math.sign(c.v) * dt;
+            if (Math.abs(diff) < 1.3) dA += Math.max(-1, Math.min(1, diff * 2)) * K.ASSIST * (0.6 + 0.9 * c.edge) * (1 - Math.abs(steerIn)) * Math.sign(c.v) * dt;
           }
           if (c.recoverT > 0) {
             c.recoverT -= dt;
@@ -238,6 +244,7 @@ function makeRacer(id: string): GameModule {
           c.idx = nr.idx;
           c.s = tr.cum[nr.idx];
           c.offTrack = nr.dist > TRACK_WIDTH / 2;
+          c.edge = Math.min(1, nr.dist / (TRACK_WIDTH / 2));
           if (racing) {
             const pA = tr.pts[nr.idx], pB = tr.pts[(nr.idx + 1) % tr.pts.length];
             const tl = Math.hypot(pB.x - pA.x, pB.y - pA.y) || 1, tx = (pB.x - pA.x) / tl, ty = (pB.y - pA.y) / tl;
@@ -285,7 +292,7 @@ function makeRacer(id: string): GameModule {
             if (into > 0) {
               if (into > 120) { ctx.fx('wall', { x: r1(c.x), y: r1(c.y) }); ctx.buzz(c.id, 40); }
               vxw -= 1.15 * into * nx; vyw -= 1.15 * into * ny; // slide along the wall with a small bounce
-              vxw *= 0.9; vyw *= 0.9;
+              vxw *= 0.94; vyw *= 0.94;
               c.v = vxw * Math.cos(c.a) + vyw * Math.sin(c.a);
               c.lat = -vxw * Math.sin(c.a) + vyw * Math.cos(c.a);
             }

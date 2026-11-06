@@ -146,7 +146,7 @@ export class KartScene {
       case 'cockpit': pos = car.clone().addScaledVector(f2, 4).add(new THREE.Vector3(0, 24, 0)); look = pos.clone().addScaledVector(f2, 120).add(new THREE.Vector3(0, -3, 0)); fov = 82; break;
       case 'bumper': pos = car.clone().addScaledVector(f2, 38).add(new THREE.Vector3(0, 9, 0)); look = pos.clone().addScaledVector(f2, 120).add(new THREE.Vector3(0, 2, 0)); fov = 86; break;
       case 'spectator': { const ang = this.camA + Math.PI + Math.sin(this.t * 0.2) * 0.5; pos = car.clone().add(new THREE.Vector3(Math.cos(ang) * 230, 120, Math.sin(ang) * 230)); look = car.clone().add(new THREE.Vector3(0, 12, 0)); fov = 58; break; }
-      default: pos = car.clone().addScaledVector(f2, -118).add(new THREE.Vector3(0, 56, 0)); look = car.clone().addScaledVector(f2, 70).add(new THREE.Vector3(0, 10, 0)); fov = 68;
+      default: pos = car.clone().addScaledVector(f2, -150).add(new THREE.Vector3(0, 74, 0)); look = car.clone().addScaledVector(f2, 95).add(new THREE.Vector3(0, 8, 0)); fov = 70;
     }
     const sp = Math.min(1, Math.abs(me.v) / 520);
     fov += sp * 14 + (me.b ? 8 : 0);

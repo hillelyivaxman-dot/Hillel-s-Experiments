@@ -86,3 +86,7 @@ input, select, textarea { border-radius: var(--r-sm); }
 .lobby__players .tour-pick { margin: 6px 12px 0; padding: 8px 10px; background: rgba(0,0,0,.25); border: 2px solid var(--ink); border-radius: var(--r-md); }
 .lobby__players .player-tile { min-height: clamp(96px, 16vh, 150px); }
 .selected-game h3 { font-size: 1.5rem; }
+
+/* kart: smaller, see-through steering keys at the bottom corners so the road stays visible */
+.phone-game--3d .arrow-btn { border-radius: 14px !important; opacity: .82; border: 3px solid rgba(20,11,46,.7); }
+@media (orientation: landscape) { .phone-game--3d .pad__arrows .arrow-btn, .phone-game--3d .arrow-btn { max-height: 34vh; } }

@@ -25,12 +25,16 @@ function driveFromSpeed(seconds: number, scenario: (rel: number, s: S) => { x: n
   const tr = getTrack(2);
   const n = tr.pts.length;
   let from = 0, t0 = -1, prev: S | null = null;
+  const speeds: number[] = [];
   const log: S[] = [];
   runGame(kartGame, 1, { laps: 9, track: 2 }, (id, snap, t) => {
     const c = snap.c.find((q: any) => q.id === id);
     const s: S = { t, x: c.x, y: c.y, a: c.a, st: c.st, dr: c.dr ?? 0 };
     const speed = prev ? Math.hypot(s.x - prev.x, s.y - prev.y) / DT : 0;
     prev = s;
+    speeds.push(speed); if (speeds.length > 8) speeds.shift();
+    // cruising only: no boost pad / boost in progress (those add 1300 px/s² and would hide the effect of braking or steering)
+    const steady = speeds.length === 8 && Math.max(...speeds) - Math.min(...speeds) < 40 && speed < KART.MAX * 1.05;
     if (t0 >= 0) { const rel = { ...s, t: t - t0 }; log.push(rel); const o = scenario(t - t0, rel); return { x: o.x, y: 0, b: o.b }; }
     let best = from, bd = Infinity;
     for (let k = -20; k <= 60; k++) { const i = (((from + k) % n) + n) % n, p = tr.pts[i]; const d = (p.x - s.x) ** 2 + (p.y - s.y) ** 2; if (d < bd) { bd = d; best = i; } }
@@ -39,7 +43,7 @@ function driveFromSpeed(seconds: number, scenario: (rel: number, s: S) => { x: n
     let diff = Math.atan2(ahead.y - s.y, ahead.x - s.x) - s.a;
     while (diff > Math.PI) diff -= 2 * Math.PI;
     while (diff < -Math.PI) diff += 2 * Math.PI;
-    if (t > 2 && speed > 300 && Math.abs(diff) < 0.1 && Math.abs(c.st) < 0.15) { t0 = t; const rel = { ...s, t: 0 }; log.push(rel); const o = scenario(0, rel); return { x: o.x, y: 0, b: o.b }; }
+    if (t > 2 && steady && speed > 300 && Math.abs(diff) < 0.1 && Math.abs(c.st) < 0.15) { t0 = t; const rel = { ...s, t: 0 }; log.push(rel); const o = scenario(0, rel); return { x: o.x, y: 0, b: o.b }; }
     return { x: Math.max(-1, Math.min(1, diff * 2.5)), y: 0, b: BTN.A };
   }, seconds + 30);
   return log;
