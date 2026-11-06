@@ -165,8 +165,8 @@ const BASE_GAMES: GameMeta[] = [
     name: { he: 'מיני כדורגל', en: 'Mini Soccer' },
     tagline: { he: 'קבוצה נגד קבוצה — מי יבקיע יותר?', en: 'Team vs team — who scores more?' },
     howTo: {
-      he: 'הקבוצות נבחרות אוטומטית (אדומים נגד כחולים). ג׳ויסטיק לריצה, בעיטה לבעוט לכיוון הג׳ויסטיק, מסירה (C) שולחת את הכדור לחבר הקבוצה שאליו אתם מכוונים, ספרינט מתכלה. תיקו = הארכה עם גול הזהב.',
-      en: 'Teams are automatic (red vs blue). Stick to run, KICK shoots where you aim, PASS (C) sends the ball to the teammate you aim at, SPRINT drains stamina. A tie goes to golden-goal overtime.',
+      he: 'הכדור נדבק אליכם כשנוגעים בו — הוא תמיד לפניכם, לאן שאתם מסתכלים (ג׳ויסטיק). בעיטה (A) יורה לכיוון החץ. בלי כדור? A הוא גלישה: זינוק קדימה שגונב את הכדור ממי שמחזיק בו — אבל אחריה אתם רגע חשופים. מסירה (C) שולחת לחבר קבוצה. ספרינט (B) מבזבז כוח. תיקו הולך להארכה בגול זהב.',
+      en: 'The ball sticks to you when you touch it — it is always in front of you, wherever you look (stick). SHOOT (A) fires along the arrow. No ball? A is a SLIDE: a lunge that steals the ball from its carrier — but you are exposed for a moment afterwards. PASS (C) sends it to a team-mate. SPRINT (B) drains stamina. A tie goes to golden-goal overtime.',
     },
     category: 'sports', minPlayers: 2, maxPlayers: 8, status: 'playable',
     accent: ['#22c55e', '#15803d'],

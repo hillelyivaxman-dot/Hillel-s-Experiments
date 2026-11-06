@@ -261,9 +261,9 @@ function hudView(game: string, h: Hud, t: ReturnType<typeof useT>['t'], he: bool
     }
     case 'soccer':
       return {
-        text: `${h.team === 0 ? ':dotred:' : ':dotblue:'} ${h.a ?? 0} : ${h.b ?? 0}${h.ot ? ' · GOLDEN' : ''}`, tone: 'normal',
+        text: `${h.team === 0 ? ':dotred:' : ':dotblue:'} ${h.a ?? 0} : ${h.b ?? 0}${h.ot ? ' · GOLDEN' : ''}${h.own ? ' · ' + L('הכדור אצלכם!', 'YOU HAVE THE BALL') : ''}`, tone: h.own ? 'good' : 'normal',
         meter: Number(h.stamina ?? 0) / 100, meterLabel: L('ספרינט', 'SPRINT'),
-        chips: [{ icon: 'kick', on: !!h.kick, label: L('בעיטה', 'KICK') }],
+        chips: [{ icon: 'kick', on: !!h.own, label: L('בעיטה', 'SHOOT') }, { icon: 'shove', on: !h.own && !!h.sl, label: L('גלישה', 'SLIDE') }],
       };
     case 'hockey':
       return { text: `${h.team === 0 ? ':dotred:' : ':dotblue:'} ${h.a ?? 0} : ${h.b ?? 0}${h.sd ? ' · SUDDEN' : ''}`, tone: 'normal', chips: [{ icon: 'turbo', on: !!h.smash, label: L('חבטה', 'SMASH') }] };

@@ -50,3 +50,49 @@ describe('owner powers inside games', () => {
     const tp = run('teleport'); expect(Math.abs(tp.p.x - (base.p.x))).toBeGreaterThan(40); // it landed somewhere else
   });
 });
+
+describe('Mini Soccer possession: the ball is carried, A shoots or slides, a slide steals', () => {
+  const run = (bot: (id: string, s: any, t: number) => { x: number; y: number; b: number }, secs: number) => runGame(soccerGame, 2, { time: 120 }, bot, secs);
+  const toBall = (me: any, ball: any) => { const dx = ball.x - me.x, dy = ball.y - me.y, d = Math.hypot(dx, dy) || 1; return { x: dx / d, y: dy / d, d }; };
+
+  it('touching the free ball picks it up: it sits in front of the player and follows where he looks', () => {
+    let carried = 0, frontOk = 0;
+    run((id, s, _t) => {
+      const me = s.p.find((q: any) => q.id === id), ball = s.b[0];
+      if (id !== 'p1') return { x: 0, y: 0, b: 0 };
+      if (s.o === 'p1') { carried++; const fx = me.x + Math.cos(me.a) * 40, fy = me.y + Math.sin(me.a) * 40; if (Math.hypot(ball.x - fx, ball.y - fy) < 40) frontOk++; return { x: 0, y: 1, b: 0 }; }
+      const b = toBall(me, ball); return { x: b.x, y: b.y, b: 0 };
+    }, 8);
+    expect(carried).toBeGreaterThan(30);
+    expect(frontOk / carried).toBeGreaterThan(0.85);
+  });
+
+  it('SHOOT (A) with the ball sends it toward the aim and releases it; the shooter cannot instantly grab it back', () => {
+    let shot = false, ownedAfter = 0;
+    const r = run((id, s, t) => {
+      const me = s.p.find((q: any) => q.id === id), ball = s.b[0];
+      if (id !== 'p1') return { x: 0, y: 0, b: 0 };
+      if (s.o === 'p1' && !shot && t > 1) { shot = true; return { x: 1, y: 0, b: BTN.A }; }
+      if (shot && s.o === 'p1') ownedAfter++;
+      if (shot) return { x: 0, y: 0, b: 0 };
+      const b = toBall(me, ball); return { x: b.x, y: b.y, b: 0 };
+    }, 6);
+    expect(r.fx).toContain('kick');
+    expect(ownedAfter).toBe(0);
+  });
+
+  it('SLIDE (A without the ball) steals it from an opponent who carries it', () => {
+    const r = run((id, s, _t) => {
+      const me = s.p.find((q: any) => q.id === id), ball = s.b[0];
+      if (id === 'p1') { // carrier: grabs the ball and stands still
+        if (s.o === 'p1') return { x: 0, y: 0, b: 0 };
+        const b = toBall(me, ball); return { x: b.x, y: b.y, b: 0 };
+      }
+      // defender: waits until p1 has it, runs at him and slides when close
+      const o = s.p.find((q: any) => q.id === 'p1'), d = Math.hypot(o.x - me.x, o.y - me.y), a = Math.atan2(o.y - me.y, o.x - me.x);
+      return { x: s.o === 'p1' ? Math.cos(a) : 0, y: s.o === 'p1' ? Math.sin(a) : 0, b: s.o === 'p1' && d < 120 ? BTN.A : 0 };
+    }, 14);
+    expect(r.fx).toContain('slide');
+    expect(r.fx).toContain('steal');
+  });
+});

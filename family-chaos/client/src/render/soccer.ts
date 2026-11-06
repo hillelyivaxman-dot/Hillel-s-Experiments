@@ -53,6 +53,10 @@ export const soccerRenderer: Renderer = {
     // ball shadow + ball
     g.fillStyle = 'rgba(0,0,0,.28)';
     g.beginPath(); g.ellipse(ball.x + 4, ball.y + 12, 16, 7, 0, 0, Math.PI * 2); g.fill();
+    if (f.o) { // carried: a halo in the carrier's team colour
+      const c = f.p.find((q: any) => q.id === f.o);
+      if (c) { g.strokeStyle = TEAM[c.tm]; g.lineWidth = 4; g.globalAlpha = 0.8; g.beginPath(); g.arc(ball.x, ball.y - 2, 24, 0, Math.PI * 2); g.stroke(); g.globalAlpha = 1; }
+    }
     const spin = (ball.x + ball.y) / 18;
     g.save(); g.translate(ball.x, ball.y - 4); g.rotate(spin);
     g.fillStyle = '#fff'; g.strokeStyle = '#1d2540'; g.lineWidth = 2.5;
@@ -69,7 +73,18 @@ export const soccerRenderer: Renderer = {
       g.strokeStyle = TEAM[p.tm]; g.lineWidth = 6;
       g.beginPath(); g.ellipse(p.x, p.y + 24, 32, 13, 0, 0, Math.PI * 2); g.stroke();
       if (p.s) { g.fillStyle = 'rgba(255,255,255,.35)'; for (let k = 1; k <= 3; k++) { g.beginPath(); g.arc(p.x - Math.cos(p.a) * 22 * k, p.y + 20, 8 - k * 1.5, 0, Math.PI * 2); g.fill(); } }
-      drawCritter(g, p.x, p.y, 27, info.color, info.avatar, { look: p.a, t, squash: p.k ? 0.5 : 0 });
+      if (f.o === p.id) { // aim arrow: the ball goes where the player looks
+        const ax = p.x + Math.cos(p.a) * 92, ay = p.y + Math.sin(p.a) * 92;
+        g.strokeStyle = 'rgba(255,255,255,.75)'; g.fillStyle = 'rgba(255,255,255,.75)'; g.lineWidth = 5; g.lineCap = 'round'; g.setLineDash([2, 12]);
+        g.beginPath(); g.moveTo(p.x + Math.cos(p.a) * 60, p.y + Math.sin(p.a) * 60); g.lineTo(ax + Math.cos(p.a) * 56, ay + Math.sin(p.a) * 56); g.stroke(); g.setLineDash([]);
+        g.beginPath(); g.moveTo(ax + Math.cos(p.a) * 84, ay + Math.sin(p.a) * 84);
+        g.lineTo(ax + Math.cos(p.a + 2.5) * 16 + Math.cos(p.a) * 56, ay + Math.sin(p.a + 2.5) * 16 + Math.sin(p.a) * 56);
+        g.lineTo(ax + Math.cos(p.a - 2.5) * 16 + Math.cos(p.a) * 56, ay + Math.sin(p.a - 2.5) * 16 + Math.sin(p.a) * 56); g.closePath(); g.fill();
+      }
+      if (p.l) { // sliding: dust trail and a flattened, stretched body
+        g.fillStyle = 'rgba(230,220,190,.55)'; for (let k = 1; k <= 4; k++) { g.beginPath(); g.arc(p.x - Math.cos(p.a) * 26 * k, p.y + 22, 14 - k * 2.4, 0, Math.PI * 2); g.fill(); }
+      }
+      drawCritter(g, p.x, p.y + (p.l ? 8 : 0), 27, info.color, info.avatar, { look: p.a, t, squash: p.l ? -0.35 : p.k ? 0.5 : 0, hurt: !!p.r, alpha: p.r ? 0.75 : 1 });
       if (p.k) { // kick swoosh
         g.strokeStyle = '#ffd23f'; g.lineWidth = 6; g.lineCap = 'round';
         g.beginPath(); g.arc(p.x, p.y, 44, p.a - 0.7, p.a + 0.7); g.stroke();
@@ -99,6 +114,8 @@ export const soccerRenderer: Renderer = {
       case 'pass': fx.burst(e.x, e.y, '#5dfc8d', 10, 220, 5); sfx.pass(); break;
       case 'kick': fx.burst(e.x, e.y, '#fff', 8, 260, 5); sfx.bump(); break;
       case 'touch': sfx.click(); break;
+      case 'slide': fx.burst(e.x, e.y + 20, '#e6dcbe', 10, 260, 6); sfx.dash(); break;
+      case 'steal': fx.burst(e.x, e.y, '#ffd23f', 18, 360, 6); fx.text(e.x, e.y - 50, 'STOLEN!', '#ffd23f', 40); fx.kick(6); sfx.bump(); break;
       case 'post': fx.burst(e.x, e.y, '#fff', 10, 300, 5); fx.kick(5); sfx.bump(); break;
       case 'swing': sfx.dash(); break;
       case 'goal': {
