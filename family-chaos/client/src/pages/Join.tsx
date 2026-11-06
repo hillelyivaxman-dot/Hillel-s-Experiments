@@ -304,6 +304,16 @@ function hudView(game: string, h: Hud, t: ReturnType<typeof useT>['t'], he: bool
         text: `#${h.place ?? '-'}/${h.of ?? '-'} · ${h.pct ?? 0}%`, tone: 'normal',
         chips: [{ icon: 'dash', on: !!h.dash, label: L('הסתערות', 'DASH') }, { icon: 'shove', on: !!h.shove, label: L('דחיפה', 'SHOVE') }],
       };
+    case 'basedefense': {
+      const role = [L('צלף', 'Gunner'), L('בנאי', 'Builder'), L('טנק', 'Tank'), L('חובש', 'Medic')][Number(h.role)] ?? '';
+      if (Number(h.down) > 0) return { text: L(`נפלתם! קמים בעוד ${h.down} (חובש יעזור)`, `Down! Back in ${h.down} (a medic helps)`), tone: 'bad' };
+      const br = Number(h.br) > 0 ? L(` · הגל הבא ${h.br}`, ` · next ${h.br}`) : '';
+      return {
+        text: `${role} · ${L('גל', 'Wave')} ${h.wave}/${h.of} · ${L('ליבה', 'Core')} ${h.core}${br}`, tone: Number(h.core) < 50 ? 'hot' : 'normal',
+        meter: Number(h.hp) / 100, meterLabel: L('חיים', 'HP'),
+        chips: [{ icon: 'star', on: !!h.act, label: L('כוח מיוחד', 'SPECIAL') }, { icon: 'turbo', on: Number(h.ucost) > 0 && Number(h.scrap) >= Number(h.ucost), label: `${L('שדרוג', 'UPG')} ${h.ucost || 'MAX'} · :star:${h.scrap}` }],
+      };
+    }
     case 'potato':
       if (h.out) return { text: t('youreOut'), tone: 'bad' };
       if (h.hot) return { text: t('youHaveBomb'), tone: 'hot', chips: [{ icon: 'throw', on: !!h.throw, label: L('זריקה', 'THROW') }] };

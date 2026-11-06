@@ -222,17 +222,25 @@ const NEW_GAMES_LIST: GameMeta[] = [
     'arcade', 2, 8, ['#ef4444', '#2563eb'],
     stickPad('fighter', [btn('A', 'קפיצה', 'JUMP', '#5dfc8d', 'jump', true), btn('B', 'ספרינט', 'SPRINT', '#ffd23f', 'dash'), btn('C', 'התנגשות', 'TACKLE', '#ff4d6d', 'shove'), btn('D', 'כוח', 'POWER', '#b26bff', 'star')]),
     [opt('time', 'זמן', 'Time', [120, 180, 240], 180, [['2 דק׳', '2 min'], ['3 דק׳', '3 min'], ['4 דק׳', '4 min']]), opt('score', 'דגלים לניצחון', 'Flags to win', [3, 5, 7], 5)]),
+  game('basedefense', 'הגנת הבסיס', 'Base Defense', 'ביחד מגינים על הליבה מול גלים של מפלצות', 'Together, hold the core against waves of monsters',
+    'משחק שיתופי: כולם מגינים על הליבה במרכז. אתם יורים לבד על מה שקרוב. לכל תפקיד כוח מיוחד: צלף (התפרצות), בנאי (צריח), טנק (הדף), חובש (ריפוי). פסולת מהמפלצות נכנסת לקופה משותפת — בנו צריחים ושדרגו את כולם. שורדים את כל הגלים וכולם מנצחים!',
+    'Co-op: everybody defends the core in the middle. You shoot nearby monsters by yourself. Each role has a special: Gunner (BURST), Builder (TURRET), Tank (SHOCK), Medic (HEAL). Scrap from kills goes into a shared pool: build turrets and upgrade the whole team. Survive every wave and you all win!',
+    'coop', 2, 8, ['#22c55e', '#0ea5e9'],
+    stickPad('fighter', [btn('A', 'כוח מיוחד', 'SPECIAL', '#ffd23f', 'star', true), btn('B', 'ספרינט', 'SPRINT', '#5dfc8d', 'dash'), btn('C', 'שדרוג', 'UPGRADE', '#b26bff', 'turbo')]),
+    [opt('waves', 'גלים', 'Waves', [5, 8, 12], 8, [['5', '5'], ['8', '8'], ['12', '12']])]),
 ];
 /** The library groups every game by its CORE mechanic into six categories. */
 export const CATEGORY_OF: Record<string, Category> = {
   kart: 'racing', rush: 'racing', soccer: 'sports', hockey: 'sports', flagwars: 'arcade', bumper: 'arcade', trapbuilders: 'arcade',
-  board: 'party', vanish: 'party', potato: 'party',
+  board: 'party', vanish: 'party', potato: 'party', basedefense: 'coop',
 };
-export const CATALOG: GameMeta[] = [...BASE_GAMES, ...NEW_GAMES_LIST].map((g) => ({ ...g, category: CATEGORY_OF[g.id] ?? g.category }));
+/** Built, working, but not part of the main ten: kept in the code (and its tests), not shown in the library or lobby. */
+export const ARCHIVED_IDS = ['potato'];
+export const CATALOG: GameMeta[] = [...BASE_GAMES, ...NEW_GAMES_LIST].filter((g) => !ARCHIVED_IDS.includes(g.id)).map((g) => ({ ...g, category: CATEGORY_OF[g.id] ?? g.category }));
 
 /** Estimated length of one round in minutes [min, max], shown on the game cards. */
 export const PLAY_TIME: Record<string, [number, number]> = {
-  kart: [3, 6], rush: [3, 5], soccer: [2, 3], hockey: [2, 4], flagwars: [3, 5], board: [8, 12], trapbuilders: [4, 6], bumper: [3, 5], vanish: [2, 4], potato: [3, 5],
+  kart: [3, 6], rush: [3, 5], soccer: [2, 3], hockey: [2, 4], flagwars: [3, 5], board: [8, 12], trapbuilders: [4, 6], bumper: [3, 5], vanish: [2, 4], potato: [3, 5], basedefense: [6, 12],
 };
 
 export const getMeta = (id: string) => CATALOG.find((g) => g.id === id);

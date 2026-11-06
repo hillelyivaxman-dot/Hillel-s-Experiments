@@ -1,3 +1,4 @@
+import { baseDefenseRenderer } from './basedefense';
 import { boardRenderer } from './board';
 import { bumperRenderer } from './bumper';
 import { flagWarsRenderer } from './flagwars';
@@ -13,7 +14,7 @@ import type { Renderer } from './types';
 // Register client renderers here (one per playable game id).
 export const RENDERERS: Record<string, Renderer> = {
   kart: kartRenderer, rush: rushRenderer, soccer: soccerRenderer, hockey: hockeyRenderer, flagwars: flagWarsRenderer, board: boardRenderer,
-  trapbuilders: trapBuildersRenderer, bumper: bumperRenderer, vanish: vanishRenderer, potato: potatoRenderer,
+  trapbuilders: trapBuildersRenderer, bumper: bumperRenderer, vanish: vanishRenderer, potato: potatoRenderer, basedefense: baseDefenseRenderer,
 };
 
 const LERP_KEYS = ['x', 'y', 'a'];

@@ -42,15 +42,15 @@ describe('party tournament', () => {
 
   it('skip starts the next game now; cancel ends the series; the lobby clears it', () => {
     const { host, room, advance, state } = setup(['A', 'B', 'C']);
-    room.handle(host, { t: 'admin', act: { a: 'tournament', games: ['bumper', 'potato'] } });
+    room.handle(host, { t: 'admin', act: { a: 'tournament', games: ['bumper', 'basedefense'] } });
     advance(50);
-    expect(state().tour!.games).toEqual(['bumper', 'potato']);
+    expect(state().tour!.games).toEqual(['bumper', 'basedefense']);
     advance(TIMING.COUNTDOWN_MS + 300);
     room.handle(host, { t: 'admin', act: { a: 'end' } });
     advance(50);
     room.handle(host, { t: 'admin', act: { a: 'tour_skip' } });
     advance(50);
-    expect(state().gameId).toBe('potato');
+    expect(state().gameId).toBe('basedefense');
     advance(TIMING.COUNTDOWN_MS + 300);
     room.handle(host, { t: 'admin', act: { a: 'end' } });
     advance(50);

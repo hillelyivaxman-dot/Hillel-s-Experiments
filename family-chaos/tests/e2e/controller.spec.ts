@@ -23,7 +23,7 @@ async function startGame(game: string, phoneOpts: object = {}) {
     const { h, code } = await newHost(browser);
     const a = await newPhone(browser, `${HTTP}/join/${code}`, 'Pad', phoneOpts);
     const b = await newPhone(browser, `${HTTP}/join/${code}`, 'Other');
-    const extra = game === 'potato' ? await newPhone(browser, `${HTTP}/join/${code}`, 'Third') : null;
+    const extra = game === 'basedefense' ? await newPhone(browser, `${HTTP}/join/${code}`, 'Third') : null;
     const ids = await playerIds(h);
     await h.locator(`.lobby__games [data-game="${game}"]`).click();
     await h.getByTestId('start-btn').click();

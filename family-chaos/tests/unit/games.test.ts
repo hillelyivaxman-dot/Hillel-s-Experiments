@@ -3,7 +3,7 @@ import { bumperGame } from '../../server/games/bumper';
 import { kartGame } from '../../server/games/kart';
 import { potatoGame } from '../../server/games/potato';
 import { GAMES } from '../../server/games';
-import { CATALOG } from '../../shared/catalog';
+import { ARCHIVED_IDS, CATALOG } from '../../shared/catalog';
 import { BTN } from '../../shared/protocol';
 import { getTrack, pointAt, TRACK_COUNT } from '../../shared/tracks';
 import { makeLevel, platX, sawY } from '../../shared/rush';
@@ -12,7 +12,8 @@ import { runGame } from './helpers';
 describe('catalog', () => {
   it('every playable game has a server module and every module is in the catalog', () => {
     for (const g of CATALOG.filter((c) => c.status === 'playable')) expect(GAMES[g.id], g.id).toBeDefined();
-    for (const id of Object.keys(GAMES)) expect(CATALOG.find((c) => c.id === id)?.status).toBe('playable');
+    for (const id of Object.keys(GAMES)) if (!ARCHIVED_IDS.includes(id)) expect(CATALOG.find((c) => c.id === id)?.status).toBe('playable');
+    expect(CATALOG.map((c) => c.id).sort()).toEqual(['basedefense', 'board', 'bumper', 'flagwars', 'hockey', 'kart', 'rush', 'soccer', 'trapbuilders', 'vanish']); // the ten
   });
 });
 
