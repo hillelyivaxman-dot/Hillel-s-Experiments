@@ -73,7 +73,7 @@ const BASE_GAMES: GameMeta[] = [
       { key: 'B', label: { he: 'כוח', en: 'POWER' }, color: '#b26bff', icon: 'star' },
       { key: 'C', label: { he: 'התחמקות', en: 'DODGE' }, color: '#3ec1ff', icon: 'dodge' },
     ]),
-    options: [{ key: 'lives', label: { he: 'חיים', en: 'Lives' }, values: [1, 2, 3, 4, 5], default: 3 }],
+    options: [{ key: 'lives', label: { he: 'חיים', en: 'Lives' }, values: [1, 2, 3, 4, 5], default: 3 }, { key: 'teams', label: { he: 'מצב', en: 'Mode' }, values: [0, 1], default: 0, names: [{ he: 'כולם נגד כולם', en: 'Free for all' }, { he: 'קבוצות', en: 'Teams' }] }],
   },
   {
     id: 'kart',

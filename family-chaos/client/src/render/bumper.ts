@@ -86,6 +86,7 @@ export const bumperRenderer: Renderer = {
       if (p.g) { // dodging: translucent after-images
         for (let k = 1; k <= 2; k++) drawCritter(g, p.x - Math.cos(p.a) * 16 * k, p.y - Math.sin(p.a) * 16 * k, p.r, info.color, info.avatar, { alpha: 0.18, t });
       }
+      if (p.tm === 0 || p.tm === 1) { g.strokeStyle = p.tm === 0 ? '#ff4d6d' : '#3ec1ff'; g.lineWidth = 6; g.beginPath(); g.arc(p.x, p.y + p.r * 0.15, p.r + 8, 0, Math.PI * 2); g.stroke(); }
       drawCritter(g, p.x, p.y, p.r, info.color, info.avatar, { look: p.a, t, squash: p.d ? 0.6 : 0, alpha: p.iv ? 0.16 : p.g ? 0.5 : 1 });
       if (p.h) { // stored power orbits the head, ready to fire
         const oa = t * 4;
@@ -104,6 +105,7 @@ export const bumperRenderer: Renderer = {
 
   hud(g, f, { players }, W) {
     hudText(g, `${f.left}`, W / 2, 48, 48, f.left <= 10 ? '#ff4d6d' : '#fff');
+    if (f.tms) { hudText(g, `:dotred: ${f.tms[0]}   :dotblue: ${f.tms[1]}`, W / 2, 96, 34, '#fff'); }
     let y = 40;
     for (const p of f.p) {
       const info = players.get(p.id);

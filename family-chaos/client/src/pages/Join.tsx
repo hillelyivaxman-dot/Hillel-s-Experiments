@@ -244,7 +244,7 @@ function hudView(game: string, h: Hud, t: ReturnType<typeof useT>['t'], he: bool
   switch (game) {
     case 'bumper':
       return {
-        text: `${':heart:'.repeat(Number(h.lives ?? 0))}  ${h.ko ?? 0} KO`,
+        text: `${Number(h.tm) === 0 ? ':dotred: ' : Number(h.tm) === 1 ? ':dotblue: ' : ''}${':heart:'.repeat(Number(h.lives ?? 0))}  ${h.ko ?? 0} KO`,
         tone: Number(h.lives) === 0 ? 'bad' : 'normal',
         chips: [
           { icon: 'dash', on: !!h.dash, label: L('הסתערות', 'DASH') },

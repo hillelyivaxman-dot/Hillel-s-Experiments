@@ -92,7 +92,7 @@ export const hockeyRenderer: Renderer = {
       case 'wall': fx.burst(e.x, e.y, '#9bd0ff', 4, 160, 3); sfx.click(); break;
       case 'smash': sfx.dash(); break;
       case 'nudge': fx.burst(e.x, e.y, '#ffd23f', 12, 200, 5); sfx.pass(); break;
-      case 'goal': fx.burst(e.x, 0, ['#ff4d6d', '#3ec1ff'][e.team], 70, 650, 9, 150); fx.kick(14); fx.blink('#fff', 0.5); sfx.win(); break;
+      case 'goal': fx.burst(e.x, 0, ['#ff4d6d', '#3ec1ff'][e.team], 70, 650, 9, 150); fx.kick(14); fx.blink('#fff', 0.5); fx.text(0, 0, 'GOAL!', ['#ff4d6d', '#3ec1ff'][e.team], 110); sfx.win(); break;
       case 'overtime': sfx.go(); break;
     }
   },

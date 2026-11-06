@@ -51,3 +51,26 @@ describe('base defense', () => {
     expect(waveList(4, 4).includes(2)).toBe(true); // brutes from wave 3
   });
 });
+
+// Bumper Battle team mode lives here too: it is one of the "we against them" upgrades of this round.
+import { bumperGame } from '../../server/games/bumper';
+describe('bumper battle: team mode', () => {
+  it('two teams: the whole team of the survivor wins together (shared first place), pushing a team-mate gives no KO', () => {
+    // p1+p3 (red) vs p2+p4 (blue): blue drives off the edge, red stays in
+    const r = runGame(bumperGame, 4, { lives: 1, teams: 1 }, (id, snap) => {
+      const me = snap.p.find((q: any) => q.id === id);
+      return me.tm === 1 ? { x: 1, y: 0, b: 0 } : { x: 0, y: 0, b: 0 };
+    }, 60);
+    expect(r.over).toBe(true);
+    const rows = r.game.standings();
+    const snap: any = r.game.snapshot();
+    const redIds = snap.p.filter((q: any) => q.tm === 0).map((q: any) => q.id);
+    expect(rows.slice(0, 2).map((x) => x.playerId).sort()).toEqual([...redIds].sort());
+    expect(rows[0].tie).toBe(rows[1].tie);
+    expect(rows[2].tie).not.toBe(rows[0].tie);
+  });
+  it('free for all stays the default', () => {
+    const r = runGame(bumperGame, 2, { lives: 1 }, (id) => (id === 'p1' ? { x: 1, y: 0, b: 0 } : { x: 0, y: 0, b: 0 }), 60);
+    expect((r.game.snapshot() as any).p[0].tm).toBeUndefined();
+  });
+});

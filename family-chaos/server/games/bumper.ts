@@ -39,6 +39,7 @@ interface Bumper extends Body {
   hitT: number;
   outAt: number; // elimination order (time); -1 while alive
   face: number;
+  tm: number; // team 0 (red) / 1 (blue) in team mode, otherwise -1
 }
 
 export const bumperGame: GameModule = {
@@ -46,6 +47,7 @@ export const bumperGame: GameModule = {
   create(ctx: GameContext): GameInstance {
     const C = BUMPER;
     const lives = ctx.options.lives ?? 3;
+    const teams = (ctx.options.teams ?? 0) === 1 && ctx.players.length >= 2; // TEAM MODE: two teams, the last team with a bumper left wins together
     let time = 0;
     let R: number = C.R0;
     let nextPow = 6;
@@ -55,7 +57,7 @@ export const bumperGame: GameModule = {
     const bs: Bumper[] = ctx.players.map((p, i) => ({
       id: p.id, x: ring[i].x, y: ring[i].y, vx: 0, vy: 0, r: C.RADIUS, m: 1,
       lives, ko: 0, falling: 0, inv: 0, dashCd: 0, dashT: 0, pow: null, powT: 0, held: null, dodgeCd: 0, dodgeT: 0,
-      hitBy: null, hitT: -99, outAt: -1, face: Math.atan2(-ring[i].y, -ring[i].x),
+      hitBy: null, hitT: -99, outAt: -1, face: Math.atan2(-ring[i].y, -ring[i].x), tm: teams ? i % 2 : -1,
     }));
     const byId = new Map(bs.map((b) => [b.id, b]));
     const active = (b: Bumper) => b.lives > 0 && b.falling <= 0;
@@ -67,7 +69,7 @@ export const bumperGame: GameModule = {
     }
 
     function hud(b: Bumper) {
-      ctx.hud(b.id, { lives: b.lives, ko: b.ko, dash: b.dashCd <= 0 ? 1 : 0, dodge: b.dodgeCd <= 0 ? 1 : 0, held: b.held ?? '', power: b.pow ?? '' });
+      ctx.hud(b.id, { tm: b.tm, lives: b.lives, ko: b.ko, dash: b.dashCd <= 0 ? 1 : 0, dodge: b.dodgeCd <= 0 ? 1 : 0, held: b.held ?? '', power: b.pow ?? '' });
     }
     bs.forEach(hud);
 
@@ -185,7 +187,7 @@ export const bumperGame: GameModule = {
             b.pow = null;
             if (b.hitBy && time - b.hitT < 3) {
               const killer = byId.get(b.hitBy);
-              if (killer) { killer.ko += 1; hud(killer); }
+              if (killer && (!teams || killer.tm !== b.tm)) { killer.ko += 1; hud(killer); } // no KO credit for pushing a team-mate
             }
             if (b.lives <= 0) b.outAt = time;
             ctx.fx('fall', { id: b.id, x: r1(b.x), y: r1(b.y), out: b.lives <= 0 ? 1 : 0 });
@@ -219,11 +221,11 @@ export const bumperGame: GameModule = {
 
       snapshot() {
         return {
-          t: r1(time),
+          t: r1(time), ...(teams ? { tms: [bs.filter((b) => b.tm === 0).reduce((n, b) => n + b.lives, 0), bs.filter((b) => b.tm === 1).reduce((n, b) => n + b.lives, 0)] } : {}),
           left: Math.max(0, Math.ceil(C.MAX_TIME - time)),
           R: r1(R),
           p: bs.map((b) => ({
-            id: b.id, x: Math.round(b.x), y: Math.round(b.y), r: b.r, a: r1(b.face), l: b.lives,
+            id: b.id, x: Math.round(b.x), y: Math.round(b.y), r: b.r, a: r1(b.face), l: b.lives, ...(teams ? { tm: b.tm } : {}),
             f: b.falling > 0 ? 1 : 0, d: b.dashT > 0 ? 1 : 0, i: b.inv > 0 ? 1 : 0, w: b.pow ?? '', k: b.ko, h: b.held ?? '', g: b.dodgeT > 0 ? 1 : 0, ...mods.extras(b.id),
           })),
           u: pows.map((p) => ({ id: p.id, k: p.k, x: r1(p.x), y: r1(p.y) })),
@@ -231,11 +233,19 @@ export const bumperGame: GameModule = {
       },
 
       isOver() {
+        if (teams) return time >= C.MAX_TIME || !(bs.some((b) => b.tm === 0 && b.lives > 0) && bs.some((b) => b.tm === 1 && b.lives > 0));
         const alive = bs.filter((b) => b.lives > 0).length;
         return time >= C.MAX_TIME || (bs.length > 1 ? alive <= 1 : alive === 0);
       },
 
       standings(): StandingRow[] {
+        if (teams) { // the winning team shares first place, the other team shares second
+          const tl = (t: number) => bs.filter((b) => b.tm === t).reduce((n, b) => n + b.lives, 0), tk = (t: number) => bs.filter((b) => b.tm === t).reduce((n, b) => n + b.ko, 0);
+          const win = tl(0) !== tl(1) ? (tl(0) > tl(1) ? 0 : 1) : tk(0) >= tk(1) ? 0 : 1;
+          return [...bs].sort((a, b) => (a.tm === win ? 0 : 1) - (b.tm === win ? 0 : 1) || b.lives - a.lives || b.ko - a.ko).map((b) => ({
+            playerId: b.id, score: b.ko, detail: `${b.tm === 0 ? 'RED' : 'BLUE'} ${b.tm === win ? 'WIN' : ''} · ${b.lives}:heart: · ${b.ko} KO`, tie: b.tm === win ? 0 : 1,
+          }));
+        }
         const outKey = (b: Bumper) => (b.outAt === -1 ? 1e9 : b.outAt);
         const sorted = [...bs].sort((a, b) => b.lives - a.lives || outKey(b) - outKey(a) || b.ko - a.ko);
         return sorted.map((b) => ({

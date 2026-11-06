@@ -105,6 +105,7 @@ export const soccerRenderer: Renderer = {
         const c = ['#ff4d6d', '#3ec1ff'][e.team];
         fx.burst(e.x, 0, c, 70, 600, 9, 200); fx.burst(e.x, 0, '#ffd23f', 50, 450, 7, 200);
         fx.kick(16); fx.blink('#fff', 0.5); sfx.win();
+        fx.text(0, -40, 'GOAL!', c, 120);
         void f; void players;
         break;
       }
