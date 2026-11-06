@@ -84,7 +84,9 @@ test('multi-touch: steering with one finger while pressing TURBO with another (K
   expect(delta(f0, fMid, 'c', ids.Driver).d).toBeGreaterThan(40); // no gas button needed: it drives by itself
   const wrap = (d: number) => { while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI; return d; };
   // the road bends for both karts (straight-line assist), so compare them: the driver turned right on top of what the idle kart did
-  expect(wrap(delta(fMid, f1, 'c', ids.Driver).da) - wrap(delta(fMid, f1, 'c', ids.Idle).da)).toBeGreaterThan(0.4);
+  const drv = wrap(delta(fMid, f1, 'c', ids.Driver).da), idle = wrap(delta(fMid, f1, 'c', ids.Idle).da);
+  expect(drv).toBeGreaterThan(0.5); // the driver really turned right (full lock at turbo speed is ~1.5 rad/s)
+  expect(drv - idle).toBeGreaterThan(0.15); // and more than the idle kart, which the steering assist also bends along the road
 });
 
 test('game switching: all playable games start, run and return to the lobby in one room', async ({ browser }) => {

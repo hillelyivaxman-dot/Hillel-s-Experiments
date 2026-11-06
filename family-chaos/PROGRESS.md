@@ -1,41 +1,45 @@
-# PROGRESS — FAMILY CHAOS 3.0 (ten games)
+# PROGRESS — FAMILY CHAOS (quality fix round on top of 3.0)
 
 Branch: `ccr-64ced051-a2t8s8` · folder: `family-chaos/` · live site: https://family-chaos.onrender.com
 Render auto-deploys from this branch. From the dev sandbox the live site is **not reachable**, so nothing here claims it was deployed or checked live.
-The old 30-game library is kept on the git branch `backup/pre-3.0-422a138`.
+Older games live on the git branch `backup/pre-3.0-422a138` (and Hot Potato is still in the code, just not in the library).
+
+## The ten games now
+Kart Chaos · Chaos Rush · Mini Soccer · Air Hockey · Flag Wars · Family Board Party · Trap Builders · Bumper Battle · Floor Is Lava · **Base Defense (new, co-op)**.
+Hot Potato was taken out of the main library (`ARCHIVED_IDS` in `shared/catalog.ts`; module, renderer and tests are kept).
 
 ## How to continue after an interruption
-1. `cd family-chaos && npm ci && npm run build && npx vitest run`, then run the browser tests **one spec file at a time, detached**
-   (`for f in controller controls devices games-input kart3d multiplayer network accounts; do npx playwright test tests/e2e/$f.spec.ts …; done`; the whole suite is ~20 min).
-   Never free ports (`fuser -k`) or rebuild `dist` while a test run is in progress.
-2. Read NEXT_STEPS.md and docs/GAME_AUDIT.md.
-3. Commit per stable unit, push `ccr-64ced051-a2t8s8`, update this file.
+1. `cd family-chaos && npm ci && npm run build && npx vitest run`.
+2. Browser tests, one spec file at a time, detached, and **don't rebuild `dist` or free ports while they run**:
+   `for f in after-game controller controls devices games-input kart3d multiplayer network accounts; do npx playwright test tests/e2e/$f.spec.ts …; done` (~20 min).
+3. Read NEXT_STEPS.md; commit per stable unit; push `ccr-64ced051-a2t8s8`; update this file.
 
-## Stage log
-| Stage | What | State |
-|---|---|---|
-| 1 Backup + audit + library cut | backup branch; exactly ten games (Kart Chaos, Chaos Rush, Mini Soccer, Air Hockey, **Flag Wars**, Family Board Party, Trap Builders, Bumper Battle, Floor Is Lava, Hot Potato); Crazy Kitchen, bowling and the rest removed from the library | done (commit 4dc1c23) |
-| 2 Kart Chaos 3D | Three.js world rendered **on each phone**; cockpit / bumper / chase cameras, mini-map, speedometer, lap, rank, speed + crash effects; wheel / arrows / tilt, gas·brake·turbo·item, manual-gas + sensitivity options; host spectator view (leader tracking, car switcher, lap times, podium); server-authoritative, 20 Hz phone frames, interpolation + dead-reckoning | done (cf4ada9); verified with headless software-WebGL screenshots + e2e; **not on a physical phone** |
-| 3 Flag Wars | two teams, flags, tackle, sprint/jump/power, original map, small-group handicap, overtime, renderer, HUD, unit tests | done (4dc1c23) |
-| 4 Other games | touchpad Air Hockey, soccer pass, Bumper/Lava/Potato/Flag Wars owner powers, Kart manual gas, snapshots/HUD per game | partly done (see below) |
-| 5 Design system | "sticker-book arcade" (docs/DESIGN_SYSTEM.md), drawn icons, console-style lobby with ten tiles, keyboard + gamepad navigation, GSAP transitions | done (a8269ed); layout fixed for TV/PC sizes in this stage |
-| 6 Controllers | accurate stick, multi-touch, pointer capture, no scroll, L/R + size options, rotate, reconnect; S25-Ultra-sized viewport emulation (412×891 / 891×412) | done; **emulation only** |
-| 7 Accounts + GOD ADMIN | guest/account, stats, achievements, trophies; owner verified server-side; 19 powers; game-changing powers only in party rooms with visible chaos mode, refused during tournaments | done, unit + e2e tested; needs `DATABASE_URL` on Render |
-| 8 Tournaments | party, knockout, league, multi-day; manual/random/mixed picks; points table; finals; trophies; hold/skip; persisted in the database and resumable | done, unit-tested (PGlite); browser flow for league + multi-day hold e2e-tested (multiplayer.spec); resume-from-database flow only unit-tested |
-| 9 Tests | see below | done for what is listed |
+## This round (what was fixed / improved)
+1. **Stuck purple screen after a game — root cause found and fixed.** In phone landscape the results screen (big critter + text + two big buttons) was taller than the screen, so *Play again / Back to lobby* sat below the bottom edge and only the patterned background was visible; phones that are not the room leader had no action at all. Now: one compact results panel (side by side in landscape), actions always inside the viewport, non-leaders see "waiting for <leader>…", tournament info + countdown to the next game, safe-area padding. Also: a leader whose phone sleeps hands the crown on after 8 s; a UI **error boundary** shows Reload/Home instead of a bare background if any screen crashes.
+2. **Design v4 "arcade cabinet"** (`client/src/arcade.css`, loaded last): 4–10 px corners instead of pills/bubbles, framed panels with title strips, bevelled keys, rounded-square pad buttons, dark grid + scanline background, console header. Applied to home, lobby (players / join / tournament as separate framed panels), game tiles, results, phone UI.
+3. **Kart Chaos:** calmer turn rates, speed-scaled look-ahead and kerb-proportional steering assist (hard to lose the road, still easy to steer), rubber-band catch-up for trailing karts, softer wall bounce, stronger brakes, farther/higher chase camera, see-through smaller steering keys. Handling unit tests made deterministic (cruise-only start).
+4. **Chaos Rush:** the screen edge only moves forward (front runner + slow creep); anyone behind it gets a 3-second "GET BACK ON SCREEN!" countdown (red edge glow, big number over the runner, phone HUD + vibration), then is eliminated (ghost + OUT). Respawns always land on screen; last runner standing ends the round; results rank by finish / survival time. Unit tests.
+5. **Base Defense (new, co-op, replaces Hot Potato in the ten):** shared core, waves of runners/grunts/brutes scaled to group size, auto-fire defenders with four roles (Gunner BURST, Builder TURRET, Tank SHOCK, Medic HEAL), shared scrap → turrets and team upgrades, downed/revive, shared team stars. Renderer, phone HUD/controller, catalog, unit tests.
+6. **Bumper Battle team mode** (option "Mode": free for all / teams): red vs blue, last team standing, shared first place, no KO credit for pushing a team-mate. **GOAL!** banners in soccer and hockey.
+7. Tests added: `tests/e2e/after-game.spec.ts` (start → finish → results with actions visible in 3 viewports → lobby → next game; leader hand-over; 8 games back to back with no page errors), `tests/unit/rush-elimination.test.ts`, `tests/unit/basedefense.test.ts` (+ bumper teams).
 
-## Test status (last full run on this build)
-* `tsc --noEmit`: clean. Unit (vitest): **14 files, 113 tests pass**.
-* Browser (Playwright, Chromium, CDP touch emulation), run per spec file: controller 13/13, controls 3/3, devices 3/3, games-input 1/1
-  (every game: two phones, every control reaches the server, both players in the match, results, back to the lobby), kart3d 3/3, multiplayer 7/7, network 6/6, accounts 4/4 → **38/38**, plus league and multi-day tournament flows (2 more, 40 total).
-* Failures found and fixed this stage: selected tile's endless wiggle made clicks "unstable" (now plays twice); lobby start button overflowed the fold at 1920×1080 with the long "needs 2 players" text; hockey touchpad test assumed a relative stick; a joystick test assumed the round was still running after the host lagged.
-* Not tested: real phones (tilt direction, wheel feel, 3D frame rate on a real GPU), the live Render site, Postgres (unit tests use PGlite), many-room load beyond the earlier local checks.
+## Test status
+* `tsc --noEmit` clean; unit tests **123 pass** (18 files).
+* Browser suite on this build: see the "Browser results" line at the bottom (filled in after the run).
+* **Not tested:** real phones (tilt, wheel feel, 3D frame rate), the live Render site, Postgres (PGlite only), load with many rooms.
 
-## Honest remaining list
-* Remaining-eight-game polish: Chaos Rush tracks/camera, Family Board Party interactivity and bonus mini-games, Trap Builders flow, original per-game sound.
-* Tournaments: team tournaments, cosmetic prizes beyond trophies; browser test for resume.
-* Chaos powers for Kart, Soccer, Hockey, Rush, Trap Builders, Board (only cosmetic powers there).
-* Kart podium scene and extra 3D polish; a performance budget test on a real phone.
-* Render: set `DATABASE_URL` (free Postgres) for accounts, owner and saved tournaments; without it those are off (see docs/DEPLOY.md).
+## Still not good / not done (honest)
+* Kart: no AI bots to fill the grid (2-player races feel empty); podium scene; 3D frame rate on a real phone unknown.
+* Flag Wars / Mini Soccer: only small polish this round (soccer/hockey GOAL banners); no new maps, no new soccer controls.
+* Family Board Party: no new bonus mini-games or team bonus rounds yet. Trap Builders, Floor Is Lava: unchanged this round.
+* Base Defense: first version, never play-tested by people; numbers (wave sizes, costs, enemy speed) are constants in `shared/basedefense.ts` / `server/games/basedefense.ts`.
+* Per-game original sound; team tournaments; Render needs `DATABASE_URL` for accounts / saved tournaments.
+
+## Next
+1. Play Base Defense, Chaos Rush and Kart with real phones and tune the constants.
+2. Kart AI bots + podium; soccer feel (ball friction/kick power), Flag Wars extra route.
+3. Board Party team mini-games; Floor Is Lava dynamic stages.
 
 Last commit: see `git log -1` on the branch.
+
+Browser results (this build, per spec file): after-game 3/3, controller 13/13, controls 3/3 (one assertion was loosened: the steering-assist now bends the idle kart along the road too), devices 3/3, games-input 1/1, kart3d 3/3, multiplayer 7/7, network 6/6, accounts 4/4 = 40/40. Not run: real phones, live site.
