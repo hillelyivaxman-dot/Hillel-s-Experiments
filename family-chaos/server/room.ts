@@ -705,6 +705,14 @@ export class Room {
       if (this.game.isOver()) this.finishGame();
     }
     if (this.game) this.sendFrame();
+    // a leader whose phone went to sleep must not leave everybody without controls: hand the crown on after a few seconds
+    if (this.leaderId) {
+      const ld = this.players.get(this.leaderId);
+      if (ld && !ld.info.connected && now - ld.disconnectedAt > 8000) {
+        const next = [...this.players.values()].find((q) => q.info.connected);
+        if (next) { this.leaderId = next.info.id; this.dirty = true; }
+      }
+    }
     // drop long-gone players while not in a match
     if (this.phase === 'lobby' || this.phase === 'results') {
       for (const p of [...this.players.values()]) {

@@ -416,26 +416,51 @@ function PhoneGame({ room, conn, hud, isLeader, act, meId }: { room: RoomState; 
 }
 
 function PhoneResults({ room, me, isLeader, act }: { room: RoomState; me: string; isLeader: boolean; act: (a: AdminAction) => void }) {
-  const { t } = useT();
+  const { t, l } = useT();
   const r = room.results?.find((x) => x.playerId === me);
   const p = room.players.find((x) => x.id === me)!;
+  const leader = room.players.find((x) => x.id === room.leaderId);
+  const tour = room.tour;
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => { if (!tour?.nextAt) return; const id = setInterval(() => setNow(Date.now()), 500); return () => clearInterval(id); }, [tour?.nextAt]);
+  const secs = tour?.nextAt && !tour.held ? Math.max(0, Math.ceil((tour.nextAt - now) / 1000)) : null;
+  const myPts = tour ? tour.points[me] ?? 0 : null;
+  const rank = tour ? 1 + Object.entries(tour.points).filter(([id, v]) => id !== me && v > (tour.points[me] ?? 0)).length : null;
   return (
-    <div className="center-screen phone-results">
-      <CritterCanvas color={p.color} variant={p.avatar} size={150} hurt={!!r && r.place > 3} />
-      {r ? (
-        <>
-          <p className="big-msg"><Rich text={r.place === 1 ? `:trophy: ${t('youWon')}` : `${t('place')} #${r.place}`} /></p>
-          <p className="stars">{r.stars ? Array.from({ length: r.stars }, (_, i) => <Icon key={i} name="star" size="1.4em" />) : '—'}</p>
-          <p className="muted"><Rich text={r.detail ?? ''} /></p>
-        </>
-      ) : <p className="big-msg">{t('watchScreen')}</p>}
-      <p className="muted"><Icon name="star" /> {p.stars}</p>
-      {isLeader && (
-        <div className="results__actions">
-          <button className="btn btn--primary btn--xl" onClick={() => act({ a: 'again' })}><Icon name="repeat" /> {t('playAgain')}</button>
-          <button className="btn btn--secondary" onClick={() => act({ a: 'lobby' })}><Icon name="home" /> {t('backToLobby')}</button>
+    <div className="phone-results" data-testid="phone-results">
+      <section className="phone-results__who">
+        <CritterCanvas color={p.color} variant={p.avatar} size={110} hurt={!!r && r.place > 3} />
+        {r ? (
+          <>
+            <p className="big-msg"><Rich text={r.place === 1 ? `:trophy: ${t('youWon')}` : `${t('place')} #${r.place}`} /></p>
+            <p className="stars">{r.stars ? Array.from({ length: r.stars }, (_, i) => <Icon key={i} name="star" size="1.2em" />) : '—'}</p>
+          </>
+        ) : <p className="big-msg">{t('watchScreen')}</p>}
+      </section>
+      <section className="phone-results__side">
+        {r?.detail ? <p className="phone-results__detail"><Rich text={r.detail} /></p> : null}
+        <p className="phone-results__total"><Icon name="star" /> {p.stars}</p>
+        {tour && !tour.done && (
+          <p className="phone-results__tour" data-testid="phone-tour">
+            <Icon name="trophy" /> {l({ he: `טורניר · משחק ${tour.idx + 1}/${tour.total} · ${myPts} נק׳ · מקום ${rank}`, en: `Tournament · game ${tour.idx + 1}/${tour.total} · ${myPts} pts · #${rank}` })}
+            {secs !== null ? <b> · {l({ he: `הבא בעוד ${secs}`, en: `next in ${secs}` })}</b> : tour.held ? <b> · {l({ he: 'בהמתנה', en: 'on hold' })}</b> : null}
+          </p>
+        )}
+        <div className="results__actions" data-testid="phone-results-actions">
+          {isLeader ? (
+            <>
+              <button className="btn btn--primary btn--xl" data-testid="phone-again" onClick={() => act({ a: tour && !tour.done ? 'tour_skip' : 'again' })}>
+                <Icon name="repeat" /> {tour && !tour.done ? l({ he: 'למשחק הבא', en: 'Next game' }) : t('playAgain')}
+              </button>
+              <button className="btn btn--secondary" data-testid="phone-lobby" onClick={() => act({ a: 'lobby' })}><Icon name="home" /> {t('backToLobby')}</button>
+            </>
+          ) : (
+            <p className="muted phone-results__wait" data-testid="phone-wait">
+              {l({ he: `ממתינים ל${leader?.name ?? 'מנהל החדר'} שיבחר מה הלאה…`, en: `Waiting for ${leader?.name ?? 'the room leader'} to pick what's next…` })}
+            </p>
+          )}
         </div>
-      )}
+      </section>
     </div>
   );
 }

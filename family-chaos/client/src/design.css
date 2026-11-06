@@ -124,3 +124,22 @@ input:focus, select:focus { border-color: var(--sun); }
 
 /* start button: never taller than its panel, even with the long "needs 2 players" text */
 .start-col .start-btn.btn--xl { font-size: clamp(0.95rem, 2.3vh, 1.35rem); padding: 0.5em 0.8em; line-height: 1.15; min-height: 0; }
+
+/* ---- phone results: one compact panel that fits portrait AND landscape; the actions are always on screen ---- */
+.phone-results { min-height: var(--app-h, 100dvh); box-sizing: border-box; display: grid; grid-template-columns: 1fr; align-content: center; justify-items: center; gap: 12px; padding: max(12px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(14px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)); text-align: center; }
+.phone-results__who, .phone-results__side { display: grid; justify-items: center; gap: 6px; }
+.phone-results__side { width: min(100%, 420px); }
+.phone-results .big-msg { font-size: 1.5rem; }
+.phone-results .stars { font-size: 1.6rem; line-height: 1; }
+.phone-results__detail, .phone-results__total, .phone-results__tour, .phone-results__wait { margin: 0; }
+.phone-results__tour { padding: 6px 10px; border: 2px solid var(--ink); background: var(--board-2, #2a1f5c); border-radius: 6px; font-size: 0.9rem; }
+.phone-results .results__actions { width: 100%; display: grid; gap: 8px; }
+.phone-results .results__actions .btn { width: 100%; }
+@media (orientation: landscape) and (max-height: 560px) {
+  .phone-results { grid-template-columns: minmax(150px, 0.8fr) minmax(0, 1.2fr); align-items: center; justify-items: stretch; gap: 20px; padding-block: 8px; }
+  .phone-results__who { align-content: center; }
+  .phone-results__side { align-self: center; width: 100%; max-width: 440px; justify-items: stretch; }
+  .phone-results .results__actions { grid-template-columns: 1fr 1fr; }
+  .phone-results .results__actions .btn--xl { font-size: 1rem; padding: 0.55em 0.7em; }
+}
+.crash { margin: 12vh auto 0; width: min(92vw, 420px); padding: 20px; display: grid; gap: 10px; text-align: center; background: var(--board-2, #2a1f5c); border: 3px solid var(--ink, #12082b); border-radius: 8px; }
